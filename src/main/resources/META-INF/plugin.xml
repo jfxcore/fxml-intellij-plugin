@@ -91,6 +91,11 @@
     <extensions defaultExtensionNs="com.intellij">
 
         <!--
+            Project-view file nesting provider that nests code-behind files under FXML 2.0 documents.
+        -->
+        <treeStructureProvider implementation="org.jfxcore.fxml.Fxml2FileNestingProvider"/>
+
+        <!--
             FileBasedIndex: maps fully-qualified class names (from <?import?> processing
             instructions and Java imports in @ComponentView host files) to the source files
             that declare them.  This persistent index enables O(1) "Find Usages of Java class
