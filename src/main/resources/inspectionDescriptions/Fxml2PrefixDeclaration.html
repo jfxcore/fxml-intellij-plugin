@@ -1,0 +1,18 @@
+<html lang="en">
+<body>
+Reports invalid or duplicate {@code <?prefix?>} processing instructions in FXML 2.0 files.
+<p>
+The fxml2 compiler allows single-character prefix shorthands to be declared before the
+root element, mapping a prefix character to a markup-extension class:
+<pre>
+  &lt;?prefix ^ = org.example.MyExtension?&gt;
+</pre>
+Reported problems:
+<ul>
+  <li>Invalid prefix character: letters, digits, {@code _}, {@code $}, whitespace, and
+      reserved punctuation characters are not allowed.</li>
+  <li>Duplicate declaration for the same prefix character.</li>
+  <li>Unresolvable class name in the declaration.</li>
+</ul>
+</body>
+</html>

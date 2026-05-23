@@ -1,0 +1,20 @@
+<html lang="en">
+<body>
+Reports a redundant <code>!!</code> (BOOLIFY) operator in an fxml2 binding expression
+when the resolved type of the bound path is <code>Boolean</code>.
+<p>
+The fxml2 compiler treats <code>!!</code> on a <code>Boolean</code>-typed observable as a
+compile-time no-op: the observable is passed directly to the target property without any
+<code>BooleanBindings</code> wrapping.  The <code>!!</code> prefix is therefore unnecessary
+and can be safely removed.
+<p>
+For <code>Number</code> types <code>!!</code> maps to <code>BooleanBindings.isNotZero</code>,
+and for other reference types to <code>BooleanBindings.isNotNull</code>; neither of those
+is a no-op, so no warning is produced in those cases.
+<p>
+<b>Example (flagged):</b>
+<pre><code>disable="${!!active}"  <!-- active is a BooleanProperty --></code></pre>
+<b>After quick-fix:</b>
+<pre><code>disable="${active}"</code></pre>
+</body>
+</html>

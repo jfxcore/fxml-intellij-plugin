@@ -1,0 +1,11 @@
+#* @vtlvariable name="FX_CLASS" type="java.lang.String" *#
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.AnchorPane?>
+
+<AnchorPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://jfxcore.org/fxml/2.0"
+            fx:subclass="${FX_CLASS}"
+            prefHeight="400.0" prefWidth="600.0">
+
+</AnchorPane>

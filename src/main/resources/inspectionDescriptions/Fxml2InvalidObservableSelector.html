@@ -1,0 +1,18 @@
+<html lang="en">
+<body>
+Reports FXML 2.0 binding path segments accessed via <code>::</code> whose declared type is not a
+<code>javafx.beans.value.ObservableValue</code> subtype.
+<p>
+The <code>::</code> operator is an <em>observable-selection</em> operator: it unwraps one level of
+<code>ObservableValue</code> so that the binding engine can track changes through the chain. When
+applied to a plain field or Java-Beans getter that does not return an <code>ObservableValue</code>,
+the fxml2 compiler rejects the expression with <code>INVALID_INVARIANT_REFERENCE</code>.
+<p>
+A quick-fix is offered to replace <code>::</code> with <code>.</code>, converting the reference
+to a plain (non-trackable) property access. The fix is also available as a batch action ("Fix all
+in file" / "Fix all in project") via the Alt+Enter menu.
+<p>
+<b>Note:</b> the real-time error underline is provided by the FXML 2.0 attribute annotator; this
+inspection surfaces the same problem so that the batch quick-fix is accessible.
+</body>
+</html>

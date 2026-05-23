@@ -1,0 +1,12 @@
+import org.jfxcore.markup.ComponentView;
+import javafx.scene.control.Label;
+import javafx.scene.layout.AnchorPane;
+
+@ComponentView("""
+    <AnchorPane>
+        <Label text="Hello"/>
+    </AnchorPane>
+    """)
+public class MyView extends MyViewBase {
+    public MyView() { initializeComponent(); }
+}

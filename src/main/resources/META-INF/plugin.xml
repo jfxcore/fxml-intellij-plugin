@@ -1,0 +1,1086 @@
+<idea-plugin>
+    <id>org.jfxcore.fxml</id>
+    <name>FXML 2.0</name>
+    <vendor url="https://github.com/jfxcore">JFXcore</vendor>
+
+    <resource-bundle>messages.Fxml2Bundle</resource-bundle>
+
+    <description><![CDATA[
+        Provides IDE support for <a href="https://github.com/jfxcore/fxml-compiler">FXML2</a>,
+        the JFXcore FXML compiler's markup format for JavaFX UIs.<br/><br/>
+
+        <b>Standalone FXML2 files</b><br/>
+        A <code>.fxml</code> file is treated as FXML 2.0 when its root element carries both
+        <code>xmlns="http://javafx.com/javafx"</code> and
+        <code>xmlns:fx="http://jfxcore.org/fxml/2.0"</code>.
+        <ul>
+            <li>Dedicated file type with XML syntax highlighting, folding, and formatting.</li>
+            <li>Tag and attribute resolution, code completion, and navigation to JavaFX classes.</li>
+            <li>Find usages, rename, and Go to Declaration for <code>fx:id</code> identifiers.</li>
+            <li>Inspections for unknown tags, unresolved attributes, unused imports, and more.</li>
+            <li>Import optimizer: removes unused <code>&lt;?import?&gt;</code> PIs and re-sorts the rest.</li>
+        </ul>
+
+        <b>Embedded FXML 2.0 via <code>@ComponentView</code></b><br/>
+        FXML 2.0 markup can be embedded directly in a Java or Kotlin class using the
+        <code>@ComponentView</code> annotation.
+        The plugin injects full FXML2 IDE support into the annotation value, using the same
+        completion, navigation, inspections, and find usages as in standalone files.
+        <ul>
+            <li>Language injection: embedded markup is treated as a live FXML2 document.</li>
+            <li>Formatting: <kbd>Ctrl+Alt+L</kbd> reformats the embedded XML with the correct
+                indentation, honouring EditorConfig <code>*.fxml</code> rules.</li>
+            <li>Unused-import suppression: imports referenced only in the embedded markup are
+                not reported as unused by the Java / Kotlin compiler checks.</li>
+            <li><b>Embed markup</b> intention / inspection: converts a standalone
+                <code>.fxml</code> file into a <code>@ComponentView</code> annotation in the
+                code-behind class (<kbd>Alt+Enter</kbd> on the root element or
+                <code>fx:subclass</code>).</li>
+            <li><b>Create FXML file</b> intention / inspection: extracts the embedded markup
+                back to a standalone <code>.fxml</code> file, properly formatted and with all
+                <code>&lt;?import?&gt;</code> PIs restored (<kbd>Alt+Enter</kbd> on the
+                <code>@ComponentView</code> annotation name).</li>
+        </ul>
+    ]]></description>
+
+    <!-- Requires the XML plugin, which is always present in IntelliJ Platform products. -->
+    <depends>com.intellij.modules.xml</depends>
+    <!-- Required for JavaPsiFacade, PsiClass, and other Java PSI APIs used in tag resolution.
+         com.intellij.java is always present in IntelliJ IDEA (Community and Ultimate). -->
+    <depends>com.intellij.java</depends>
+    <!-- Required for EditorConfig-aware XML indent in embedded FXML formatting.
+         The EditorConfig plugin is always bundled with IntelliJ IDEA 2025.2+. -->
+    <depends>org.editorconfig.editorconfigjetbrains</depends>
+    <!-- Required for PropertyReference used to provide resource-key navigation and
+         "used property" tracking for %key expressions in embedded FXML2 markup.
+         com.intellij.properties is always bundled with IntelliJ IDEA. -->
+    <depends>com.intellij.properties</depends>
+
+    <!--
+        The bundled JavaFX plugin (com.intellij.javafx) maps the "fxml" extension to the XML
+        file type via a static <fileType> entry.  Our FileTypeDetector runs during content-based
+        detection (after extension-based lookup) and returns Fxml2FileType for files that carry
+        the JFXcore namespace, overriding the generic XML association for those files only.
+        Plain FXML files are not affected: our detector returns null for them.
+        We list the bundled plugin as optional so the FXML2 plugin also works in environments
+        where com.intellij.javafx is absent.
+    -->
+    <depends optional="true" config-file="fxml2-with-javafx.xml">org.jetbrains.plugins.javaFX</depends>
+    <depends optional="true" config-file="fxml2-with-kotlin.xml">org.jetbrains.kotlin</depends>
+
+    <!-- Declare K1+K2 Kotlin plugin mode compatibility. Must be in the main descriptor
+         (not the optional config file) so IntelliJ's K2 compatibility check sees it
+         before deciding whether to load fxml2-with-kotlin.xml. -->
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK1="true" supportsK2="true"/>
+    </extensions>
+
+    <!--
+        Project-level listener that captures a snapshot of every @ComponentView
+        text-block literal (content + editor selection) *before* the Java formatter
+        runs.  The snapshot is stored in a ThreadLocal and read by
+        Fxml2EmbeddedMarkupFormattingProcessor.processText to correctly filter which
+        FXML lines need to be reformatted when the user has a partial selection.
+        See Fxml2ReformatSnapshotTracker for details.
+    -->
+    <projectListeners>
+        <listener class="org.jfxcore.fxml.lang.Fxml2ReformatSnapshotTracker"
+                  topic="com.intellij.psi.codeStyle.CodeStyleManager$Listener"/>
+    </projectListeners>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <!--
+            FileBasedIndex: maps fully-qualified class names (from <?import?> processing
+            instructions and Java imports in @ComponentView host files) to the source files
+            that declare them.  This persistent index enables O(1) "Find Usages of Java class
+            in FXML2" queries, and it is used by the property-resolver cache to bound
+            invalidation to the specific files that actually declare the referenced classes.
+        -->
+        <fileBasedIndex implementation="org.jfxcore.fxml.indexing.Fxml2ClassReferenceIndex"/>
+
+        <!--
+            MultiHostInjector: injects XMLLanguage into the value of a
+            @org.jfxcore.markup.ComponentView annotation on a Java type declaration.
+            This gives the embedded markup all the same IDE support as a standalone
+            .fxml2 file (diagnostics, navigation, completion, rename, find usages, ...).
+        -->
+        <multiHostInjector
+                implementation="org.jfxcore.fxml.lang.Fxml2MarkupAnnotationInjector"/>
+
+        <!--
+            ParserDefinition for Fxml2EmbeddedXmlLanguage: used when the @ComponentView
+            injectors inject Fxml2EmbeddedXmlLanguage (a dialect of XML).
+            The sole purpose is to produce Fxml2EmbeddedXmlFile instances whose
+            findElementAt() override applies per-identifier-segment narrowing so that
+            identifier-under-caret highlighting computes a fresh result for each
+            segment in a dotted binding path (e.g. "vm" and "message" in "${vm.message}"
+            get separate highlights instead of sharing the same wide-token cache entry).
+        -->
+        <lang.parserDefinition language="Fxml2EmbeddedXml"
+                               implementationClass="org.jfxcore.fxml.lang.Fxml2EmbeddedXmlParserDefinition"/>
+
+        <!--
+            InjectedFormattingOptionsProvider: when the user reformats from inside an
+            injected FXML2 XML editor fragment, this delegates the request back to the
+            Java/Kotlin host file.  The host formatter then runs as normal, and the
+            PostFormatProcessor below applies correct XML indentation.
+        -->
+        <formatting.injectedOptions
+                implementation="org.jfxcore.fxml.lang.Fxml2InjectedFormattingOptionsProvider"/>
+
+        <!--
+            PostFormatProcessor: after the Java (or Kotlin) formatter finishes, this
+            processor reformats embedded FXML2 markup with the correct per-element
+            indentation:  annotationColumn + javaIndentSize + xmlLevel * xmlIndentSize.
+            Honours EditorConfig because code-style settings are already merged before
+            this processor runs.
+        -->
+        <postFormatProcessor
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedMarkupFormattingProcessor"/>
+
+        <!--
+            Tab / Shift+Tab / Enter indent handlers for embedded FXML2 markup.
+
+            All three are implemented as nested classes of Fxml2EmbeddedIndentHandlers so
+            that the shared logic (detecting the FXML2 injection context, resolving the XML
+            indent size) lives in one place.
+
+            IndentOptionsProvider (Tab):
+              TabAction has setInjectedContext(true), so it runs in the injected editor
+              and calls CodeStyleSettings.getIndentOptionsByDocument() on the injected
+              DocumentWindow.  The injected VirtualFileWindow has getParent() == null, so
+              EditorConfig's built-in provider cannot locate the .editorconfig hierarchy.
+              This provider intercepts the lookup for Fxml2EmbeddedXmlLanguage files and
+              returns correctly resolved XML indent options.
+
+            UnindentHandler (Shift+Tab):
+              UnindentSelectionAction does NOT set setInjectedContext(true), so it always
+              runs against the host editor and uses the Java indent size.  This handler
+              detects when the caret is inside an embedded FXML2 fragment and applies
+              Fxml2EmbedMarkupUtil.getEffectiveXmlIndentSize() as the unindent step,
+              matching Tab and Ctrl+Alt+L formatting.
+
+            EnterHandler (Enter):
+              EnterAction has setInjectedContext(true), so the whole Enter handler chain
+              receives the injected editor when the caret is inside an embedded FXML2
+              fragment.  Without this handler, the platform's scheduleIndentAdjustment
+              delegates to the host (Java) formatter, which produces wrong "tag indent"
+              alignment instead of the correct "first attribute" alignment that standalone
+              XML files produce (via SyntheticBlock.getChildAttributes).
+              This handler intercepts Enter between XML tag attributes and directly inserts
+              the correct "\n" + spaces alignment.
+        -->
+        <fileIndentOptionsProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers$IndentOptionsProvider"
+                order="first"/>
+        <editorActionHandler
+                action="EditorUnindentSelection"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers$UnindentHandler"
+                order="first"/>
+
+        <!--
+            EditorActionHandler for EditorSelectWord (triggered by mouse double-click).
+            After the platform selects the word at the caret, this handler trims any
+            leading FXML2 sigil character ($, #, %) from the selection when the caret
+            is inside an FXML2 attribute value.  Without this, double-clicking on "vm"
+            in "$vm.sayHello" produces the selection "$vm" because Java (and the XML
+            editor) treat $ as a valid identifier character.
+        -->
+        <editorActionHandler
+                action="EditorSelectWord"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2WordSelectionHandler"
+                order="first"/>
+        <enterHandlerDelegate
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers$EnterHandler"
+                order="first"/>
+
+        <!--
+            TypedHandlerDelegate: intercepts '=' typed after an XML attribute name in embedded
+            FXML2 markup and inserts double quotes (="") instead of single quotes (='').
+            IntelliJ's default XmlGtTypedHandler picks the quote character by inspecting the
+            first character of the injection-host text; for Java text-blocks that character is
+            always '"', which incorrectly triggers single-quote insertion.  This handler runs
+            first and substitutes the correct double-quote form.
+        -->
+        <typedHandler
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedEqualTypedHandler"
+                order="first"/>
+
+        <!--
+            File type declaration.
+            Only "fxml2" is registered as a static extension. Plain ".fxml" files are
+            handled via FileTypeOverrider (content-based detection), which runs before
+            any extension lookup and returns Fxml2FileType for files carrying the JFXcore
+            namespace. We intentionally do NOT register "fxml" here: doing so would make
+            FileTypeManager.getFileTypeByExtension("fxml") return Fxml2FileType, which
+            causes JavaFxFileTypeFactory.isFxml() to return true for our files, triggering
+            unwanted JavaFX inspections on FXML2 documents.
+        -->
+        <fileType
+                name="FXML 2.0"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2FileType"
+                fieldName="INSTANCE"
+                language="XML"
+                extensions="fxml2"/>
+
+        <!--
+            FileTypeOverrider: runs before any extension-based or content-based lookup.
+            Returns Fxml2FileType for .fxml files that carry the JFXcore namespace,
+            null for everything else (plain FXML, other XML, ...).
+        -->
+        <fileTypeOverrider implementation="org.jfxcore.fxml.lang.Fxml2FileTypeOverrider"/>
+
+        <!--
+            FileTypeDetector: kept as a secondary guard for cases where the overrider
+            is bypassed (e.g. light virtual files, scratch files).
+        -->
+        <fileTypeDetector implementation="org.jfxcore.fxml.lang.Fxml2FileTypeDetector"/>
+
+        <!--
+            XmlElementDescriptorProvider: consulted by XmlTagDelegate.computeElementDescriptor()
+            for every XML tag.  Returning Fxml2ClassTagDescriptor here is what makes
+            getAttributeDescriptor() get called on it, which drives Ctrl+click navigation
+            on attribute names (e.g. "text" in <Button text="foo"/>).
+        -->
+        <xml.elementDescriptorProvider implementation="org.jfxcore.fxml.lang.Fxml2ElementDescriptorProvider"/>
+
+        <!--
+            XmlExtension: plugs our custom TagNameReference into every XML tag inside
+            FXML2 files.  The TagNameReference.resolve() delegates to the
+            Fxml2NamespaceDescriptor (registered below) and ultimately to
+            Fxml2ImportResolver, enabling Ctrl+click navigation to the Java class.
+        -->
+        <xml.xmlExtension implementation="org.jfxcore.fxml.lang.Fxml2XmlExtension"/>
+
+        <!--
+            XmlFileNSInfoProvider: declares http://javafx.com/javafx as the default
+            namespace for FXML2 files so the XML layer can locate the right
+            XmlNSDescriptor without an explicit xmlns= attribute lookup.
+        -->
+        <xml.fileNSInfoProvider implementation="org.jfxcore.fxml.lang.Fxml2NamespaceDataProvider"/>
+
+        <!--
+            MetaDataContributor: registers Fxml2NamespaceDescriptor as the metadata
+            object for any document whose root tag carries the JavaFX namespace URI.
+            The descriptor's getElementDescriptor(tag) drives tag-to-class resolution.
+        -->
+        <metaDataContributor implementation="org.jfxcore.fxml.lang.Fxml2NamespaceDataProvider"/>
+
+        <!--
+            ImplicitNamespaceDescriptorProvider: returns a non-null XmlNSDescriptor for
+            the two fxml2 namespace URIs (http://javafx.com/javafx and
+            http://jfxcore.org/fxml/2.0) in fxml2 files.
+            ExternalResourceManagerExBase.isIgnoredResource() calls every registered
+            provider; a non-null result causes the URLReference on the xmlns /
+            xmlns:fx declarations to resolve successfully, suppressing the
+            "URI is not registered" error.
+        -->
+        <xml.implicitNamespaceDescriptorProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2ImplicitNamespaceDescriptorProvider"/>
+
+        <!--
+            DocumentationTargetProvider (V2): shows the property value from the resource bundle
+            as a hover tooltip / quick documentation when the cursor is on a %key or
+            {DynamicResource key} / {StaticResource key} attribute value in FXML2 markup.
+
+            Registered as a com.intellij.platform.backend.documentation.targetProvider so that
+            documentationTargets() is called by the modern hover-documentation pipeline,
+            regardless of whether the cursor is in a standalone FXML2 file or inside an
+            embedded FXML2 @ComponentView text block (the platform passes the injected
+            XML fragment to this provider first).
+
+            The implementation resolves the PropertyReferenceBase on the attribute value to
+            the IProperty via multiResolve(), then delegates to psiDocumentationTargets()
+            which uses PropertiesDocumentationProvider to render "key=value [filename.properties]".
+        -->
+        <platform.backend.documentation.targetProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceKeyDocumentationTargetProvider"/>
+
+        <!--
+            PsiReferenceContributor: registers soft, always-unresolved references for
+            fxml2 binding expressions in attribute values (e.g. $vm.message,
+            {fx:Observe vm.message}).  Also provides:
+              - PropertyReference for %key (StaticResource) so that Ctrl+click navigates
+                to the resource bundle entry and the property is not marked as unused.
+              - FileReference(s) for @path (ClassPathResource) so that Ctrl+click
+                navigates to the referenced classpath resource file.
+            Both are added for embedded FXML2 (@ComponentView) and standalone .fxml2 files;
+            standalone .fxml files are already handled by the bundled JavaFX plugin.
+        -->
+        <psi.referenceContributor language="XML"
+                                  implementation="org.jfxcore.fxml.lang.Fxml2ReferenceContributor"/>
+        <psi.referenceContributor language="XML"
+                                  implementation="org.jfxcore.fxml.lang.Fxml2XmlTextReferenceContributor"/>
+
+        <!--
+            PsiSymbolDeclarationProvider: registers the value of each fx:id attribute as a
+            symbol declaration.  This makes IntelliJ treat the fx:id value as a declaration
+            site so that Ctrl+click triggers "Show Usages" (with filter buttons and full-line
+            context preview) rather than the bare "Choose Declaration" list.
+        -->
+        <psi.declarationProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2FxIdDeclarationProvider"/>
+
+        <!--
+            GotoDeclarationHandler (code/binding -> FXML): when the cursor is on a Java/Kotlin
+            field or method that corresponds to an fx:id-injected member, or on a binding
+            expression segment, navigates to the fx:id XmlAttributeValue (canonical declaration)
+            in the FXML2 file.
+        -->
+        <gotoDeclarationHandler
+                implementation="org.jfxcore.fxml.lang.Fxml2FxIdCodeBehindGotoHandler"/>
+
+        <!--
+            ReferencesSearch extension: when "Find Usages" is invoked on a CSS class
+            selector (either our own CssSelectorElement or the CSS plugin's PSI element
+            for a .css file), searches all standalone FXML2 files (.fxml / .fxml2) and
+            all @ComponentView-annotated classes for styleClass attribute values that
+            reference the same CSS class name.
+
+            Without this searcher, Ctrl+click (or Alt+F7) on a CSS class selector in a
+            .css file would not show any FXML2 usages, because:
+            - IntelliJ's word index splits hyphenated names (e.g. "my-style1") into
+              separate words, so the literal class name is never found by word search.
+            - Embedded FXML2 inside @ComponentView text-block literals is never indexed.
+        -->
+        <referencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2StyleClassSearcher"/>
+
+        <!--
+            ReferencesSearch extension: when "Find Usages" is invoked on a Java/Kotlin
+            field or no-arg method in a code-behind class, searches all FXML2 files that
+            declare that class via fx:subclass and reports matching fx:id attribute values
+            as additional usages.
+        -->
+        <referencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2FxIdFieldSearcher"/>
+
+        <!--
+            ReferencesSearch extension: when "Find Usages" is invoked on an IProperty
+            (a .properties file key), searches all @ComponentView-annotated classes in the
+            project for injected FXML2 markup that references the key via the %key prefix
+            shorthand (StaticResource) and reports the matching XmlAttributeValue references.
+
+            Without this searcher, the standard CachesBasedRefSearcher only consults the
+            word index, which never indexes injected language fragments (embedded FXML2 in
+            Java text-block literals).  Consequently, "Find Usages" and "Navigate to Use
+            Sites" on a .properties key would show no results even when the key is referenced
+            via %key in an embedded @ComponentView annotation.
+        -->
+        <referencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedPropertyReferenceSearcher"/>
+
+        <!--
+            ReferencesSearch extension that finds Fxml2BindingSegmentReferences for a
+            given Java element in both local and global scope:
+
+            Local scope (identifier-under-caret highlighting): when the caret is on a
+            binding-path segment (e.g. "disabled") that resolves to a Java element (e.g.
+            Node.disabledProperty()), walks the FXML2 file and reports every
+            Fxml2BindingSegmentReference whose isReferenceTo() returns true.
+
+            Global scope (Find Usages): when "Find Usages" is invoked on a property
+            accessor method (e.g. vmProperty()) or field, CachesBasedRefSearcher looks for
+            the literal name "vmProperty" and finds nothing because the binding segment
+            text is the short property name "vm".  This searcher extracts the property name
+            and searches standalone FXML2 files via the word index, plus embedded FXML2
+            markup directly (injected fragments are not indexed).
+        -->
+        <referencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2BindingSegmentSearcher"/>
+
+        <!--
+            ReferencesSearch extension: when "Find Usages" is invoked on a Java property
+            accessor method (getter, setter, or xProperty()) or field, searches both
+            standalone and embedded FXML2 files for XML attribute names whose
+            Fxml2PropertyAttributeDescriptor.getDeclaration() resolves to the target.
+
+            This fixes false-positive "Method 'setX(T)' is never used" warnings and
+            missing "Find Usages" results when a property is assigned via a plain
+            attribute (e.g. <FormattedLabel formatter="$doubleFormatter"/>).
+        -->
+        <referencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2PropertyAttributeSearcher"/>
+
+        <!--
+            ReferencesSearch extension: when "Find Usages" is invoked on a PsiClass, searches
+            all @ComponentView-annotated classes for embedded FXML2 markup that uses the class
+            as an XML element tag (e.g. <sample.app.CustomLabel fx:typeArguments="Double"/>).
+
+            Without this searcher, IntelliJ's standard CachesBasedRefSearcher never reaches the
+            injected XML fragments, so "Find Usages" shows "no usages" even when the class is
+            instantiated via an element tag in embedded FXML2.  This is the companion to
+            Fxml2EmbeddedImplicitUsageProvider (which suppresses false "Class is never used" and
+            "Constructor is never used" warnings) and makes "Find Usages" / Ctrl+click navigation
+            actually show the use site.
+        -->
+        <referencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedClassTagSearcher"/>
+
+        <!--
+            MethodReferencesSearch extensions: IntelliJ routes "Find Usages" on PsiMethod
+            elements through MethodReferencesSearch (not ReferencesSearch), so we need
+            separate QueryExecutors registered under com.intellij.methodReferencesSearch.
+
+            Fxml2PropertyAttributeMethodSearcher finds uses as XML attribute names
+            (e.g. <Label formatter="$fn"/>).
+
+            Fxml2BindingSegmentMethodSearcher finds uses as binding-path segments
+            (e.g. the "selectedItem" segment in #{vm.selectedItem}), complementing
+            Fxml2BindingSegmentSearcher which handles the ReferencesSearch path for
+            fields, Kotlin elements, and local highlighting.
+
+            Fxml2EmbeddedClassTagMethodSearcher finds embedded element-tag and
+            markup-extension usages when "Find Usages" is invoked on a constructor
+            (e.g. <MyControl/> or {MyExtension ...} in an @ComponentView markup),
+            complementing Fxml2EmbeddedClassTagSearcher which handles the
+            ReferencesSearch path for class-level "Find Usages".
+        -->
+        <methodReferencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2PropertyAttributeMethodSearcher"/>
+        <methodReferencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2BindingSegmentMethodSearcher"/>
+        <methodReferencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedClassTagMethodSearcher"/>
+
+        <!--
+            UseScopeEnlarger: ensures the search scope for fields/methods in project-source
+            classes includes .fxml and .fxml2 files, so that ReferencesSearch extensions
+            (above) receive those files for inspection.
+        -->
+        <useScopeEnlarger
+                implementation="org.jfxcore.fxml.lang.Fxml2UseScopeEnlarger"/>
+
+        <!--
+            FindUsagesHandlerFactory: when "Find Usages" is triggered on an fx:id attribute
+            value, provides a handler that returns both the XmlAttributeValue (finding
+            in-FXML binding uses) and the code-behind field (finding Java/Kotlin usages)
+            as co-primary elements so all usages appear in a single result.
+        -->
+        <findUsagesHandlerFactory
+                implementation="org.jfxcore.fxml.lang.Fxml2FxIdFindUsagesHandlerFactory"/>
+
+        <!--
+            RenameHandler: makes Shift+F6 available when the caret is on a property attribute
+            name (e.g. formatter in <CustomLabel formatter="$fn"/>). Redirects the rename to
+            the backing field so the dialog is pre-filled with the property name rather than
+            the setter name, and IntelliJ's standard triad rename handles the accessor methods.
+        -->
+        <renameHandler
+                implementation="org.jfxcore.fxml.lang.Fxml2PropertyAttributeRenameHandler"
+                order="first"/>
+
+        <!--
+            RenameHandler: makes Shift+F6 available when the caret is on an fx:id attribute
+            value or a binding-path segment that references an fx:id in an FXML2 file.
+            When a matching code-behind field exists the rename is delegated to that field
+            so the cascade (fx:id value, binding expressions, code-behind usages) is handled
+            by the standard Java/Kotlin rename machinery.
+        -->
+        <renameHandler
+                implementation="org.jfxcore.fxml.lang.Fxml2FxIdRenameHandler"/>
+
+        <!--
+            UpdateAddedFileProcessor: after the platform copies an FXML2 file (e.g. via the
+            Project-Explorer F5 "Copy" action) this processor updates the fx:subclass attribute
+            in the newly created copy so that its simple class name matches the new file name.
+            E.g. copying MainView.fxml (fx:subclass="com.example.MainView") to OtherView.fxml
+            produces a copy with fx:subclass="com.example.OtherView".
+        -->
+        <updateAddedFileProcessor
+                implementation="org.jfxcore.fxml.lang.Fxml2UpdateAddedFileProcessor"/>
+
+        <!--
+            RenamePsiElementProcessor: handles renaming of fx:id attribute values.
+            Updates the fx:id value itself and all binding-path segment references in the
+            same FXML2 file that use the renamed id (used when no code-behind field exists).
+        -->
+        <renamePsiElementProcessor
+                implementation="org.jfxcore.fxml.lang.Fxml2FxIdRenameProcessor"/>
+
+        <!--
+            Annotator: validates XML attributes in FXML2 files and produces error messages
+            that mirror the fxml2 compiler's own diagnostics:
+              * 'ClassName' cannot be resolved  (unknown static-property declaring class)
+              * 'propName' in ClassName cannot be resolved (static property not found)
+              * 'propName' in ClassName cannot be resolved (instance property not found)
+        -->
+        <annotator language="XML"
+                   implementationClass="org.jfxcore.fxml.annotator.Fxml2AttributeAnnotator"/>
+
+        <!--
+            Annotator: validates XML element tags in FXML2 files.
+            Because Fxml2TagNameReference.isSoft() returns true, IntelliJ's built-in XML
+            reference inspection never fires for FXML2 tags. This annotator is therefore
+            the sole source of tag-name errors, ensuring:
+              * Each error is reported exactly once (not once per start/end name token).
+              * Only the unresolvable part of a dotted name is underlined (e.g. for
+                <Button.text2> only "text2" is highlighted, not "Button.text2").
+        -->
+        <annotator language="XML"
+                   implementationClass="org.jfxcore.fxml.annotator.Fxml2TagAnnotator"/>
+
+        <localInspection language=""
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.missing.initialize.component.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2InitializeComponentInspection"/>
+
+        <!--
+            Inspection: adds an actionable hint when the fxml compiler's annotation
+            processor has not yet run and the generated {ClassName}Base class or its
+            initializeComponent() method cannot be resolved.
+            Reports a WARNING on the unresolved extends reference and/or the unresolved
+            initializeComponent() call in a @ComponentView-annotated class, directing the
+            developer to rebuild with annotation processing enabled and linking to the
+            documentation.
+        -->
+        <localInspection language=""
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.annotation.processing.hint.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2AnnotationProcessingHintInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.unused.import.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.redundant.qualifier.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2RedundantQualifierInspection"/>
+
+        <!--
+            Inspection: validates literal attribute values (enum constants, Color names, etc.).
+            This runs as an inspection rather than an annotator because it calls
+            PsiClass.findFieldByName() which uses CachedValuesManager; calling that from
+            IntelliJ's concurrent annotator runner causes a deadlock on the project-level
+            PSI cache lock. Inspections run single-threaded and are therefore safe.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.invalid.attribute.value.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.invalid.prefix.declaration.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2PrefixDeclarationInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.invalid.fx.intrinsic.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2FxAttributeInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.unresolved.style.class.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2StyleClassInspection"/>
+
+        <localInspection language="XML"
+                          bundle="messages.Fxml2Bundle"
+                          key="inspection.raw.type.display.name"
+                          groupKey="inspection.group.name"
+                          enabledByDefault="true"
+                          level="WARNING"
+                          implementationClass="org.jfxcore.fxml.annotator.Fxml2RawTypeInspection"/>
+
+         <!--
+             Inspection: reports fx:id attributes that are never used in the FXML2 file
+             (no matching field/method in the code-behind class and no binding-segment
+             reference in the markup).
+         -->
+         <localInspection language="XML"
+                          bundle="messages.Fxml2Bundle"
+                          key="inspection.unused.fx.id.display.name"
+                          groupKey="inspection.group.name"
+                          enabledByDefault="true"
+                          level="WARNING"
+                          implementationClass="org.jfxcore.fxml.annotator.Fxml2UnusedFxIdInspection"/>
+
+        <!--
+            Inspection: reports ${path} / #{path} bindings where no segment in the path
+            chain has an ObservableValue declaration type.  The fxml2 compiler rejects such
+            bindings with INVALID_UNIDIRECTIONAL_BINDING_SOURCE /
+            INVALID_BIDIRECTIONAL_BINDING_SOURCE.
+            Enabled by default at ERROR level to match the compiler's behaviour.
+            A quick-fix is offered to downgrade to a one-time $path (Evaluate) binding.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.non.observable.binding.source.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2NonObservableBindingSourceInspection"/>
+
+        <!--
+            Inspection: reports standalone FXML2 files that have a code-behind sibling and
+            offers to embed the markup into the code-behind class as a @ComponentView annotation.
+            Disabled by default; the intention action works independently of this inspection.
+            cleanupTool="true" enables "Code -> Code Cleanup" with configurable scope.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.embed.markup.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="false"
+                         cleanupTool="true"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2EmbedMarkupInspection"/>
+
+        <!--
+            Inspection: reports Java/Kotlin classes with @ComponentView embedded markup
+            when no sibling .fxml file exists, and offers to extract the markup to a file.
+            Disabled by default; the intention action works independently of this inspection.
+            cleanupTool="true" enables "Code -> Code Cleanup" with configurable scope.
+        -->
+        <localInspection language=""
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.create.fxml.file.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="false"
+                         cleanupTool="true"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2CreateFxmlFileInspection"/>
+
+        <!--
+            Inspections: import placement preference for @ComponentView embedded markup.
+            Both are disabled by default; the user opts in via Settings -> Inspections.
+            "Prefer markup imports" reports Java/Kotlin imports that are only referenced
+            inside embedded markup and offers to replace them with <?import?> PIs.
+            "Prefer code imports" reports <?import?> PIs inside embedded markup that
+            could be moved to the host file's Java/Kotlin import section.
+        -->
+        <localInspection language=""
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.prefer.markup.import.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="false"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2PreferMarkupImportInspection"/>
+        <localInspection language=""
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.prefer.code.import.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="false"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2PreferCodeImportInspection"/>
+
+        <!--
+            Inspections: silently detect binding expressions in non-preferred notation and
+            attach quick-fixes that IntelliJ exposes as "Fix all in file / scope".
+            Both are disabled by default; the user opts in via Settings -> Inspections.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.binding.notation.to.long.form.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="false"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2BindingNotationInspectionToLongForm"/>
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.binding.notation.to.short.form.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="false"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2BindingNotationInspectionToShortForm"/>
+
+        <!--
+            Inspection: redundant !! (BOOLIFY) operator on a Boolean-typed binding path.
+            The fxml2 compiler is a no-op for !! on Boolean: no BooleanBindings wrapping
+            is emitted.  Enabled by default at WEAK_WARNING (grey underline).
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.redundant.double.bang.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2RedundantDoubleBangInspection"/>
+
+        <!--
+            Inspection: invalid observable-selection operator '::' on a non-ObservableValue member.
+            The fxml2 compiler rejects this with INVALID_INVARIANT_REFERENCE.  The annotator already
+            shows an ERROR underline; this inspection adds a batch-applicable "Replace '::' with '.'"
+            quick-fix so that "Fix all in file" / "Fix all in project" are available.
+            Reported at INFORMATION level (no underline) to avoid double-highlighting.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.invalid.observable.selector.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2InvalidObservableSelectorInspection"/>
+
+        <!--
+            ImplicitReferenceProvider: feeds Fxml2StyleClassReference into IntelliJ's new
+            PsiSymbolReference infrastructure so that:
+            - Ctrl+hover underlines only the class name under the cursor (tight range)
+            - Ctrl+click shows "Choose Target" when the selector exists in multiple CSS files
+            This goes through allReferencesAround -> fromTargetData -> TargetGTDActionData,
+            which correctly handles both tight hover ranges and multi-target navigation.
+        -->
+        <psi.implicitReferenceProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2StyleClassImplicitReferenceProvider"/>
+
+        <!--
+            Internal file template used by the "New -> FXML2 File" action.
+            The .ft file lives at resources/fileTemplates/internal/Fxml2File.fxml.ft.
+        -->
+        <internalFileTemplate name="Fxml2File"/>
+
+        <!--
+            Internal file templates used by the "Create code-behind class" intention action.
+        -->
+        <internalFileTemplate name="Fxml2CodeBehind.java"/>
+        <internalFileTemplate name="Fxml2CodeBehind.kt"/>
+
+        <!--
+            Intention action: "Create FXML2 code-behind class".
+            Appears in Alt+Enter on fx:subclass attribute name or value when the
+            named class does not yet exist: no error highlight shown.
+        -->
+        <intentionAction>
+            <language>XML</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.CreateCodeBehindIntention</className>
+        </intentionAction>
+
+        <!--
+            Intention action: "Embed markup in code-behind file".
+            Appears in Alt+Enter on the root element tag name, the fx:subclass attribute name,
+            or the fx:subclass attribute value when:
+              * a code-behind sibling (.java or .kt) already exists next to the FXML file
+            Embeds the markup as a @ComponentView annotation, adds the necessary imports, and
+            deletes the FXML file.
+        -->
+        <intentionAction>
+            <language>XML</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.EmbedMarkupInCodeBehindIntention</className>
+        </intentionAction>
+
+        <!--
+            Intention actions: "Create FXML file".
+            The reverse of "Embed markup in code-behind file".
+            Appear in Alt+Enter when the caret is on a @ComponentView annotation (but not
+            inside the annotation value string) on a Java or Kotlin class, when:
+              * no sibling ClassName.fxml file already exists
+            Extract the embedded markup to a new FXML file (restoring namespace attributes
+            and fx:subclass), convert imports to <?import?> PIs, and remove the annotation.
+            Two registrations, one per language, share the same base class and behaviour.
+        -->
+        <intentionAction>
+            <language>JAVA</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.CreateFxmlFileIntentionJava</className>
+        </intentionAction>
+        <intentionAction>
+            <language>kotlin</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.CreateFxmlFileIntentionKotlin</className>
+        </intentionAction>
+
+        <!--
+            Intention action: "Optimize imports (FXML2)" for Java files.
+            Appears in Alt+Enter when the caret is inside the import section of a Java file
+            that has at least one @ComponentView-annotated class.  Uses the FXML2-aware
+            import optimizer (Fxml2EmbeddedJavaImportOptimizer, registered with
+            order="first") instead of IntelliJ's built-in JavaImportOptimizer.  The
+            built-in "Optimize imports" Alt+Enter fix calls JavaImportOptimizer directly and
+            would incorrectly remove imports that are needed only by the embedded markup.
+            Two registrations, one per language, share the base class Fxml2OptimizeImportsAction.
+        -->
+        <intentionAction>
+            <language>JAVA</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.Fxml2OptimizeImportsActionJava</className>
+        </intentionAction>
+
+        <!--
+            Intention actions: convert between attribute notation and short element notation.
+            "Convert to element notation" appears on a property attribute name.
+            "Convert to attribute notation" appears on a property element tag (only when content
+            is foldable: plain text, no sub-elements).
+        -->
+        <intentionAction>
+            <language>XML</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.AddImportForClassReferenceIntention</className>
+            <skipBeforeAfter>true</skipBeforeAfter>
+        </intentionAction>
+        <intentionAction>
+            <language>XML</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.ConvertPropertyNotationIntention$ToElement</className>
+            <skipBeforeAfter>true</skipBeforeAfter>
+        </intentionAction>
+        <intentionAction>
+            <language>XML</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.ConvertPropertyNotationIntention$ToAttribute</className>
+            <skipBeforeAfter>true</skipBeforeAfter>
+        </intentionAction>
+
+        <!--
+            Intention actions: convert between compact and long-form binding notation.
+            "Convert to long-form binding notation"  appears on a compact binding value
+            (e.g. $foo, ${foo}, #{foo}).
+            "Convert to short-form binding notation" appears on a long-form {fx:...} value.
+        -->
+        <intentionAction>
+            <language>XML</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.ConvertBindingNotationIntention$ToLongForm</className>
+            <skipBeforeAfter>true</skipBeforeAfter>
+        </intentionAction>
+        <intentionAction>
+            <language>XML</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <className>org.jfxcore.fxml.actions.ConvertBindingNotationIntention$ToShortForm</className>
+            <skipBeforeAfter>true</skipBeforeAfter>
+        </intentionAction>
+
+        <!--
+            IntentionActionFilter: suppresses generic XML intention actions that do not apply
+            to FXML2 files:
+              * "Convert text to CDATA"   (TextToCDataIntention)
+              * "Insert namespace prefix" (AddSchemaPrefixIntention)
+        -->
+        <daemon.intentionActionFilter
+                implementation="org.jfxcore.fxml.lang.Fxml2IntentionActionFilter"/>
+
+        <!--
+            CompletionContributor: provides autocomplete for FXML2 files.
+              * Tag names: classes from existing imports and the project (with auto-import)
+              * Attribute literal values: enum constants and public static fields
+              * Binding path segments: property names on the resolved class
+        -->
+        <completion.contributor language="XML"
+                implementationClass="org.jfxcore.fxml.codeinsight.Fxml2CompletionContributor"
+                order="first"/>
+
+        <!--
+            ImportOptimizer for FXML2: implements "Optimize Imports" for FXML2 files.
+            Removes unused <?import?> PIs and re-sorts the remaining ones using the same
+            tiered ordering as the "Add import" intention (project sources -> org.jfxcore ->
+            javafx -> other libraries -> awt/swing), alphabetical within each tier.
+            Ordered before the built-in XML optimizer so it takes precedence on FXML2 files.
+        -->
+        <lang.importOptimizer language="XML"
+                implementationClass="org.jfxcore.fxml.codeinsight.Fxml2ImportOptimizer"
+                order="before XML"/>
+
+        <!--
+            ImportOptimizer for Java files with @ComponentView-annotated classes.
+            Registered with order="first" so that LanguageImportStatements.forFile() picks
+            this optimizer (rather than the built-in JavaImportOptimizer) for Java files that
+            carry @ComponentView.  forFile() breaks after the first matching optimizer, so
+            only one optimizer per file is ever used; this class internally delegates to the
+            built-in Java import optimizer so that genuinely unused imports are still removed.
+        -->
+        <lang.importOptimizer language="JAVA"
+                implementationClass="org.jfxcore.fxml.codeinsight.Fxml2EmbeddedJavaImportOptimizer"
+                order="first"/>
+
+        <!--
+            HighlightInfoFilter: suppresses false-positive "Unused import statement" warnings
+            in Java files whose classes carry a @ComponentView annotation with embedded
+            FXML2 markup.  The Java highlighting pass (UnusedImportsVisitor) does not see
+            class names referenced only inside a string-literal annotation value, so it
+            would incorrectly mark those imports as unused.  This filter intercepts the
+            resulting HighlightInfo before it is displayed and suppresses it for any import
+            that is actually needed to resolve a tag/type in the embedded FXML2 markup.
+            The Kotlin counterpart is Fxml2KotlinUnusedImportSuppressor in
+            fxml2-with-kotlin.xml (uses InspectionSuppressor, which works for Kotlin's
+            inspection-based unused-import check).
+        -->
+        <daemon.highlightInfoFilter
+                implementation="org.jfxcore.fxml.lang.Fxml2JavaUnusedImportHighlightFilter"/>
+
+        <!--
+            InspectionSuppressor: consulted by the IDE's on-the-fly daemon for Java files.
+            Note: this suppressor is NOT invoked during batch "Inspect Code" runs for
+            GlobalSimpleInspectionTool (filterSuppressed=false path).  The batch case is
+            handled instead by Fxml2InspectionExtensionsFactory below.
+        -->
+        <lang.inspectionSuppressor language="JAVA"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2JavaUnusedImportSuppressor"/>
+
+        <!--
+            InspectionExtensionsFactory: suppresses false-positive "Unused import" problems
+            reported by the Java UNUSED_IMPORT inspection during batch "Inspect Code" / Qodana
+            runs.
+
+            Background: UnusedImportInspection is a GlobalSimpleInspectionTool.  When
+            IntelliJ runs global-simple tools in batch mode it passes filterSuppressed=false
+            to BatchModeDescriptorsUtil, which means registered InspectionSuppressors are
+            never called.  This factory hooks into performPostRunActivities, called after all
+            inspections have stored their results but before they are shown or exported, and
+            calls InspectionToolResultExporter.suppressProblem() for every PsiImportStatement
+            descriptor that is actually needed by embedded FXML2 markup.
+        -->
+        <codeInspection.InspectionExtension
+                implementation="org.jfxcore.fxml.lang.Fxml2InspectionExtensionsFactory"/>
+
+        <!--
+            RefactoringHelper: restores Java imports needed by embedded FXML2 markup that
+            are deleted by IntelliJ's OptimizeImportsRefactoringHelper during refactoring
+            operations (rename, move, etc.).
+
+            OptimizeImportsRefactoringHelper runs after every refactoring and calls
+            JavaCodeStyleManager.findRedundantImports(), which only examines Java code
+            references and is blind to class names referenced inside the @ComponentView
+            string-literal annotation value.  It therefore marks FXML-needed imports as
+            redundant and deletes them.
+
+            This helper is registered with order="last" so it runs after
+            OptimizeImportsRefactoringHelper.  Its read phase (prepareOperation) captures
+            FXML-needed imports while they are still present; its write phase
+            (performOperation) adds them back if they were removed.
+
+            The Kotlin counterpart is Fxml2EmbeddedKotlinRefactoringHelper in
+            fxml2-with-kotlin.xml.
+        -->
+        <refactoring.helper
+                implementation="org.jfxcore.fxml.codeinsight.Fxml2EmbeddedJavaRefactoringHelper"
+                order="last"/>
+
+        <!--
+            ImplicitPropertyUsageProvider: suppresses false-positive "Unused property"
+            warnings for .properties file entries that are referenced only via the
+            %key prefix shorthand (StaticResource) in embedded FXML2 markup
+            (@ComponentView annotations).
+
+            IntelliJ's UnusedPropertyInspection calls isCheapEnoughToSearch with the
+            property key name.  Because the Java word-index tokenises dotted keys like
+            "button.text" into separate words, the key is never found as a whole word in
+            the index and the inspection immediately marks the property as unused without
+            ever running a ReferencesSearch.  This provider intercepts the isUsed() check
+            and scans all @ComponentView-annotated classes for %key references directly,
+            bypassing the broken word-index path.
+        -->
+        <properties.implicitPropertyUsageProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedPropertyUsageProvider"/>
+
+        <!--
+            ImplicitUsageProvider: suppresses false-positive "Field/Method 'X' is never
+            used" / "Field 'X' is assigned but never accessed" warnings for fields and
+            property-accessor methods of @ComponentView-annotated Java classes that are
+            referenced only inside the embedded FXML2 markup (binding expressions such as
+            {fx:Observe vm.text}).
+
+            IntelliJ's unused analysis uses a word-index search that never reaches injected
+            language fragments, so binding-segment references inside embedded FXML2 are
+            invisible to it.  This provider bridges the gap by directly walking the injected
+            XmlFile and checking for Fxml2BindingSegmentReferences that resolve to the
+            candidate field or method.
+
+            This is especially important for JavaFX property-accessor methods: when the
+            backing field is private but vmProperty() is public, the binding segment "vm"
+            resolves to vmProperty() (not the field), and without this provider
+            vmProperty() would be incorrectly flagged as unused.
+        -->
+        <implicitUsageProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedImplicitUsageProvider"/>
+
+        <!--
+            ImplicitUsageProvider: suppresses false-positive "Field/Method/Function 'X' is
+            never used" warnings for fields and property-accessor methods/functions that are
+            referenced in standalone FXML2 files via binding expressions.
+
+            For Java elements (PsiField, PsiMethod), Fxml2UseScopeEnlarger already adds
+            FXML2 files to the search scope and Fxml2BindingSegmentSearcher finds the
+            references.  This provider acts as a complementary safety net.
+
+            For Kotlin elements (KtNamedFunction, KtProperty), Kotlin's unused-declaration
+            inspection queries useScope via the Kotlin PSI element directly, not the Java
+            KtLightMethod wrapper, so Fxml2UseScopeEnlarger never enlarges the scope to
+            include FXML2 files.  This provider bridges that gap by searching standalone
+            FXML2 files via the word index and checking whether any
+            Fxml2BindingSegmentReference resolves to the element (or its light-class
+            equivalent), suppressing the false-positive "Function is never used" warning.
+        -->
+        <implicitUsageProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2StandaloneImplicitUsageProvider"/>
+
+        <!--
+            FileViewProviderFactory: returns Fxml2FileViewProvider for FXML2 files.
+            The custom view provider overrides findElementAt() so that positions within
+            import-PI data (e.g. "javafx.scene.control.Label") and within dotted property
+            tag names return a narrow Fxml2SegmentElement whose getTextRange() covers only
+            the identifier segment at the caret, not the entire token.  This prevents the
+            identifier-under-caret highlight cache from being reused when the caret moves
+            to a different segment (e.g. from "javafx" to "scene") within the same token.
+
+            Registered for the XML language rather than the FXML2 file type because
+            FileManagerImpl.createFileViewProvider() only consults
+            fileType.fileViewProviderFactory when the resolved language is null; for any
+            LanguageFileType (including our XmlLikeFileType-backed Fxml2FileType) it
+            always uses lang.fileViewProviderFactory instead.  The factory guards
+            internally: it returns Fxml2FileViewProvider only for actual FXML2 virtual
+            files (file type == Fxml2FileType) and falls back to a plain
+            SingleRootFileViewProvider for every other XML file, preserving the
+            pre-existing behaviour for those files.
+        -->
+        <lang.fileViewProviderFactory language="XML"
+                                      implementationClass="org.jfxcore.fxml.lang.Fxml2FileViewProviderFactory"/>
+
+    </extensions>
+
+    <actions resource-bundle="messages.Fxml2Bundle">
+        <!--
+            NewFxml2File action: registered without a group here.
+            When the bundled JavaFX plugin is present, fxml2-with-javafx.xml adds it to
+            JavaFxCreateActions right after the existing FXML File entry in NewGroup.
+        -->
+        <action id="NewFxml2File"
+                class="org.jfxcore.fxml.actions.CreateFxml2FileAction"
+                icon="AllIcons.FileTypes.Xml"/>
+
+        <!--
+            Override the platform's CommentByLineComment (Ctrl+/) and CommentByBlockComment
+            (Ctrl+Shift+/) actions so that they use the correct XML comment syntax when the
+            caret or selection is inside embedded FXML2 markup in a @ComponentView annotation.
+
+            Note: the "overrides" attribute is an internal ActionManager feature that is not
+            part of the DevKit DOM schema for non-JetBrains builds; the IDE may show a false-
+            positive "Attribute overrides is not allowed here" validation warning in the editor,
+            but the attribute is handled correctly at runtime by ActionManagerImpl and the plugin
+            compiles and runs without any issue.
+        -->
+        <action id="CommentByLineComment"
+                class="org.jfxcore.fxml.lang.Fxml2EmbeddedCommentHandlers$LineCommentAction"
+                overrides="true"/>
+        <action id="CommentByBlockComment"
+                class="org.jfxcore.fxml.lang.Fxml2EmbeddedCommentHandlers$BlockCommentAction"
+                overrides="true"/>
+    </actions>
+</idea-plugin>

@@ -1,0 +1,16 @@
+<html lang="en">
+<body>
+Reports element tags in FXML 2.0 files that resolve to a generic class when no
+<code>fx:typeArguments</code> attribute is present.
+<p>
+When a generic class is instantiated without <code>fx:typeArguments</code>, the fxml2
+compiler treats it as a <em>raw type</em>. Raw types bypass compile-time type safety
+and should be avoided.
+</p>
+<p><b>Example (flagged):</b></p>
+<pre><code>&lt;!-- ListView&lt;T&gt; has type parameters but no fx:typeArguments --&gt;
+&lt;ListView/&gt;</code></pre>
+<p><b>Corrected:</b></p>
+<pre><code>&lt;ListView fx:typeArguments="String"/&gt;</code></pre>
+</body>
+</html>

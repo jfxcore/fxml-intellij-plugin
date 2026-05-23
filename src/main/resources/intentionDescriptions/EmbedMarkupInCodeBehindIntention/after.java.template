@@ -1,0 +1,16 @@
+package com.example;
+
+import javafx.scene.control.Label;
+import javafx.scene.layout.AnchorPane;
+import org.jfxcore.markup.ComponentView;
+
+@ComponentView("""
+    <AnchorPane prefHeight="200.0" prefWidth="300.0">
+        <Label text="Hello FXML2"/>
+    </AnchorPane>
+    """)
+public class MyView extends MyViewBase {
+    public MyView() {
+        initializeComponent();
+    }
+}

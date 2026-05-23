@@ -1,0 +1,18 @@
+<html lang="en">
+<body>
+Reports <code>&lt;?import?&gt;</code> processing instructions inside embedded FXML 2.0 markup
+(<code>@ComponentView</code> annotation values) that could be moved to the host Java or
+Kotlin file as regular import statements.
+<p>
+Keeping all imports in the host file's import section allows the IDE's import management
+(import optimizer, auto-import, unused-import detection) to handle every class reference
+uniformly, rather than having some imports hidden inside annotation string values.
+<p>
+The quick-fix <em>Move to Java/Kotlin import</em> adds the import to the host file and
+removes the <code>&lt;?import?&gt;</code> PI from the markup.
+<p>
+This inspection is disabled by default. Enable it when your project prefers all class
+references to be declared as regular code imports rather than as
+<code>&lt;?import?&gt;</code> PIs inside the markup.
+</body>
+</html>

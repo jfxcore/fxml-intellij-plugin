@@ -1,0 +1,19 @@
+<html lang="en">
+<body>
+Reports FXML 2.0 <code>${path}</code> (Observe) and <code>#{path}</code> (Synchronize) binding
+expressions where <b>no segment</b> in the binding path resolves to a
+<code>javafx.beans.value.ObservableValue</code>.
+<p>
+When the entire path consists of plain fields or Java-Beans getters that do not return an
+<code>ObservableValue</code>, the fxml2 compiler rejects the binding with
+<code>INVALID_UNIDIRECTIONAL_BINDING_SOURCE</code> or
+<code>INVALID_BIDIRECTIONAL_BINDING_SOURCE</code>.
+<p>
+A quick-fix is offered to downgrade the binding to a one-time evaluate binding
+(<code>$path</code>).
+<p>
+<b>Note:</b> if <em>any</em> intermediate segment returns an <code>ObservableValue</code>
+(for example, the first segment is an <code>ObjectProperty&lt;ViewModel&gt;</code>),
+the binding <em>is</em> trackable and this inspection does not fire.
+</body>
+</html>

@@ -1,0 +1,18 @@
+<html lang="en">
+<body>
+Reports Java or Kotlin import statements that are only used inside embedded FXML 2.0 markup
+(<code>@ComponentView</code> annotation values) and never in the surrounding code.
+<p>
+When all usages of an imported class are confined to the embedded markup string, the import
+can be expressed as a <code>&lt;?import fqn?&gt;</code> processing instruction directly inside
+the markup block, keeping the host file's import section free of markup-only dependencies.
+<p>
+The quick-fix <em>Move to markup &lt;?import?&gt;</em> inserts the corresponding
+<code>&lt;?import?&gt;</code> PI into every <code>@ComponentView</code> markup block in the
+file and removes the Java or Kotlin import statement.
+<p>
+This inspection is disabled by default. Enable it when your project prefers all class
+references used exclusively in embedded markup to be declared as <code>&lt;?import?&gt;</code>
+PIs rather than as top-level code imports.
+</body>
+</html>

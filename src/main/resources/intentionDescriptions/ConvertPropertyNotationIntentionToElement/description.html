@@ -1,0 +1,17 @@
+<html lang="en">
+<body>
+<p>
+Converts a JavaFX property attribute to short element notation.
+</p>
+<p>Transforms <code>&lt;Button text="Hello"/&gt;</code> into:</p>
+<pre>
+&lt;Button&gt;
+    &lt;text&gt;Hello&lt;/text&gt;
+&lt;/Button&gt;
+</pre>
+<div>
+The attribute value becomes the text content of the new child element.
+Binding expressions (e.g. <code>{fx:Observe vm.text}</code>) are preserved as-is.
+</div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+import org.jfxcore.markup.ComponentView;
+import javafx.scene.layout.BorderPane;
+
+@ComponentView("""
+    <BorderPane/>
+    """)
+public class MyView extends MyViewBase {
+    public MyView() { initializeComponent(); }
+}

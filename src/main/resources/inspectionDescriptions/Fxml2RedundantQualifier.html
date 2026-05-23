@@ -1,0 +1,17 @@
+<html lang="en">
+<body>
+Reports fully-qualified class names whose package prefix is redundant because the class
+is already accessible via an <code>&lt;?import?&gt;</code> declaration.
+<p>
+Affected locations:
+<ul>
+  <li><code>fx:typeArguments</code> attribute values</li>
+  <li>String-typed class-name attribute values (e.g. <code>viewClassName</code>)</li>
+  <li>FQN element tag names (e.g. <code>&lt;javafx.scene.control.TextField/&gt;</code>)</li>
+  <li>Binding-expression paths with a FQN static-field class prefix
+      (e.g. <code>$javafx.scene.layout.Region.USE_PREF_SIZE</code>)</li>
+</ul>
+<p>
+A quick-fix removes the redundant prefix, leaving just the simple (or shortest resolvable) name.
+</body>
+</html>

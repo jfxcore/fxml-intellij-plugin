@@ -1,0 +1,11 @@
+<p>
+Reports invalid <code>fx:</code> intrinsic attributes in FXML 2.0 files.
+</p>
+<p>Checks performed:</p>
+<ul>
+  <li>Unknown intrinsic names (e.g. <code>fx:foo</code>)</li>
+  <li>Root-only intrinsics used on non-root elements (e.g. <code>fx:subclass</code>)</li>
+  <li>Invalid, blank, or duplicate <code>fx:id</code> values</li>
+  <li>Conflicting <code>fx:typeArguments</code> and <code>fx:constant</code> on the same element</li>
+  <li><code>{fx:Null}</code> assigned to a primitive-typed property</li>
+</ul>

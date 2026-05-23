@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AnchorPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://jfxcore.org/fxml/2.0"
+            fx:subclass="com.example.MyView"
+            prefHeight="400.0" prefWidth="600.0">
+</AnchorPane>

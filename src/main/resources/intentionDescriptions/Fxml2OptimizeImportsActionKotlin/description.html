@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><title>Optimize Imports (FXML 2.0)</title></head>
+<body>
+<p>Optimizes imports in a Kotlin file that contains a
+<code>@ComponentView</code>-annotated class, preserving imports that are referenced
+only inside the embedded FXML 2.0 markup.</p>
+<p>IntelliJ's built-in <em>Optimize Imports</em> action bypasses the FXML 2.0 import
+optimizer and may remove imports that are required by the embedded markup.
+This action uses the FXML 2.0-aware optimizer instead, so markup-only imports are kept
+while genuinely unused imports are still removed.</p>
+<p>The action is available when the caret is inside the import section of a
+<code>@ComponentView</code> Kotlin file.</p>
+</body>
+</html>

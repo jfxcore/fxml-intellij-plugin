@@ -1,0 +1,28 @@
+<html lang="en">
+<body>
+Reports an unresolved <code>{ClassName}Base</code> reference in the <code>extends</code>
+clause of a <code>@ComponentView</code>-annotated class when the fxml compiler's
+annotation processor has not yet run.
+<p>
+The fxml compiler generates <code>{ClassName}Base</code> during annotation processing.
+Until a build with annotation processing enabled has been performed, this
+class does not exist and the <code>extends</code> reference cannot be resolved.
+<p><b>Example</b> (base class not yet generated):</p>
+<pre><code>@ComponentView("""
+    &lt;StackPane/&gt;
+    """)
+public class MainView extends MainViewBase {  // MainViewBase unresolved
+    public MainView() {
+        initializeComponent();
+    }
+}</code></pre>
+<p><b>Fix</b>: rebuild the project with annotation processing enabled.</p>
+<p>
+See the
+<a href="https://jfxcore.github.io/fxml-compiler/getting-started/embedded.html">fxml-compiler documentation</a>
+for setup instructions.
+<p>
+To suppress this warning, add
+<code>@SuppressWarnings("Fxml2AnnotationProcessingHint")</code> to the class.
+</body>
+</html>

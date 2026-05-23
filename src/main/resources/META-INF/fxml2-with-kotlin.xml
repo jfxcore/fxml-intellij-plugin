@@ -1,0 +1,106 @@
+<!--
+    Loaded when the Kotlin plugin (org.jetbrains.kotlin) is present.
+    The Kotlin classloader dependency is declared here so that Fxml2InitializeComponentInspection
+    can access Kotlin PSI classes (KtClass, KtVisitorVoid, etc.) at runtime.
+    The inspection itself is registered once (without language=) in plugin.xml;
+    its buildVisitor() dispatches to Kotlin handling when the file ends in .kt.
+-->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!--
+            MultiHostInjector: injects XMLLanguage into the value of a
+            @org.jfxcore.markup.embed.Markup annotation on a Kotlin type declaration.
+            Kotlin uses KtStringTemplateExpression as the PSI node for string literals,
+            so a dedicated injector is required in addition to the Java one.
+        -->
+        <multiHostInjector
+                implementation="org.jfxcore.fxml.lang.Fxml2KotlinMarkupAnnotationInjector"/>
+
+        <!--
+            InspectionSuppressor: suppresses the Kotlin "UnusedImport" inspection
+            (KotlinUnusedImportInspection, suppressId="UnusedImport") for KtImportDirective
+            elements whose import target is needed by embedded FXML2 markup in the same file.
+            This prevents Kotlin imports like "import javafx.scene.control.*" from being
+            greyed out when they are only referenced inside a @Markup annotation string.
+        -->
+        <lang.inspectionSuppressor language="kotlin"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2KotlinUnusedImportSuppressor"/>
+
+        <!--
+            InspectionSuppressor: suppresses false-positive "Property 'X' is never used"
+            warnings for KtProperty elements that are referenced in standalone FXML2 files
+            as binding-path segments (e.g. {fx:Observe vm.prop}).
+
+            Background: Kotlin's K2 unused-symbol inspection (KotlinUnusedHighlightingProcessor)
+            calls isEntryPoint() for each declaration before deciding whether to mark it as
+            unused.  For KtNamedFunction, isEntryPoint() consults ImplicitUsageProvider (via
+            isJavaEntryPoint.isEntryPoint(lightMethod)), which our Fxml2StandaloneImplicitUsageProvider
+            handles correctly.  For KtProperty, isEntryPoint() returns early via annotation
+            checks only: ImplicitUsageProvider is never consulted.  K2 then relies on
+            hasNonTrivialUsages() / MethodReferencesSearch, which can miss FXML2 references
+            due to cancellation or timing races in the concurrent highlighting pass.
+
+            This suppressor hooks into SuppressionUtil.inspectionResultSuppressed() (called
+            at the top of handleDeclaration, before getPsiToReportProblem) and returns true
+            when the KtProperty's name appears in a standalone FXML2 binding expression that
+            resolves back to the property.  This provides a reliable, fast path that does not
+            depend on MethodReferencesSearch completing successfully.
+
+            The inspection's suppressId is "unused" (declared on the K1 and K2 <localInspection>
+            entries via suppressId="unused"); the suppressor matches that exact toolId so it is
+            invoked from InspectionProfileEntry.isSuppressedFor.
+        -->
+        <lang.inspectionSuppressor language="kotlin"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2KotlinUnusedSymbolSuppressor"/>
+
+        <!--
+            ImportOptimizer for Kotlin files with @Markup-annotated classes.
+            Registered with order="first" so that LanguageImportStatements.forFile() picks
+            this optimizer (instead of the built-in Kotlin optimizer) for files that carry
+            @ComponentView.  The optimizer itself delegates to the built-in Kotlin optimizer
+            so that genuinely unused imports are still removed, and then restores any imports
+            that are needed by the embedded FXML2 markup.
+        -->
+        <lang.importOptimizer language="kotlin"
+                implementationClass="org.jfxcore.fxml.codeinsight.Fxml2EmbeddedKotlinImportOptimizer"
+                order="first"/>
+
+        <!--
+            RefactoringHelper: restores Kotlin imports needed by embedded FXML2 markup that
+            are deleted by Kotlin's KotlinOptimizeImportsRefactoringHelper during refactoring
+            operations (rename, move, etc.).
+
+            KotlinOptimizeImportsRefactoringHelper runs after every refactoring and calls
+            KotlinOptimizeImportsFacility.analyzeImports(), which marks imports as unused
+            when they are not referenced in Kotlin source code.  Imports used only inside
+            the @ComponentView string-literal annotation value are invisible to that analysis
+            and are therefore removed.
+
+            This helper is registered with order="last" so it runs after
+            KotlinOptimizeImportsRefactoringHelper (which is also order="last" but
+            registered by the Kotlin plugin, which loads before ours).  Its read phase
+            captures FXML-needed imports while they are still present; its write phase adds
+            them back if they were removed.
+
+            The Java counterpart is Fxml2EmbeddedJavaRefactoringHelper in plugin.xml.
+        -->
+        <refactoring.helper
+                implementation="org.jfxcore.fxml.codeinsight.Fxml2EmbeddedKotlinRefactoringHelper"
+                order="last"/>
+
+        <!--
+            Intention action: "Optimize imports (FXML2)" for Kotlin files.
+            Companion to the Java registration in plugin.xml.  Available when the caret
+            is inside the import section of a Kotlin file that has at least one
+            @ComponentView-annotated class.  Uses Fxml2EmbeddedKotlinImportOptimizer
+            (registered with order="first") instead of the built-in Kotlin optimizer.
+        -->
+        <intentionAction>
+            <language>kotlin</language>
+            <categoryKey>inspection.group.name</categoryKey>
+            <bundleName>messages.Fxml2Bundle</bundleName>
+            <className>org.jfxcore.fxml.actions.Fxml2OptimizeImportsActionKotlin</className>
+        </intentionAction>
+
+    </extensions>
+</idea-plugin>
