@@ -39,22 +39,22 @@ class Fxml2FileNestingProviderTest extends Fxml2TestBase {
     @Test
     void nestsJavaCodeBehindOnlyUnderFxml2Documents() {
         PsiFile fxml2 = getFixture().addFileToProject(
-                "test/View.fxml",
-                fxml2("javafx.scene.control.Button", "  <Button text=\"Hello\"/>\n"));
+            "test/View.fxml",
+            fxml2("javafx.scene.control.Button", "  <Button text=\"Hello\"/>\n"));
         PsiFile javaCodeBehind = getFixture().addFileToProject(
-                "test/View.java",
-                "package test; class View {}\n");
+            "test/View.java",
+            "package test; class View {}\n");
         PsiFile plainFxml = getFixture().addFileToProject(
-                "test/Plain.fxml",
-                """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <?import javafx.scene.layout.BorderPane?>
-                <BorderPane xmlns="http://javafx.com/javafx"
-                            xmlns:fx="http://javafx.com/fxml"/>
-                """);
+            "test/Plain.fxml",
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <?import javafx.scene.layout.BorderPane?>
+            <BorderPane xmlns="http://javafx.com/javafx"
+                        xmlns:fx="http://javafx.com/fxml"/>
+            """);
         PsiFile plainJava = getFixture().addFileToProject(
-                "test/Plain.java",
-                "package test; class Plain {}\n");
+            "test/Plain.java",
+            "package test; class Plain {}\n");
 
         List<AbstractTreeNode<?>> result = ReadAction.compute(() -> {
             Project project = getFixture().getProject();
@@ -62,10 +62,10 @@ class Fxml2FileNestingProviderTest extends Fxml2TestBase {
             var provider = new Fxml2FileNestingProvider();
             var parentNode = new PsiDirectoryNode(project, directory, NESTING_ENABLED);
             Collection<AbstractTreeNode<?>> children = List.of(
-                    new PsiFileNode(project, fxml2, NESTING_ENABLED),
-                    new PsiFileNode(project, javaCodeBehind, NESTING_ENABLED),
-                    new PsiFileNode(project, plainFxml, NESTING_ENABLED),
-                    new PsiFileNode(project, plainJava, NESTING_ENABLED));
+                new PsiFileNode(project, fxml2, NESTING_ENABLED),
+                new PsiFileNode(project, javaCodeBehind, NESTING_ENABLED),
+                new PsiFileNode(project, plainFxml, NESTING_ENABLED),
+                new PsiFileNode(project, plainJava, NESTING_ENABLED));
             return new ArrayList<>(provider.modify(parentNode, children, NESTING_ENABLED));
         });
 
@@ -92,8 +92,8 @@ class Fxml2FileNestingProviderTest extends Fxml2TestBase {
             var provider = new Fxml2FileNestingProvider();
             var parentNode = new PsiDirectoryNode(project, directory, NESTING_DISABLED);
             Collection<AbstractTreeNode<?>> children = List.of(
-                    new PsiFileNode(project, fxml2, NESTING_DISABLED),
-                    new PsiFileNode(project, javaCodeBehind, NESTING_DISABLED));
+                new PsiFileNode(project, fxml2, NESTING_DISABLED),
+                new PsiFileNode(project, javaCodeBehind, NESTING_DISABLED));
             return new ArrayList<>(provider.modify(parentNode, children, NESTING_DISABLED));
         });
 
@@ -104,17 +104,15 @@ class Fxml2FileNestingProviderTest extends Fxml2TestBase {
 
     private static List<String> nodeNames(Collection<? extends AbstractTreeNode<?>> nodes) {
         return nodes.stream()
-                .map(node -> {
-                    Object value = node.getValue();
-                    if (value instanceof PsiFile psiFile) {
-                        return psiFile.getName();
-                    }
+            .map(node -> {
+                Object value = node.getValue();
+                if (value instanceof PsiFile psiFile) {
+                    return psiFile.getName();
+                }
 
-                    String name = node.getName();
-                    return name != null ? name : String.valueOf(value);
-                })
-                .toList();
+                String name = node.getName();
+                return name != null ? name : String.valueOf(value);
+            })
+            .toList();
     }
 }
-
-

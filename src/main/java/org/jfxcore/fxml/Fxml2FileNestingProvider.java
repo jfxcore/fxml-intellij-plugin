@@ -111,8 +111,8 @@ public final class Fxml2FileNestingProvider implements TreeStructureProvider, Du
 
             List<PsiFileNode> nestedChildren = nestedChildrenByParent.get(fileNode);
             result.add(nestedChildren == null || nestedChildren.isEmpty()
-                    ? fileNode
-                    : new NestingTreeNode(fileNode, nestedChildren));
+                ? fileNode
+                : new NestingTreeNode(fileNode, nestedChildren));
         }
 
         return result;
