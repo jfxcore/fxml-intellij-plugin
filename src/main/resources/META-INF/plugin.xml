@@ -1,47 +1,8 @@
 <idea-plugin>
     <id>org.jfxcore.fxml</id>
-    <name>FXML 2.0</name>
     <vendor url="https://github.com/jfxcore">JFXcore</vendor>
 
     <resource-bundle>messages.Fxml2Bundle</resource-bundle>
-
-    <description><![CDATA[
-        Provides IDE support for <a href="https://github.com/jfxcore/fxml-compiler">FXML2</a>,
-        the JFXcore FXML compiler's markup format for JavaFX UIs.<br/><br/>
-
-        <b>Standalone FXML2 files</b><br/>
-        A <code>.fxml</code> file is treated as FXML 2.0 when its root element carries both
-        <code>xmlns="http://javafx.com/javafx"</code> and
-        <code>xmlns:fx="http://jfxcore.org/fxml/2.0"</code>.
-        <ul>
-            <li>Dedicated file type with XML syntax highlighting, folding, and formatting.</li>
-            <li>Tag and attribute resolution, code completion, and navigation to JavaFX classes.</li>
-            <li>Find usages, rename, and Go to Declaration for <code>fx:id</code> identifiers.</li>
-            <li>Inspections for unknown tags, unresolved attributes, unused imports, and more.</li>
-            <li>Import optimizer: removes unused <code>&lt;?import?&gt;</code> PIs and re-sorts the rest.</li>
-        </ul>
-
-        <b>Embedded FXML 2.0 via <code>@ComponentView</code></b><br/>
-        FXML 2.0 markup can be embedded directly in a Java or Kotlin class using the
-        <code>@ComponentView</code> annotation.
-        The plugin injects full FXML2 IDE support into the annotation value, using the same
-        completion, navigation, inspections, and find usages as in standalone files.
-        <ul>
-            <li>Language injection: embedded markup is treated as a live FXML2 document.</li>
-            <li>Formatting: <kbd>Ctrl+Alt+L</kbd> reformats the embedded XML with the correct
-                indentation, honouring EditorConfig <code>*.fxml</code> rules.</li>
-            <li>Unused-import suppression: imports referenced only in the embedded markup are
-                not reported as unused by the Java / Kotlin compiler checks.</li>
-            <li><b>Embed markup</b> intention / inspection: converts a standalone
-                <code>.fxml</code> file into a <code>@ComponentView</code> annotation in the
-                code-behind class (<kbd>Alt+Enter</kbd> on the root element or
-                <code>fx:subclass</code>).</li>
-            <li><b>Create FXML file</b> intention / inspection: extracts the embedded markup
-                back to a standalone <code>.fxml</code> file, properly formatted and with all
-                <code>&lt;?import?&gt;</code> PIs restored (<kbd>Alt+Enter</kbd> on the
-                <code>@ComponentView</code> annotation name).</li>
-        </ul>
-    ]]></description>
 
     <!-- Requires the XML plugin, which is always present in IntelliJ Platform products. -->
     <depends>com.intellij.modules.xml</depends>
