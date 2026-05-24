@@ -58,12 +58,21 @@ intellijPlatform {
 
     pluginConfiguration {
         id = "org.jfxcore.fxml"
-        name = "FXML 2.0"
+        name = "FXML 2.0 for JavaFX"
         version = project.version.toString()
         description = """
-            Provides IDE support for FXML 2.0 files used by the JFXcore FXML compiler.
-            A file is recognized as FXML 2.0 when the root element carries both
-            xmlns="http://javafx.com/javafx" and xmlns:fx="http://jfxcore.org/fxml/2.0".
+            IDE support for the <a href="https://jfxcore.github.io/fxml-compiler">FXML 2.0</a>
+            markup format for JavaFX UIs.<br/><br/>
+
+            Features include:
+            <ul>
+                <li>FXML syntax highlighting, folding, formatting, and EditorConfig-aware indentation
+                <li>Tag and attribute resolution, code completion, and navigation to JavaFX classes
+                <li>Rename, find usages, and go to declaration for <code>fx:id</code> and bindings
+                <li>Inspections for unresolved tags and attributes, unused imports, invalid values, and more
+                <li>Import optimization and intentions to move markup between <code>.fxml</code>
+                    files and embedded markup with <code>@ComponentView</code>
+            </ul>
         """.trimIndent()
 
         ideaVersion {
