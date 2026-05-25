@@ -18,7 +18,6 @@ import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlText;
 import com.intellij.psi.xml.XmlToken;
 import com.intellij.psi.xml.XmlTokenType;
-import com.intellij.psi.util.TypeConversionUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.actions.ReplaceObservableSelectorFix;
@@ -27,6 +26,7 @@ import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.descriptors.Fxml2PropertyAttributeDescriptor;
 import org.jfxcore.fxml.descriptors.Fxml2StaticPropertyAttributeDescriptor;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
+import org.jfxcore.fxml.lang.Fxml2EventHandlerUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind;
 
@@ -352,27 +352,49 @@ public final class Fxml2AttributeAnnotator implements Annotator {
      * Validates an event-handler method reference: a plain method name assigned to an
      * {@code EventHandler}-typed property (e.g. {@code onAction="handleAction"}).
      *
-     * <p>If there is no code-behind class, the reference is silently accepted (no crash).
-     * If there is a code-behind class, a method with the given name must exist on it.
+     * <p>Reports two distinct error cases, matching the fxml2 compiler:
+     * <ol>
+     *   <li>No method with the given name exists on the code-behind class.</li>
+     *   <li>A method with the given name exists but no overload has a compatible
+     *       signature (must return {@code void} and accept 0 or 1 parameter of the
+     *       event type).</li>
+     * </ol>
+     *
+     * <p>If there is no code-behind class the reference is silently accepted.
      */
     private static void annotateMethodHandlerRef(
             @NotNull XmlAttributeValue attrVal,
             @NotNull String methodName,
+            @NotNull PsiType eventHandlerType,
             @NotNull XmlFile xmlFile,
             @NotNull AnnotationHolder holder) {
         PsiClass codeBehind = Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
-        if (codeBehind == null) return; // no code-behind, skip silently
+        if (codeBehind == null) return;
 
-        // Check that a method with this name exists on the code-behind class
-        PsiMethod[] methods = codeBehind.findMethodsByName(methodName, true);
-        if (methods.length > 0) return; // found, no error
-
-        // Not found: report error covering the full value (inside the surrounding quotes)
-        int nameStart = attrVal.getTextRange().getStartOffset() + 1; // +1 skip opening quote
+        // Offset within the document: +1 to skip the opening quote character
+        int nameStart = attrVal.getTextRange().getStartOffset() + 1;
         int nameEnd = nameStart + methodName.length();
-        String ownerName = codeBehind.getQualifiedName();
+
+        PsiMethod[] methods = codeBehind.findMethodsByName(methodName, true);
+        if (methods.length == 0) {
+            String ownerName = codeBehind.getQualifiedName();
+            holder.newAnnotation(HighlightSeverity.ERROR,
+                    "'" + methodName + "' in " + ownerName + " cannot be resolved")
+                    .range(new TextRange(nameStart, nameEnd))
+                    .create();
+            return;
+        }
+
+        // Check that at least one overload has a compatible signature
+        PsiClass eventType = Fxml2EventHandlerUtil.extractEventTypeClass(eventHandlerType);
+        boolean hasCompatible = java.util.Arrays.stream(methods)
+                .anyMatch(m -> Fxml2EventHandlerUtil.isCompatibleHandlerMethod(m, eventType));
+        if (hasCompatible) return;
+
+        String eventTypeName = eventType != null ? eventType.getName() : "Event";
         holder.newAnnotation(HighlightSeverity.ERROR,
-                "'" + methodName + "' in " + ownerName + " cannot be resolved")
+                "'" + methodName + "' does not match the signature of an event handler for "
+                + eventTypeName)
                 .range(new TextRange(nameStart, nameEnd))
                 .create();
     }
@@ -409,15 +431,12 @@ public final class Fxml2AttributeAnnotator implements Annotator {
     /**
      * Returns {@code true} when {@code type} is {@code javafx.event.EventHandler} or a
      * parameterized form of it (e.g. {@code EventHandler<ActionEvent>}).
+     *
+     * <p>Delegates to {@link Fxml2EventHandlerUtil#isEventHandlerType} which is the
+     * shared implementation used across reference providers and searchers.
      */
     static boolean isEventHandlerType(@Nullable PsiType type, @NotNull XmlFile xmlFile) {
-        if (type == null) return false;
-        PsiClass eventHandlerClass = Fxml2WellKnownClasses.eventHandler(xmlFile.getProject());
-        if (eventHandlerClass == null) return false;
-        PsiType erased = TypeConversionUtil.erasure(type);
-        PsiType eventHandlerRaw = JavaPsiFacade.getElementFactory(xmlFile.getProject())
-                .createType(eventHandlerClass);
-        return erased != null && TypeConversionUtil.isAssignable(eventHandlerRaw, erased);
+        return Fxml2EventHandlerUtil.isEventHandlerType(type, xmlFile.getProject());
     }
 
     /**
@@ -1164,7 +1183,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                     java.util.List<String> siblings = Fxml2NamedArgResolver.collectAttributeNames(tag);
                     PsiType propType = Fxml2AttributeValueResolver.propertyType(ownerClass, attrName, siblings);
                     if (isEventHandlerType(propType, xmlFile)) {
-                        annotateMethodHandlerRef(attrVal, rawValue.trim(), xmlFile, holder);
+                        annotateMethodHandlerRef(attrVal, rawValue.trim(), propType, xmlFile, holder);
                         return;
                     }
                 }

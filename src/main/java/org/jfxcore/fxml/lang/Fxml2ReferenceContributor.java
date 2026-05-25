@@ -152,6 +152,15 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 new PrefixShorthandReferenceProvider(),
                 PsiReferenceRegistrar.HIGHER_PRIORITY);
 
+        // Event-handler method references: a plain method name on an EventHandler-typed property
+        // (e.g. onAction="handleClick"). Registered at HIGHER_PRIORITY so that when this
+        // attribute value is also a candidate for LiteralValueReferenceProvider, our reference
+        // is chosen first by PsiMultiReference and Ctrl+click navigates to the Java method.
+        registrar.registerReferenceProvider(
+                XmlPatterns.xmlAttributeValue(),
+                new EventHandlerMethodReferenceProvider(),
+                PsiReferenceRegistrar.HIGHER_PRIORITY);
+
         // Plain literal values (enum constants, static fields, Color, @NamedArg)
         registrar.registerReferenceProvider(
                 XmlPatterns.xmlAttributeValue(),
@@ -2713,6 +2722,70 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             @Override public @Nullable PsiElement resolve() { return propDecl; }
         };
         return new PsiReference[]{ classRef, propRef };
+    }
+
+    // -----------------------------------------------------------------------
+    // Event-handler method reference provider
+    // -----------------------------------------------------------------------
+
+    /**
+     * Provides a {@link Fxml2AttributeValueReference} from a plain method-name attribute
+     * value on an {@code EventHandler}-typed property to the corresponding method in the
+     * code-behind class.
+     *
+     * <p>Example: {@code <Button onAction="handleClick"/>} where {@code onAction} is of type
+     * {@code ObjectProperty<EventHandler<ActionEvent>>} and {@code handleClick} is a method
+     * on the code-behind class. The reference enables Ctrl+click navigation and contributes
+     * to "Find Usages" via the standard reference infrastructure.
+     *
+     * <p>Registered at {@link PsiReferenceRegistrar#HIGHER_PRIORITY} so that when
+     * {@link LiteralValueReferenceProvider} also runs on the same attribute value (it
+     * always does, at DEFAULT_PRIORITY), our reference is chosen first by
+     * {@link com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference}.
+     */
+    private static final class EventHandlerMethodReferenceProvider extends PsiReferenceProvider {
+
+        @Override
+        public PsiReference @NotNull [] getReferencesByElement(
+                @NotNull PsiElement element, @NotNull ProcessingContext context) {
+
+            if (!(element instanceof XmlAttributeValue attrVal)) return PsiReference.EMPTY_ARRAY;
+            if (!(attrVal.getContainingFile() instanceof XmlFile xmlFile)) return PsiReference.EMPTY_ARRAY;
+            if (!Fxml2FileType.isFxml2(xmlFile)) return PsiReference.EMPTY_ARRAY;
+            if (!(attrVal.getParent() instanceof XmlAttribute attr)) return PsiReference.EMPTY_ARRAY;
+
+            String rawValue = attrVal.getValue();
+            if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
+            if (Fxml2BindingExpressionParser.looksLikeBindingExpression(rawValue)) return PsiReference.EMPTY_ARRAY;
+
+            String attrLocalName = attr.getLocalName();
+            if (Fxml2XmlUtil.isNonPropertyAttribute(attr.getName())) return PsiReference.EMPTY_ARRAY;
+            if (attrLocalName.contains(".")) return PsiReference.EMPTY_ARRAY;
+            if (!(attr.getParent() instanceof XmlTag tag)) return PsiReference.EMPTY_ARRAY;
+            if (!(tag.getDescriptor() instanceof Fxml2ClassTagDescriptor cd)) return PsiReference.EMPTY_ARRAY;
+            PsiClass ownerClass = cd.getPsiClass();
+            if (ownerClass == null) return PsiReference.EMPTY_ARRAY;
+
+            List<String> siblings = Fxml2NamedArgResolver.collectAttributeNames(tag);
+            PsiType propType = Fxml2AttributeValueResolver.propertyType(ownerClass, attrLocalName, siblings);
+            if (!Fxml2EventHandlerUtil.isEventHandlerType(propType, xmlFile.getProject())) return PsiReference.EMPTY_ARRAY;
+
+            PsiClass codeBehind = Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
+            if (codeBehind == null) return PsiReference.EMPTY_ARRAY;
+
+            // Compute the method name and its offset within the attribute value text.
+            // The attribute value text includes surrounding quotes, so offset 0 is the opening quote.
+            String methodName = rawValue.strip();
+            if (methodName.isEmpty()) return PsiReference.EMPTY_ARRAY;
+            int leadingSpaces = rawValue.length() - rawValue.stripLeading().length();
+            // +1 for the opening quote character in the XmlAttributeValue text
+            TextRange range = new TextRange(1 + leadingSpaces, 1 + leadingSpaces + methodName.length());
+
+            PsiClass eventType = Fxml2EventHandlerUtil.extractEventTypeClass(propType);
+            PsiMethod bestMethod = Fxml2EventHandlerUtil.findBestHandlerMethod(codeBehind, methodName, eventType);
+
+            return new PsiReference[]{ new Fxml2AttributeValueReference(attrVal, range, bestMethod) };
+        }
     }
 
     /**

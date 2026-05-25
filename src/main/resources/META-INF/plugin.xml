@@ -409,6 +409,13 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2BindingSegmentMethodSearcher"/>
         <methodReferencesSearch
                 implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedClassTagMethodSearcher"/>
+        <!--
+            Fxml2EventHandlerMethodSearcher finds FXML2 attribute values that use a plain
+            method name on an EventHandler-typed property (e.g. onAction="handleClick") as
+            usages of the Java method, so "Find Usages" includes FXML2 event-handler references.
+        -->
+        <methodReferencesSearch
+                implementation="org.jfxcore.fxml.lang.Fxml2EventHandlerMethodSearcher"/>
 
         <!--
             UseScopeEnlarger: ensures the search scope for fields/methods in project-source
