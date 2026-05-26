@@ -19,7 +19,7 @@ import org.jetbrains.annotations.NotNull;
  * (like our {@link Fxml2FileType} which extends {@code XmlLikeFileType}) it always goes
  * through {@code lang.fileViewProviderFactory} instead.
  *
- * <p>For non-FXML 2.0 XML files this factory falls back to the default
+ * <p>For non-FXML/2 XML files this factory falls back to the default
  * {@link SingleRootFileViewProvider}, preserving pre-existing behavior.
  */
 @SuppressWarnings("UnusedDeclaration") // registered via lang.fileViewProviderFactory EP in plugin.xml

@@ -31,7 +31,7 @@ import java.util.List;
  * This suppressor intercepts the {@code UnusedImport} inspection for every
  * {@link KtImportDirective} found in a Kotlin file that contains a {@code @ComponentView}-annotated
  * class.  It obtains the injected XML file (if available) and checks whether the import
- * covers any class name referenced in the embedded FXML2 markup.  If so it returns
+ * covers any class name referenced in the embedded FXML markup.  If so it returns
  * {@code true} and the grey highlight is suppressed.
  *
  * <p>Registered via {@code lang.inspectionSuppressor language="kotlin"} in
@@ -76,13 +76,13 @@ public final class Fxml2KotlinUnusedImportSuppressor implements InspectionSuppre
 
     /**
      * Returns {@code true} when {@code importDirective} resolves to a class (or package)
-     * that is referenced by at least one embedded FXML2 markup in the file.
+     * that is referenced by at least one embedded FXML markup in the file.
      */
     private static boolean isImportNeededByEmbeddedMarkup(
             @NotNull KtImportDirective importDirective,
             @NotNull List<KtClassOrObject> markupClasses) {
 
-        // Aliased imports (`import foo.Bar as Baz`) are invisible to FXML2: the compiler
+        // Aliased imports (`import foo.Bar as Baz`) are invisible to FXML: the compiler
         // ignores them (cannot forward an alias to the AP), so never suppress them here.
         if (importDirective.getAliasName() != null) return false;
 

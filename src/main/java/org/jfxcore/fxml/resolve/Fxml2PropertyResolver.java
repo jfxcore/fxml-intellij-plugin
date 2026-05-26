@@ -32,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Resolves an XML attribute name (or short-element property-tag name) to the corresponding
  * Java declaration ({@link PsiMethod}) inside a JavaFX class.
  *
- * <p>The fxml2 compiler recognizes two kinds of property references:
+ * <p>The FXML compiler recognizes two kinds of property references:
  *
  * <ol>
  *   <li><b>Instance property</b>: a plain name like {@code text} on a {@code <Button>} tag.
@@ -146,7 +146,7 @@ public final class Fxml2PropertyResolver {
 
     /**
      * Like {@link #resolveInstanceProperty(PsiClass, String, Collection)} but selects the
-     * navigation target using the binding kind from the fxml2 compiler, matching which
+     * navigation target using the binding kind from the FXML compiler, matching which
      * accessor the compiler actually uses at runtime:
      *
      * <ul>
@@ -233,7 +233,7 @@ public final class Fxml2PropertyResolver {
 
         if (setter == null && getter == null && propertyGetter == null) {
             // Check for a plain public instance field with the given name (e.g. public String plainField).
-            // The fxml2 compiler supports plain fields as binding path segments and assignment targets.
+            // The FXML compiler supports plain fields as binding path segments and assignment targets.
             PsiField plainField = findPublicInstanceField(ownerClass, propertyName);
             if (plainField != null) return plainField;
             // Check for a plain public instance method with the property name directly
@@ -336,7 +336,7 @@ public final class Fxml2PropertyResolver {
             }
         }
         // Plain non-private non-static fields are also valid binding path segments per the
-        // fxml2 compiler's property resolution rules (public, protected, package-private).
+        // FXML compiler's property resolution rules (public, protected, package-private).
         for (PsiField f : cls.getAllFields()) {
             if (!f.hasModifierProperty(PsiModifier.PRIVATE) && !f.hasModifierProperty(PsiModifier.STATIC)) {
                 names.add(f.getName());
@@ -616,7 +616,7 @@ public final class Fxml2PropertyResolver {
      *
      * <p>Uses targeted name-based lookup ({@code findMethodsByName}) rather than scanning all
      * methods, matching only the {@code get{Name}} and {@code is{Name}} variants expected by the
-     * fxml2 compiler for static property accessors.
+     * FXML compiler for static property accessors.
      */
     private static @Nullable PsiMethod findStaticGetter(@NotNull PsiClass declaringClass, @NotNull String name) {
         if (name.isEmpty()) return null;
@@ -664,7 +664,7 @@ public final class Fxml2PropertyResolver {
     /**
      * Searches {@code cls} and its superclass chain for a non-private, non-static field
      * named {@code propertyName}. Plain non-private fields are valid binding path segments
-     * per the fxml2 compiler's {@code tryResolveField} logic, which accepts public,
+     * per the FXML compiler's {@code tryResolveField} logic, which accepts public,
      * protected, and package-private (default-access) fields: the generated base class is
      * always in the same package as the code-behind, so package-private fields are accessible.
      */

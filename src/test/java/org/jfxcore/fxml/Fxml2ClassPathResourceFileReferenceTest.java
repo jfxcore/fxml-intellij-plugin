@@ -24,8 +24,8 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests that {@code @path} attribute values in both embedded FXML2 ({@code @ComponentView})
- * and standalone FXML2 files expose {@link FileReference} instances so that:
+ * Tests that {@code @path} attribute values in both embedded FXML ({@code @ComponentView})
+ * and standalone FXML files expose {@link FileReference} instances so that:
  * <ul>
  *   <li>Ctrl+click navigates to the referenced classpath resource file.</li>
  *   <li>{@code @path} is supported equally well as {@code %key} (which uses
@@ -105,11 +105,11 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Tests: embedded FXML2
+    // Tests: embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * {@code @/icons/app.png} in an embedded FXML2 Java file must expose at least one
+     * {@code @/icons/app.png} in an embedded FXML Java file must expose at least one
      * {@link FileReference} on the attribute value: so that Ctrl+click navigates to
      * the referenced classpath resource file.
      */
@@ -140,13 +140,13 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
             assertNotNull(attrVal, "Could not find text='@/icons/app.png' in injected XML");
 
             assertTrue(hasFileReference(attrVal.getReferences()),
-                    "Expected a FileReference for '@/icons/app.png' in embedded FXML2; "
+                    "Expected a FileReference for '@/icons/app.png' in embedded FXML; "
                     + "references found: " + Arrays.toString(attrVal.getReferences()));
         });
     }
 
     /**
-     * The {@link FileReference}(s) for {@code @/icons/app.png} in embedded FXML2 must
+     * The {@link FileReference}(s) for {@code @/icons/app.png} in embedded FXML must
      * resolve to the referenced file, enabling navigation.
      */
     @Test
@@ -186,7 +186,7 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                     return; // resolved, test passed
                 }
             }
-            fail("No FileReference resolved to the 'logo.png' file in embedded FXML2; "
+            fail("No FileReference resolved to the 'logo.png' file in embedded FXML; "
                  + "ensure the file is in the project source root and the reference set "
                  + "uses ABSOLUTE_TOP_LEVEL for paths starting with '/'");
         });
@@ -234,18 +234,18 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                         + "but got " + start + " in: " + attrVal.getText());
                 return;
             }
-            fail("No FileReference found for '@/img/banner.jpg' in embedded FXML2");
+            fail("No FileReference found for '@/img/banner.jpg' in embedded FXML");
         });
     }
 
     /**
-     * A {@code @path} value in a standalone {@code .fxml} FXML2 file must NOT receive
+     * A {@code @path} value in a standalone {@code .fxml} FXML file must NOT receive
      * extra {@link FileReference}(s) from the fxml2 plugin beyond what the bundled JavaFX
      * plugin's {@code FxmlReferencesContributor} already provides.  The fxml2 plugin must
      * not produce duplicates.
      *
      * <p>Note: The bundled JavaFX plugin may contribute zero or one set of file references
-     * to a FXML2 {@code .fxml} file (it depends on the file-type detection order).  What
+     * to a FXML {@code .fxml} file (it depends on the file-type detection order).  What
      * this test verifies is that the fxml2 plugin itself adds at most one additional set
      * (i.e. the total count stays reasonable: not a duplicate explosion).
      */
@@ -253,7 +253,7 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
     void atPathInStandaloneFxmlDoesNotProduceDuplicateFileReferences() {
         getFixture().addFileToProject("icons/standalone.png", "PNG");
 
-        // Add a minimal code-behind so the .fxml file is valid FXML2.
+        // Add a minimal code-behind so the .fxml file is valid FXML.
         getFixture().addClass("""
                 package test;
                 import javafx.scene.layout.BorderPane;

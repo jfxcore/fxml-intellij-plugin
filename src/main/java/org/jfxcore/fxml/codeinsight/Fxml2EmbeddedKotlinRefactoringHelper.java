@@ -45,7 +45,7 @@ import java.util.regex.Pattern;
 /**
  * {@link RefactoringHelper} that prevents Kotlin's
  * {@code KotlinOptimizeImportsRefactoringHelper} from removing Kotlin imports that are
- * needed by embedded FXML2 markup in {@code @ComponentView}-annotated classes.
+ * needed by embedded FXML markup in {@code @ComponentView}-annotated classes.
  *
  * <h2>Problem</h2>
  * After every refactoring Kotlin's {@code KotlinOptimizeImportsRefactoringHelper} calls
@@ -61,7 +61,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li><b>Read phase</b> ({@link #prepareOperation}): for every Kotlin file involved
  *       in the refactoring that contains a {@code @ComponentView}-annotated class,
- *       capture the list of import targets referenced by the embedded FXML2 markup.</li>
+ *       capture the list of import targets referenced by the embedded FXML markup.</li>
  *   <li><b>Write phase</b> ({@link #performOperation}): add back any of those import
  *       targets that are no longer present in the file.</li>
  * </ul>
@@ -340,7 +340,7 @@ public final class Fxml2EmbeddedKotlinRefactoringHelper
 
     /**
      * If "prefer markup imports" is active, moves any Kotlin imports that are exclusively
-     * used inside embedded FXML2 markup to {@code <?import?>} PIs inside those blocks,
+     * used inside embedded FXML markup to {@code <?import?>} PIs inside those blocks,
      * and removes the corresponding Kotlin import directives.
      */
     private static void applyPreferMarkupToKotlinFile(

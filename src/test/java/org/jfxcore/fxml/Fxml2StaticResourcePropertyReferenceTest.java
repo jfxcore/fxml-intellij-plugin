@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests that {@code %key} attribute values in embedded FXML2 ({@code @ComponentView})
+ * Tests that {@code %key} attribute values in embedded FXML ({@code @ComponentView})
  * expose a {@link PropertyReferenceBase} so that:
  * <ul>
  *   <li>Ctrl+click navigates to the resource bundle entry.</li>
@@ -96,7 +96,7 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * {@code %button.text} in an embedded FXML2 Java file must expose at least one
+     * {@code %button.text} in an embedded FXML Java file must expose at least one
      * {@link PropertyReferenceBase} on the attribute value: so that Ctrl+click
      * navigates to the matching entry in the properties file.
      */
@@ -134,13 +134,13 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
                 }
             }
             assertTrue(hasPropertyRef,
-                    "Expected a PropertyReferenceBase for '%button.text' in embedded FXML2; "
+                    "Expected a PropertyReferenceBase for '%button.text' in embedded FXML; "
                     + "references found: " + java.util.Arrays.toString(attrVal.getReferences()));
         });
     }
 
     /**
-     * The {@link PropertyReferenceBase} for {@code %greeting} in embedded FXML2 must
+     * The {@link PropertyReferenceBase} for {@code %greeting} in embedded FXML must
      * resolve to the {@code IProperty} in the matching properties file, enabling navigation.
      */
     @Test
@@ -177,7 +177,7 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
                         + "ensure the properties file is in the project scope");
                 return; // resolved, test passed
             }
-            fail("No PropertyReferenceBase found for '%greeting' in embedded FXML2");
+            fail("No PropertyReferenceBase found for '%greeting' in embedded FXML");
         });
     }
 
@@ -228,15 +228,15 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
                         "PropertyReference range must end after 'title' in: " + attrText);
                 return;
             }
-            fail("No PropertyReferenceBase found for '%title' in embedded FXML2");
+            fail("No PropertyReferenceBase found for '%title' in embedded FXML");
         });
     }
 
     /**
-     * {@code %find.this} in an embedded FXML2 Java file must appear in the results of
+     * {@code %find.this} in an embedded FXML Java file must appear in the results of
      * {@link ReferencesSearch#search(PsiElement, SearchScope)} on the matching
      * {@link IProperty}: so that "Find Usages" on the property key in the
-     * {@code .properties} file navigates to the embedded FXML2 use site.
+     * {@code .properties} file navigates to the embedded FXML use site.
      *
      * <p>This is the <em>reverse direction</em> counterpart of
      * {@link #percentKeyInEmbeddedFxmlResolvesToProperty}: instead of starting from the
@@ -280,13 +280,13 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
                 return attrVal.getValue().startsWith("%");
             });
             assertTrue(foundInEmbeddedFxml,
-                    "ReferencesSearch must find the '%find.this' reference in embedded FXML2; "
+                    "ReferencesSearch must find the '%find.this' reference in embedded FXML; "
                     + "found references: " + refs);
         });
     }
 
     /**
-     * A property that is referenced only via {@code %key} in embedded FXML2 must be
+     * A property that is referenced only via {@code %key} in embedded FXML must be
      * reported as <em>used</em> by {@link UnusedPropertyInspection#isPropertyUsed} -
      * i.e. the {@code "UnusedProperty"} inspection must not flag it as unused.
      *
@@ -329,7 +329,7 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
                     UnusedPropertyInspection.isPropertyUsed(
                             (com.intellij.lang.properties.psi.Property) prop, helper, true),
                     "UnusedPropertyInspection must not flag 'live.key' as unused - "
-                    + "it is referenced via %live.key in embedded FXML2");
+                    + "it is referenced via %live.key in embedded FXML");
         });
     }
 
@@ -457,7 +457,7 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
     }
 
     /**
-     * A {@code %key} value in a standalone {@code .fxml} FXML2 file must NOT receive
+     * A {@code %key} value in a standalone {@code .fxml} FXML file must NOT receive
      * a second {@link PropertyReferenceBase} from the fxml2 plugin: the bundled JavaFX
      * plugin's {@code FxmlResourceReferencesContributor} already handles those files.
      * The fxml2 plugin must not produce duplicates.
@@ -466,7 +466,7 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
     void percentKeyInStandaloneFxmlDoesNotProduceDuplicatePropertyReference() {
         getFixture().addFileToProject("test/standalone.properties", "label.text=Standalone");
 
-        // Add a minimal code-behind so the .fxml file is valid FXML2.
+        // Add a minimal code-behind so the .fxml file is valid FXML.
         getFixture().addClass("""
                 package test;
                 import javafx.scene.layout.BorderPane;

@@ -11,11 +11,11 @@ import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.descriptors.Fxml2PropertyTagDescriptor;
 
 /**
- * Central helper that mirrors the fxml2 compiler's {@code ObjectToPropertyTransform} /
+ * Central helper that mirrors the FXML compiler's {@code ObjectToPropertyTransform} /
  * {@code Resolver.tryResolveProperty} logic for deciding whether a child XML tag represents
  * a Java class or a property of the parent element's class.
  *
- * <p>All five notations from the FXML 2.0 property-notation spec are handled:
+ * <p>All five notations from the FXML property-notation spec are handled:
  * <ol>
  *   <li><b>Short element notation</b>: {@code <text>} inside {@code <Button>}:
  *       plain name that doesn't resolve to a class -> instance property on parent.</li>
@@ -43,7 +43,7 @@ public final class Fxml2TagResolver {
      *
      * @param tag       the child XML tag being resolved
      * @param localName the local (non-namespace) tag name
-     * @param xmlFile   the containing FXML 2.0 file (used for import resolution)
+     * @param xmlFile   the containing FXML file (used for import resolution)
      * @return a property descriptor, or {@code null} if the tag is a root element
      */
     public static @NotNull XmlElementDescriptor resolveAsPropertyDescriptor(
@@ -111,7 +111,7 @@ public final class Fxml2TagResolver {
      *
      * @param tag       the property tag
      * @param localName the local tag name
-     * @param xmlFile   the containing FXML 2.0 file
+     * @param xmlFile   the containing FXML file
      * @return the navigation target (setter / getter / static setter), or {@code null}
      */
     public static @Nullable PsiElement resolvePropertyTagDeclaration(
@@ -200,7 +200,7 @@ public final class Fxml2TagResolver {
      * class doesn't exist, or a property in the chain doesn't exist on its owner type).
      *
      * @param tag     the tag whose parent context we want to resolve
-     * @param xmlFile the containing FXML 2.0 file
+     * @param xmlFile the containing FXML file
      * @return the resolved context {@link PsiClass}, or {@code null} if unresolvable
      */
     public static @Nullable PsiClass resolveContextClass(@NotNull XmlTag tag, @NotNull XmlFile xmlFile) {
@@ -223,7 +223,7 @@ public final class Fxml2TagResolver {
                 cursor = cursor.getParentTag();
                 continue;
             }
-            // Stop at the synthetic wrapper root for embedded FXML 2.0, it is not a real class tag.
+            // Stop at the synthetic wrapper root for embedded FXML, it is not a real class tag.
             if (org.jfxcore.fxml.lang.Fxml2EmbeddedUtil.isWrapperRoot(cursor)) {
                 break;
             }

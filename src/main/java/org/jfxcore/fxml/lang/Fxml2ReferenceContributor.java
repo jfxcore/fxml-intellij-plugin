@@ -145,7 +145,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 PsiReferenceRegistrar.HIGHER_PRIORITY);
 
         // Prefix-shorthand markup extension invocations: @path, %key, or custom-declared prefixes.
-        // The provider handles any FXML 2.0 attribute value and checks the prefix-mapping internally,
+        // The provider handles any FXML attribute value and checks the prefix-mapping internally,
         // so we register it with the broadest pattern to support custom-prefix characters.
         registrar.registerReferenceProvider(
                 XmlPatterns.xmlAttributeValue(),
@@ -281,7 +281,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      *       {@link com.intellij.lang.properties.references.PropertyReference} spanning the
      *       positional default argument (resource key) so that Ctrl+click navigates to the
      *       resource bundle entry and the property is not flagged as unused in
-     *       {@code .properties} files.  Applied to all FXML 2.0 file types, since the bundled
+     *       {@code .properties} files.  Applied to all FXML file types, since the bundled
      *       JavaFX plugin only handles the {@code %key} prefix shorthand (not long forms).</li>
      * </ul>
      *
@@ -320,7 +320,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             }
             // Fallback: resolve built-in resource extension classes (DynamicResource,
             // StaticResource, ClassPathResource) by their FQN when the simple name is used
-            // without an explicit import: common in embedded FXML 2.0 where the class is
+            // without an explicit import: common in embedded FXML where the class is
             // available on the classpath but not listed in the Java file's import declarations.
             if (extClass == null) {
                 extClass = resolveBuiltInExtensionBySimpleName(extensionName, xmlFile.getProject());
@@ -523,7 +523,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      *
      * <p>Returns {@code true} for:
      * <ul>
-     *   <li>Embedded FXML2 (injected language fragments: no real VirtualFile extension)</li>
+     *   <li>Embedded FXML (injected language fragments: no real VirtualFile extension)</li>
      *   <li>Standalone {@code .fxml2} files (not handled by the bundled JavaFX plugin)</li>
      * </ul>
      *
@@ -540,7 +540,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      * Resolves a known built-in resource extension class ({@code DynamicResource},
      * {@code StaticResource}, {@code ClassPathResource}) by its simple name, using
      * {@link GlobalSearchScope#allScope} to ensure the class is found even when it is not
-     * explicitly imported in the containing file (e.g. embedded FXML2 where imports come
+     * explicitly imported in the containing file (e.g. embedded FXML where imports come
      * only from the host Java file's import declarations).
      *
      * @param simpleName the unqualified class name (e.g. {@code "DynamicResource"})
@@ -1849,7 +1849,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      *                         (i.e. within {@code attrVal.getValue()}. For a single-token value this
      *                         is 0; for the N-th token in a comma-separated list it is the position of
      *                         that token's first non-whitespace character within the full value string.
-     * @param xmlFile          the containing FXML2 file (for project/scope resolution)
+     * @param xmlFile          the containing FXML file (for project/scope resolution)
      * @param reportUnresolved if {@code true}, emits a hard {@link UnresolvedClassSegmentReference}
      *                         when a segment cannot be resolved (used by {@code fx:typeArguments}).
      *                         If {@code false}, unresolvable segments are silently skipped, no error
@@ -2474,7 +2474,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
     // fx:* intrinsic attribute name provider
     // -----------------------------------------------------------------------
 
-    /** Base URL for the FXML2 language reference pages. */
+    /** Base URL for the FXML/2 language reference pages. */
     private static final String FX_REFERENCE_BASE_URL =
             "https://jfxcore.github.io/fxml-compiler/reference/";
 
@@ -2498,7 +2498,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
     /**
      * Provides a soft {@link PsiReference} on the name token of every {@code fx:} intrinsic
-     * attribute in an FXML2 file. Ctrl+click opens the corresponding online language-reference page.
+     * attribute in an FXML file. Ctrl+click opens the corresponding online language-reference page.
      *
      * <p>The reference covers the full attribute name (e.g. {@code fx:id}) so that positioning
      * the caret anywhere on the name and pressing Ctrl+click opens the docs. The reference
@@ -2555,7 +2555,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
     /**
      * Provides a soft {@link PsiReference} on the name token of every {@code fx:} intrinsic
-     * element tag in an FXML2 file. Ctrl+click opens the corresponding online language-reference page.
+     * element tag in an FXML file. Ctrl+click opens the corresponding online language-reference page.
      *
      * <p>The reference covers only the local name part of the tag (after the {@code fx:} prefix)
      * so that the prefix part can carry a separate namespace reference if needed.

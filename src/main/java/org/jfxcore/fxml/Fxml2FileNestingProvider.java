@@ -23,14 +23,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Project-view provider that nests Java/Kotlin code-behind files under actual FXML 2.0 documents.
+ * Project-view provider that nests Java/Kotlin code-behind files under actual FXML/2 documents.
  *
- * <p>{@link com.intellij.ide.projectView.ProjectViewNestingRulesProvider} is insufficient here
- * because it only accepts static suffix pairs ({@code addNestingRule(parentSuffix, childSuffix)})
- * and therefore cannot distinguish a plain JavaFX {@code .fxml} file from a JFXcore FXML 2.0
- * {@code .fxml} file.  We instead inspect the real {@link PsiFile} / {@link VirtualFile} nodes
- * that appear in the project view and only create nesting when the parent file is recognized as
- * FXML 2.0 by {@link Fxml2FileType#isFxml2(PsiFile)}.
+ * <p>{@link com.intellij.ide.projectView.ProjectViewNestingRulesProvider} is insufficient here because
+ * it only accepts static suffix pairs ({@code addNestingRule(parentSuffix, childSuffix)}) and therefore
+ * cannot distinguish a classic {@code .fxml} file from a FXML/2 {@code .fxml} file.
+ * We instead inspect the real {@link PsiFile} / {@link VirtualFile} nodes that appear in the project view
+ * and only create nesting when the parent file is recognized as FXML/2 by {@link Fxml2FileType#isFxml2(PsiFile)}.
  */
 public final class Fxml2FileNestingProvider implements TreeStructureProvider, DumbAware {
 

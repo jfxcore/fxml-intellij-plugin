@@ -38,7 +38,7 @@ class Fxml2CodeBehindInspectionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Helper: build a minimal FXML2 file with a given fx:subclass
+    // Helper: build a minimal FXML file with a given fx:subclass
     // -----------------------------------------------------------------------
 
     private static String fxml2WithClass(String fxClass) {
@@ -78,12 +78,12 @@ class Fxml2CodeBehindInspectionTest extends Fxml2TestBase {
     }
 
     /**
-     * A class that does NOT have a corresponding FXML2 file is not a code-behind class
+     * A class that does NOT have a corresponding FXML file is not a code-behind class
      * and must never produce a warning, regardless of whether it calls initializeComponent.
      */
     @Test
     void constructorWithoutFxmlFileProducesNoWarning() {
-        // No addFileToProject: no FXML2 file paired with this class
+        // No addFileToProject: no FXML file paired with this class
         getFixture().configureByText("PlainClass.java",
                 """
                 package test;
@@ -357,12 +357,12 @@ class Fxml2CodeBehindInspectionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // isCodeBehindClass unit check (standalone FXML2)
+    // isCodeBehindClass unit check (standalone FXML)
     // -----------------------------------------------------------------------
 
     /**
      * Verifies that {@code isCodeBehindClass} returns {@code true} for a class whose
-     * FXML2 file has the matching {@code fx:subclass} attribute, and {@code false} for
+     * FXML file has the matching {@code fx:subclass} attribute, and {@code false} for
      * a class without one.
      */
     @Test

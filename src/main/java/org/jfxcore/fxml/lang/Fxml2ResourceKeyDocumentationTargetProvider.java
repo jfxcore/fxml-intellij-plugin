@@ -26,7 +26,7 @@ import java.util.List;
 /**
  * Shows the property value from the resource bundle as a hover tooltip when the
  * cursor is on a {@code %key} or {@code {DynamicResource key}} / {@code {StaticResource key}}
- * attribute value in FXML2 markup: the same information that is already shown when
+ * attribute value in FXML markup: the same information that is already shown when
  * hovering over the property key in the {@code .properties} file itself.
  *
  * <h3>Mechanism</h3>
@@ -38,12 +38,12 @@ import java.util.List;
  * <ol>
  *   <li>Looks for an {@link XmlAttributeValue} at the cursor position.
  *       <ul>
- *         <li>For <b>standalone FXML2 files</b>, the element at the offset is already an XML token
+ *         <li>For <b>standalone FXML files</b>, the element at the offset is already an XML token
  *            : a simple parent walk suffices.</li>
- *         <li>For <b>embedded FXML2</b> ({@code @ComponentView} text block), the platform calls
+ *         <li>For <b>embedded FXML</b> ({@code @ComponentView} text block), the platform calls
  *             this provider first on the injected XML fragment, so the element is also an XML token.</li>
  *       </ul></li>
- *   <li>Verifies the containing file is recognized as FXML2.</li>
+ *   <li>Verifies the containing file is recognized as FXML/2.</li>
  *   <li>Finds the first {@link PropertyReferenceBase} on the attribute value and resolves it to
  *       an {@link IProperty} via {@code multiResolve()} (handles multiple locale variants).</li>
  *   <li>Returns an {@link IPropertyDocumentationTarget} that delegates HTML rendering to
@@ -78,8 +78,8 @@ public final class Fxml2ResourceKeyDocumentationTargetProvider implements Docume
         if (!(xmlFile instanceof XmlFile xmlF) || !Fxml2FileType.isFxml2(xmlF)) return null;
 
         // Determine the effective offset *within the XML file* that contains the attrVal.
-        // For standalone FXML2 files, the offset is already in the XML file's coordinate space.
-        // For embedded FXML2 (injected into a Java text block), targetOffset is in the Java
+        // For standalone FXML files, the offset is already in the XML file's coordinate space.
+        // For embedded FXML (injected into a Java text block), targetOffset is in the Java
         // host file's coordinate space, so we convert it via the injected language manager.
         int xmlOffset;
         if (xmlFile == file) {
@@ -116,9 +116,9 @@ public final class Fxml2ResourceKeyDocumentationTargetProvider implements Docume
      * Finds the {@link XmlAttributeValue} at {@code targetOffset} in {@code file}.
      *
      * <ul>
-     *   <li>For standalone XML/FXML2 files: {@code contextElement} is already an XML token,
+     *   <li>For standalone XML/FXML files: {@code contextElement} is already an XML token,
      *       so a simple parent walk finds the enclosing attribute value.</li>
-     *   <li>For Java host files with embedded FXML2: the platform's V2 hover pipeline calls
+     *   <li>For Java host files with embedded FXML: the platform's V2 hover pipeline calls
      *       this provider on the injected XML fragment first, so {@code contextElement} is
      *       also an XML token. The fallback {@link InjectedLanguageManager#findInjectedElementAt}
      *       handles any remaining cases where the host file offset is passed directly.</li>

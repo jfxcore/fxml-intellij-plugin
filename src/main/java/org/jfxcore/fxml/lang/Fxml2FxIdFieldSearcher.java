@@ -26,12 +26,12 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 /**
  * {@link ReferencesSearch} extension that, when searching for usages of a Java/Kotlin
  * field or no-arg method in a code-behind class, also finds the corresponding
- * {@code fx:id} attribute value in all FXML 2.0 files that declare that class via
+ * {@code fx:id} attribute value in all FXML files that declare that class via
  * {@code fx:subclass}.
  *
- * <p>This makes "Find Usages" on a code-behind field show the FXML 2.0 definition site
+ * <p>This makes "Find Usages" on a code-behind field show the FXML definition site
  * alongside normal code usages, and makes Ctrl+click from the field navigate back to
- * the FXML 2.0 declaration.
+ * the FXML declaration.
  */
 public final class Fxml2FxIdFieldSearcher
         implements QueryExecutor<PsiReference, ReferencesSearch.SearchParameters> {
@@ -120,7 +120,7 @@ public final class Fxml2FxIdFieldSearcher
                     false)
         );
 
-        // Also search embedded FXML 2.0 markup in @ComponentView-annotated classes.
+        // Also search embedded FXML markup in @ComponentView-annotated classes.
         // Note: FxIdReferenceProvider is registered with inVirtualFile(ofType(Fxml2FileType)),
         // which does not match injected XML files.  So attrVal.getReferences() on an injected
         // XmlAttributeValue will never contain a Fxml2FxIdReference.  Create one directly.

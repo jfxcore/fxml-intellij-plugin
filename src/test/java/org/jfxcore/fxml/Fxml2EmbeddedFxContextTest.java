@@ -16,10 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests for {@code fx:context} binding-context resolution in embedded FXML2.
+ * Tests for {@code fx:context} binding-context resolution in embedded FXML.
  *
  * <p>These tests mirror {@link Fxml2FxContextTest} for the embedded ({@code @ComponentView})
- * form.  In embedded FXML2 the user's root element is wrapped in a synthetic
+ * form.  In embedded FXML the user's root element is wrapped in a synthetic
  * {@code <fxml2:embedded>} element by the language injector; {@code fx:context} on the
  * user's root must still be recognized and must redirect binding path resolution to
  * the designated context class.
@@ -334,7 +334,7 @@ class Fxml2EmbeddedFxContextTest extends Fxml2TestBase {
 
     /**
      * A Java {@code import} for a class referenced only inside
-     * {@code <fx:context><MyEmbeddedContext/></fx:context>} in embedded FXML2 must NOT be
+     * {@code <fx:context><MyEmbeddedContext/></fx:context>} in embedded FXML must NOT be
      * reported as "Unused import statement" by the IDE's Java unused-import highlight pass.
      *
      * <p>The {@link org.jfxcore.fxml.lang.Fxml2JavaUnusedImportHighlightFilter} consults

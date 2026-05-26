@@ -13,7 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 
 /**
- * "Optimize Imports (FXML2)" intention for Java source files.
+ * "Optimize Imports (FXML/2)" intention for Java source files.
  *
  * <p>Available when the caret is inside the import section of a Java file that has at
  * least one {@code @ComponentView}-annotated class.

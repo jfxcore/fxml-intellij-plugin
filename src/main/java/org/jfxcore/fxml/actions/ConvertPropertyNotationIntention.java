@@ -28,7 +28,7 @@ import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
 /**
  * Two inverse intention actions for converting between attribute notation and
- * short element notation for FXML 2.0 properties.
+ * short element notation for FXML properties.
  *
  * <p>Binding compact-notation mapping (attribute <-> element):
  * <ul>

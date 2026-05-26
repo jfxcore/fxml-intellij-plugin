@@ -38,14 +38,14 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
  * {@code org.jfxcore.command.Command.onAction="..."}) without a corresponding import.
  *
  * <p>Available wherever the caret is on a resolved class-segment reference inside any
- * FXML 2.0 attribute value (binding expressions, {@code fx:typeArguments},
+ * FXML attribute value (binding expressions, {@code fx:typeArguments},
  * {@code String}-typed class-name attributes), on a class segment of a FQN element tag
  * name, or on the class segment of a FQN static-property attribute name, and the class
  * is not yet imported in the file.
  *
- * <p>For <em>standalone</em> FXML 2.0 files the import is inserted as a
+ * <p>For <em>standalone</em> FXML files the import is inserted as a
  * {@code <?import fqn?>} processing instruction.
- * For <em>embedded</em> FXML 2.0 (from a {@code @ComponentView} annotation) a Java
+ * For <em>embedded</em> FXML (from a {@code @ComponentView} annotation) a Java
  * {@code import} statement is inserted into the host Java file instead.
  *
  * <p>This is an intention (not a quick fix) because there is nothing wrong with using a
@@ -57,7 +57,7 @@ public final class AddImportForClassReferenceIntention implements IntentionActio
 
     @Override
     public @NotNull String getFamilyName() {
-        return "Add FXML 2.0 import";
+        return "Add FXML import";
     }
 
     @Override
@@ -78,7 +78,7 @@ public final class AddImportForClassReferenceIntention implements IntentionActio
         XmlFile xmlFile = (XmlFile) file;
 
         if (Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile)) {
-            // Embedded FXML 2.0: extract host Java file BEFORE any write actions (while the
+            // Embedded FXML: extract host Java file BEFORE any write actions (while the
             // injected XML PSI is still valid), then:
             //   1. Shorten the FQN in the embedded markup (writes through to Java literal).
             //   2. Add a Java import statement to the host Java file.
@@ -88,7 +88,7 @@ public final class AddImportForClassReferenceIntention implements IntentionActio
                 insertJavaImport(project, target.fqn(), javaFile);
             }
         } else {
-            // Standalone FXML 2.0: add <?import?> PI first, then shorten the FQN.
+            // Standalone FXML: add <?import?> PI first, then shorten the FQN.
             Fxml2AddImportFix.insertImport(project, xmlFile, target.fqn());
             doFqnCleanup(project, target, file);
         }
@@ -330,7 +330,7 @@ public final class AddImportForClassReferenceIntention implements IntentionActio
 
     /**
      * Performs the "shorten FQN" write action on the XML element identified by
-     * {@code target}.  For embedded FXML2 this writes through the injection host
+     * {@code target}.  For embedded FXML this writes through the injection host
      * back into the Java string literal.
      */
     private static void doFqnCleanup(
@@ -375,12 +375,12 @@ public final class AddImportForClassReferenceIntention implements IntentionActio
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2 helpers
+    // Embedded FXML helpers
     // -----------------------------------------------------------------------
 
     /**
      * Returns the {@link PsiJavaFile} that hosts the injection for the given
-     * embedded FXML2 file, or {@code null} if it cannot be determined.
+     * embedded FXML file, or {@code null} if it cannot be determined.
      */
     private static @Nullable PsiJavaFile getHostJavaFile(@NotNull XmlFile embeddedXmlFile) {
         PsiLanguageInjectionHost host = Fxml2EmbeddedUtil.getInjectionHost(embeddedXmlFile);

@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * Tests for the embedded FXML2 "Reformat Code" feature.
+ * Tests for the embedded FXML "Reformat Code" feature.
  *
  * <p>After a reformat on a Java file that contains a {@code @ComponentView} text-block
  * annotation, the embedded XML should use:
@@ -562,7 +562,7 @@ class Fxml2EmbeddedMarkupFormattingTest extends Fxml2TestBase {
      * Verifies that an XML comment that precedes the root element receives the same
      * indentation as the root element after reformatting.
      *
-     * <p>In standalone FXML2, a document-level comment and the root element are both at
+     * <p>In standalone FXML, a document-level comment and the root element are both at
      * column 0. The embedded equivalent must place both at {@code baseIndent}
      * (annotationColumn + javaIndentSize = 0 + 4 = 4 spaces).
      */
@@ -609,7 +609,7 @@ class Fxml2EmbeddedMarkupFormattingTest extends Fxml2TestBase {
     }
 
     /**
-     * Returns the embedded FXML2 injected {@link XmlFile} contained in the current
+     * Returns the embedded FXML injected {@link XmlFile} contained in the current
      * test fixture's Java file, or {@code null} if no such injection is found.
      *
      * <p>Must be called after {@link com.intellij.testFramework.fixtures.CodeInsightTestFixture#doHighlighting()}

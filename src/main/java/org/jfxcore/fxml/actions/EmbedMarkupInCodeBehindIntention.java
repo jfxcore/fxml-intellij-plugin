@@ -30,7 +30,7 @@ import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 
 /**
- * Intention action that embeds an FXML2 file's markup into the code-behind class as a
+ * Intention action that embeds an FXML file's markup into the code-behind class as a
  * {@code @ComponentView} annotation value and deletes the standalone FXML file.
  *
  * <h2>Trigger positions</h2>
@@ -43,7 +43,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
  *
  * <h2>Prerequisites</h2>
  * <ul>
- *   <li>The file must be a <em>standalone</em> FXML2 file, not an already-embedded fragment
+ *   <li>The file must be a <em>standalone</em> FXML file, not an already-embedded fragment
  *       (i.e. {@link Fxml2EmbeddedUtil#isEmbeddedFxml2} must return {@code false}).</li>
  *   <li>A code-behind sibling ({@code .java} or {@code .kt}) must already exist next to
  *       the FXML file.</li>
@@ -96,7 +96,7 @@ public final class EmbedMarkupInCodeBehindIntention implements IntentionAction, 
     /**
      * Returns {@code true} when all prerequisites are satisfied:
      * <ol>
-     *   <li>The file is a standalone FXML2 file (not an injected embedded fragment).</li>
+     *   <li>The file is a standalone FXML file (not an injected embedded fragment).</li>
      *   <li>The caret is on the root element tag name, the {@code fx:subclass} attribute name,
      *       or the {@code fx:subclass} attribute value.</li>
      *   <li>A sibling code-behind file ({@code .java} or {@code .kt}) exists.</li>
@@ -107,7 +107,7 @@ public final class EmbedMarkupInCodeBehindIntention implements IntentionAction, 
      */
     @Override
     public boolean isAvailable(@NotNull Project project, Editor editor, PsiFile file) {
-        // 1. Must be a standalone FXML2 file
+        // 1. Must be a standalone FXML file
         if (!(file instanceof XmlFile)) return false;
         if (!Fxml2FileType.isFxml2(file)) return false;
         if (Fxml2EmbeddedUtil.isEmbeddedFxml2(file)) return false;

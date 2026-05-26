@@ -20,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
  * <h2>Problem</h2>
  * IntelliJ's "Inspect Code" action runs the {@code UnusedImportInspection} which analyzes
  * only the Java source to decide which imports are referenced.  It does <em>not</em>
- * understand that class names used inside the FXML2 markup string (the
+ * understand that class names used inside the FXML markup string (the
  * {@code @ComponentView} annotation value) also constitute "uses" of those imports.
  * As a result, imports such as {@code import javafx.scene.layout.*} are reported as
  * "Unused import" even though they are required by the embedded markup.
@@ -66,7 +66,7 @@ public final class Fxml2JavaUnusedImportSuppressor implements InspectionSuppress
     public boolean isSuppressedFor(@NotNull PsiElement element, @NotNull String toolId) {
         if (!UNUSED_IMPORT_TOOL_ID.equals(toolId)) return false;
         if (!(element instanceof PsiImportStatement importStmt)) return false;
-        // Static imports are never referenced from FXML2 markup.
+        // Static imports are never referenced from FXML markup.
         if (importStmt instanceof PsiImportStaticStatement) return false;
 
         PsiFile containingFile = element.getContainingFile();

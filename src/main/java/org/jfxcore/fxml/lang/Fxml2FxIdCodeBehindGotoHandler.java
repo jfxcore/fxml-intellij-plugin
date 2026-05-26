@@ -29,12 +29,12 @@ import java.util.List;
  * the <em>generated field declaration</em> (e.g. {@code protected Button myButton1;} in the
  * compiler-generated base class).
  *
- * <p>In both cases the canonical declaration is the {@code fx:id} attribute value in the FXML 2.0
- * file.  This handler finds all FXML 2.0 files in the project whose {@code fx:subclass} attribute
+ * <p>In both cases the canonical declaration is the {@code fx:id} attribute value in the FXML
+ * file.  This handler finds all FXML files in the project whose {@code fx:subclass} attribute
  * refers to a class that is the same as, or a subclass of, the field's containing class, and
  * returns the matching {@link XmlAttributeValue} elements as navigation targets.
  *
- * <p>When exactly one FXML 2.0 target is found IntelliJ navigates there directly; when multiple
+ * <p>When exactly one FXML target is found, IntelliJ navigates there directly; when multiple
  * targets are found (e.g. the same field used in multiple FXML views) the "Choose Target"
  * popup is shown.
  */
@@ -46,7 +46,7 @@ public final class Fxml2FxIdCodeBehindGotoHandler implements GotoDeclarationHand
 
         if (sourceElement == null) return null;
 
-        // Do not activate when the cursor is on an fx:id attribute value in an FXML 2.0 file.
+        // Do not activate when the cursor is on an fx:id attribute value in an FXML file.
         // That element is the canonical declaration; the PsiSymbolDeclarationProvider handles
         // it and routes Ctrl+click to "Show Usages".  If we fired here we would intercept
         // fromGTDProviders and force the GTD/"Choose Declaration" path instead.
@@ -78,8 +78,8 @@ public final class Fxml2FxIdCodeBehindGotoHandler implements GotoDeclarationHand
 
         List<PsiElement> targets = new ArrayList<>();
 
-        // Search FXML 2.0 files by the member name (the fx:id value string), which is always
-        // present in any FXML 2.0 file that declares it: regardless of whether the containing
+        // Search FXML files by the member name (the fx:id value string), which is always
+        // present in any FXML file that declares it: regardless of whether the containing
         // class's simple name appears in the file.
         PsiSearchHelper.getInstance(project).processAllFilesWithWord(
                 memberName, scope,
@@ -106,7 +106,7 @@ public final class Fxml2FxIdCodeBehindGotoHandler implements GotoDeclarationHand
                 },
                 false);
 
-        // Also search embedded FXML 2.0 markup in @ComponentView-annotated classes.
+        // Also search embedded FXML markup in @ComponentView-annotated classes.
         Fxml2EmbeddedUtil.findFxIdInEmbedded(memberName, containingClass, scope,
                 attrVal -> {
                     targets.add(attrVal);
@@ -118,7 +118,7 @@ public final class Fxml2FxIdCodeBehindGotoHandler implements GotoDeclarationHand
     // -----------------------------------------------------------------------
 
 
-    /** Returns {@code true} when {@code element} is inside an {@code fx:id} attribute value in an FXML 2.0 file. */
+    /** Returns {@code true} when {@code element} is inside an {@code fx:id} attribute value in an FXML file. */
     private static boolean isOnFxIdDeclaration(@NotNull PsiElement element) {
         PsiElement candidate = element instanceof XmlAttributeValue ? element : element.getParent();
         if (!(candidate instanceof XmlAttributeValue attrVal)) return false;

@@ -28,25 +28,25 @@ import java.util.List;
 
 /**
  * Hosts two action overrides that ensure correct comment syntax when the caret or
- * selection is inside embedded FXML2 markup in a {@code @ComponentView} annotation.
+ * selection is inside embedded FXML markup in a {@code @ComponentView} annotation.
  *
  * <h2>Problem</h2>
  * <p>The platform's {@code CommentByLineCommentHandler} redirects to the host file's
  * commenter whenever the injection-host element's text starts with {@code "}: which is
  * always the case for Java text blocks ({@code """..."""}).  As a result, pressing
- * Ctrl+/ inside embedded FXML2 inserts {@code //} (Java) instead of
+ * Ctrl+/ inside embedded FXML inserts {@code //} (Java) instead of
  * {@code <!--} ... {@code -->} (XML).  Similarly, Ctrl+Shift+/ inserts Java block
  * comments instead of {@code <!--} ... {@code -->}.
  *
  * <h2>Fix</h2>
  * <ul>
  *   <li>{@link LineCommentAction} overrides {@code CommentByLineComment}.  When the
- *       selection contains at least one FXML2 line, it toggles per-line
- *       {@code <!--} ... {@code -->} markers for FXML2 lines and {@code //} markers for
+ *       selection contains at least one FXML line, it toggles per-line
+ *       {@code <!--} ... {@code -->} markers for FXML lines and {@code //} markers for
  *       Java/Kotlin lines.  For all other contexts it delegates to the original platform
  *       action unchanged.</li>
  *   <li>{@link BlockCommentAction} overrides {@code CommentByBlockComment}.  When the
- *       caret or selection start is inside FXML2, it wraps/unwraps the selection in
+ *       caret or selection start is inside FXML, it wraps/unwraps the selection in
  *       {@code <!--} ... {@code -->}.  Otherwise it delegates to the platform action.</li>
  * </ul>
  */
@@ -62,14 +62,14 @@ public final class Fxml2EmbeddedCommentHandlers {
      * Replaces the platform's {@code CommentByLineComment} action (registered via
      * {@code overrides="true"} in {@code plugin.xml}).
      *
-     * <p>When the selection (or caret line) contains at least one FXML2 line, each line
+     * <p>When the selection (or caret line) contains at least one FXML line, each line
      * is toggled independently:
      * <ul>
-     *   <li>FXML2 lines are wrapped in {@code <!-- content -->} (or unwrapped when all
+     *   <li>FXML lines are wrapped in {@code <!-- content -->} (or unwrapped when all
      *       lines are already commented).</li>
      *   <li>Java/Kotlin lines are prefixed with {@code // } (or de-prefixed).</li>
      * </ul>
-     * <p>For selections containing no FXML2 lines the original platform handler is
+     * <p>For selections containing no FXML lines the original platform handler is
      * called unchanged via {@code super.actionPerformed(e)}.
      */
     public static final class LineCommentAction extends CommentByLineCommentAction {
@@ -83,7 +83,7 @@ public final class Fxml2EmbeddedCommentHandlers {
                 return;
             }
 
-            // When the caret is inside an injected FXML2 fragment, IntelliJ may provide
+            // When the caret is inside an injected FXML fragment, IntelliJ may provide
             // the injected EditorWindow instead of the host editor.  Always work with the
             // top-level (host) editor so that getDocument() returns the host document and
             // InjectedLanguageManager.findInjectedElementAt() receives the host PSI file.
@@ -102,7 +102,7 @@ public final class Fxml2EmbeddedCommentHandlers {
 
             // ----------------------------------------------------------------
             // Phase 1 (read):  Collect per-caret comment data.
-            //   If a caret's selection contains no FXML2 lines, fall through
+            //   If a caret's selection contains no FXML lines, fall through
             //   to the original Java handler for that entire invocation.
             // ----------------------------------------------------------------
             List<CaretCommentData> dataList = new ArrayList<>(allCarets.size());
@@ -110,7 +110,7 @@ public final class Fxml2EmbeddedCommentHandlers {
             for (Caret caret : allCarets) {
                 CaretCommentData data = collectCaretData(caret, document, hostFile, ilm);
                 if (data == null) {
-                    // No FXML2 in this caret's range: delegate entirely to original.
+                    // No FXML in this caret's range: delegate entirely to original.
                     super.actionPerformed(e);
                     return;
                 }
@@ -148,14 +148,14 @@ public final class Fxml2EmbeddedCommentHandlers {
          *
          * <p>Delegation happens when:
          * <ul>
-         *   <li>the selection contains no FXML2 lines at all, or</li>
-         *   <li>the selection contains a <em>mix</em> of FXML2 and Java/Kotlin lines.</li>
+         *   <li>the selection contains no FXML lines at all, or</li>
+         *   <li>the selection contains a <em>mix</em> of FXML and Java/Kotlin lines.</li>
          * </ul>
          *
          * <p>The mixed case is delegated intentionally: commenting out the Java structural
          * lines (e.g. {@code @ComponentView("""} or the closing {@code """)} ) destroys
-         * the FXML2 injection context, so a subsequent un-comment action can no longer
-         * recognize those lines as FXML2.  By letting the platform use {@code //} for the
+         * the FXML injection context, so a subsequent un-comment action can no longer
+         * recognize those lines as FXML.  By letting the platform use {@code //} for the
          * entire selection in the mixed case, both comment and un-comment operations are
          * symmetric.
          */
@@ -201,7 +201,7 @@ public final class Fxml2EmbeddedCommentHandlers {
                     continue; // blank / whitespace-only line, skip
                 }
 
-                // Determine if this line is inside the FXML2 injection.
+                // Determine if this line is inside the FXML injection.
                 boolean isFxml2 = isOffsetInFxml2(contentStart, hostFile, ilm);
                 if (isFxml2) {
                     anyFxml2 = true;
@@ -232,7 +232,7 @@ public final class Fxml2EmbeddedCommentHandlers {
             }
 
             if (!anyFxml2 || anyJava) {
-                // No FXML2 lines, or mixed FXML2+Java selection: let the platform
+                // No FXML lines, or mixed FXML+Java selection: let the platform
                 // handle it with Java "//" so that comment/un-comment is symmetric.
                 return null;
             }
@@ -378,7 +378,7 @@ public final class Fxml2EmbeddedCommentHandlers {
      * Replaces the platform's {@code CommentByBlockComment} action (registered via
      * {@code overrides="true"} in {@code plugin.xml}).
      *
-     * <p>When the caret or selection start is inside embedded FXML2 markup, wraps the
+     * <p>When the caret or selection start is inside embedded FXML markup, wraps the
      * selection in {@code <!-- } / {@code  -->} (or removes those wrappers when the
      * selection is already an XML block comment).  For all other contexts it delegates
      * to the original platform action unchanged.
@@ -430,10 +430,10 @@ public final class Fxml2EmbeddedCommentHandlers {
             // Without this, a document mutation from the previous invocation
             // (e.g. the first block-comment press) leaves the PSI stale and
             // causes findInjectedElementAt() to return null for offsets that
-            // are genuinely inside the FXML2 injection.
+            // are genuinely inside the FXML injection.
             PsiDocumentManager.getInstance(project).commitDocument(document);
 
-            // Only intercept when the selection start (or caret) is inside FXML2.
+            // Only intercept when the selection start (or caret) is inside FXML.
             if (!isSelectionInFxml2(selStart, selEnd, hostFile, ilm)) {
                 fallback(e);
                 return;
@@ -585,13 +585,13 @@ public final class Fxml2EmbeddedCommentHandlers {
         // -------------------------------------------------------------------
 
         /**
-         * Returns {@code true} when the entire selection is inside an embedded FXML2
+         * Returns {@code true} when the entire selection is inside an embedded FXML
          * injection.  For a bare caret ({@code selStart == selEnd}) only the caret
          * position is checked.
          *
          * <p>Both the selection start <em>and</em> the position just before the selection
-         * end must be inside FXML2; if either endpoint falls outside (e.g. a selection
-         * that spans FXML2 markup and surrounding Java code), this returns {@code false}
+         * end must be inside FXML; if either endpoint falls outside (e.g. a selection
+         * that spans FXML markup and surrounding Java code), this returns {@code false}
          * so the action falls back to Java {@code /* }&#42;{@code /} block comments.
          */
         private static boolean isSelectionInFxml2(int selStart, int selEnd,
@@ -631,7 +631,7 @@ public final class Fxml2EmbeddedCommentHandlers {
     /**
      * Describes a single non-blank line that is a candidate for toggling.
      *
-     * @param isFxml2 {@code true} when the line is inside an FXML2 injection and should
+     * @param isFxml2 {@code true} when the line is inside an FXML injection and should
      *                be commented with {@code <!-- ... -->}; {@code false} for
      *                Java/Kotlin lines that should use {@code // }.
      */

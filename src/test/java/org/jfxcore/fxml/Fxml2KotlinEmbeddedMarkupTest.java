@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for embedded FXML2 support via the {@code @ComponentView} annotation in <em>Kotlin</em>
+ * Tests for embedded FXML support via the {@code @ComponentView} annotation in <em>Kotlin</em>
  * source files.
  *
  * <p>Each test configures a Kotlin file with a class annotated with
@@ -147,7 +147,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Injection fires and file is recognized as embedded FXML2
+    // Injection fires and file is recognized as embedded FXML
     // -----------------------------------------------------------------------
 
     /**
@@ -166,9 +166,9 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
             XmlFile xmlFile = getInjectedXmlFile();
             assertNotNull(xmlFile, "Injected XmlFile must be present after highlighting");
             assertTrue(Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile),
-                    "Injected file must be recognized as embedded FXML2 via wrapper namespace");
+                    "Injected file must be recognized as embedded FXML via wrapper namespace");
             assertTrue(Fxml2FileType.isFxml2(xmlFile),
-                    "isFxml2(PsiFile) must return true for injected FXML2 Kotlin fragment");
+                    "isFxml2(PsiFile) must return true for injected FXML Kotlin fragment");
         });
     }
 
@@ -192,7 +192,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
             var imports = org.jfxcore.fxml.resolve.Fxml2ImportResolver.parseImports(xmlFile);
             assertFalse(imports.isEmpty(),
-                    "parseImports must return non-empty for Kotlin embedded FXML2. "
+                    "parseImports must return non-empty for Kotlin embedded FXML. "
                     + "isInjected: " + InjectedLanguageManager.getInstance(getFixture().getProject())
                             .isInjectedFragment(xmlFile)
                     + ", rootName: " + (xmlFile.getRootTag() != null
@@ -235,13 +235,13 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
                 h -> h.getDescription() != null
                      && h.getDescription().contains("UnknownWidget123"));
         assertTrue(hasUnresolved,
-                "Expected a 'Cannot resolve symbol UnknownWidget123' error in Kotlin embedded FXML2");
+                "Expected a 'Cannot resolve symbol UnknownWidget123' error in Kotlin embedded FXML");
     }
 
     /**
      * An unresolvable class name inside {@code <fx:context>} element notation in embedded
-     * Kotlin FXML2 must produce a "Cannot resolve symbol" error (same as standalone FXML2
-     * and Java embedded FXML2).
+     * Kotlin FXML must produce a "Cannot resolve symbol" error (same as standalone FXML
+     * and Java embedded FXML).
      */
     @Test
     void unresolvableClassInsideFxContextElementProducesError() {
@@ -257,7 +257,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
         assertTrue(errors.stream().anyMatch(
                 h -> h.getDescription() != null && h.getDescription().contains("CannotResolveMe123")),
                 "An unresolvable class inside <fx:context> must produce a 'Cannot resolve symbol' error "
-                + "in Kotlin embedded FXML2. Errors: " + errors);
+                + "in Kotlin embedded FXML. Errors: " + errors);
     }
 
     // -----------------------------------------------------------------------
@@ -265,7 +265,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * FXML2 markup placed in a Kotlin multi-dollar raw string ($$""") must be injected and
+     * FXML markup placed in a Kotlin multi-dollar raw string ($$""") must be injected and
      * validated the same way as markup in a regular raw string (""").  An unresolvable tag
      * name must produce an error.
      */
@@ -373,11 +373,11 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // fx:subclass forbidden in embedded FXML2
+    // fx:subclass forbidden in embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * {@code fx:subclass} is not allowed in embedded FXML2 from Kotlin.
+     * {@code fx:subclass} is not allowed in embedded FXML from Kotlin.
      */
     @Test
     void fxClassForbiddenInKotlinEmbeddedMarkup() {
@@ -395,7 +395,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
                      && h.getDescription().toLowerCase().contains("fx:subclass")
                      && h.getDescription().toLowerCase().contains("embedded"));
         assertTrue(hasFxClassError,
-                "Expected a specific error about fx:subclass being forbidden in Kotlin embedded FXML2. "
+                "Expected a specific error about fx:subclass being forbidden in Kotlin embedded FXML. "
                 + "Errors found: " + errors.stream()
                         .filter(h -> h.getDescription() != null)
                         .map(h -> "\"" + h.getDescription() + "\"")
@@ -455,7 +455,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * The "unused import" inspection must NOT fire for embedded FXML2 in Kotlin.
+     * The "unused import" inspection must NOT fire for embedded FXML in Kotlin.
      */
     @Test
     void unusedImportInspectionSuppressed() {
@@ -607,7 +607,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
                 h -> h.getDescription() != null
                      && h.getDescription().contains("nonExistentField"));
         assertTrue(hasUnresolved,
-                "Expected an unresolved-binding error for 'nonExistentField' in Kotlin embedded FXML2");
+                "Expected an unresolved-binding error for 'nonExistentField' in Kotlin embedded FXML");
     }
 
     // -----------------------------------------------------------------------
@@ -664,7 +664,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
                            && attrVal.getContainingFile() instanceof XmlFile xmlFile
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(foundInEmbedded,
-                    "ReferencesSearch on 'myKtBtn' must find the fx:id in Kotlin embedded FXML2.\n"
+                    "ReferencesSearch on 'myKtBtn' must find the fx:id in Kotlin embedded FXML.\n"
                     + "References found: " + refs.stream()
                             .map(r -> r.getElement().getContainingFile().getName()
                                       + "@" + r.getElement().getClass().getSimpleName())
@@ -673,11 +673,11 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Code completion in Kotlin embedded FXML2
+    // Code completion in Kotlin embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * Tag-name completion inside a Kotlin embedded FXML2 string must suggest class names
+     * Tag-name completion inside a Kotlin embedded FXML string must suggest class names
      * reachable through the Kotlin file's import declarations.
      */
     @Test
@@ -700,12 +700,12 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
         LookupElement[] completions = getFixture().completeBasic();
         assertNotNull(completions,
-                "completeBasic() must return results inside Kotlin embedded FXML2 tag position");
+                "completeBasic() must return results inside Kotlin embedded FXML tag position");
 
         boolean hasButton = Arrays.stream(completions)
                 .anyMatch(c -> "Button".equals(c.getLookupString()));
         assertTrue(hasButton,
-                "Completion must suggest 'Button' from the import in Kotlin embedded FXML2. Got: "
+                "Completion must suggest 'Button' from the import in Kotlin embedded FXML. Got: "
                 + Arrays.stream(completions)
                         .map(LookupElement::getLookupString)
                         .limit(30)
@@ -713,12 +713,12 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Find Usages on fx:id in Kotlin embedded FXML2
+    // Find Usages on fx:id in Kotlin embedded FXML
     // -----------------------------------------------------------------------
 
     /**
      * {@link Fxml2FxIdFindUsagesHandlerFactory} invoked on the {@code fx:id} attribute value
-     * in Kotlin embedded FXML2 must return a handler whose primary elements include both the
+     * in Kotlin embedded FXML must return a handler whose primary elements include both the
      * {@link XmlAttributeValue} and the code-behind field.
      */
     @Test
@@ -766,14 +766,14 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
             var factory = new Fxml2FxIdFindUsagesHandlerFactory();
             assertTrue(factory.canFindUsages(fxIdVal),
-                    "Factory must accept XmlAttributeValue from Kotlin embedded FXML2");
+                    "Factory must accept XmlAttributeValue from Kotlin embedded FXML");
 
             var handler = factory.createFindUsagesHandler(fxIdVal, false);
             assertNotNull(handler, "Handler must be created for Kotlin embedded fx:id");
 
             List<PsiElement> primaries = Arrays.asList(handler.getPrimaryElements());
             assertTrue(primaries.contains(fxIdVal),
-                    "Primaries must include the fx:id XmlAttributeValue from Kotlin embedded FXML2");
+                    "Primaries must include the fx:id XmlAttributeValue from Kotlin embedded FXML");
             assertTrue(primaries.stream()
                             .anyMatch(e -> e instanceof PsiField f && "myKtFuBtn".equals(f.getName())),
                     "Primaries must include the code-behind field 'myKtFuBtn'.\nPrimaries: "
@@ -784,11 +784,11 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Binding segment navigation in Kotlin embedded FXML2
+    // Binding segment navigation in Kotlin embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * A binding segment that references an {@code fx:id} name inside Kotlin embedded FXML2
+     * A binding segment that references an {@code fx:id} name inside Kotlin embedded FXML
      * must resolve to the code-behind field, and the field's navigation element must point
      * to the {@link XmlAttributeValue} of the {@code fx:id} in the injected XML file.
      */
@@ -855,7 +855,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
                     .map(r -> (Fxml2BindingSegmentReference) r)
                     .findFirst().orElse(null);
             assertNotNull(segRef,
-                    "No Fxml2BindingSegmentReference for 'myKtNavBtn' in Kotlin embedded FXML2 binding");
+                    "No Fxml2BindingSegmentReference for 'myKtNavBtn' in Kotlin embedded FXML binding");
 
             PsiElement resolved = segRef.resolve();
             assertNotNull(resolved,
@@ -866,7 +866,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
             assertEquals(finalFxIdVal, resolved.getNavigationElement(),
                     "Binding segment 'myKtNavBtn' must navigate to the fx:id XmlAttributeValue "
-                    + "in the Kotlin embedded FXML2 file");
+                    + "in the Kotlin embedded FXML file");
         });
     }
 
@@ -876,7 +876,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2KotlinUnusedImportSuppressor#isSuppressedFor} must return {@code true}
-     * for wildcard imports whose package covers class names used in the embedded FXML2 markup.
+     * for wildcard imports whose package covers class names used in the embedded FXML markup.
      */
     @Test
     void kotlinUnusedImportSuppressorSuppressesMarkupWildcardImports() {
@@ -919,15 +919,15 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
             var suppressor = new Fxml2KotlinUnusedImportSuppressor();
             assertTrue(suppressor.isSuppressedFor(layoutImport, "UnusedImport"),
-                    "javafx.scene.layout.* must be suppressed (StackPane is used in embedded FXML2)");
+                    "javafx.scene.layout.* must be suppressed (StackPane is used in embedded FXML)");
             assertTrue(suppressor.isSuppressedFor(controlImport, "UnusedImport"),
-                    "javafx.scene.control.* must be suppressed (Button is used in embedded FXML2)");
+                    "javafx.scene.control.* must be suppressed (Button is used in embedded FXML)");
         });
     }
 
     /**
      * {@link Fxml2KotlinUnusedImportSuppressor#isSuppressedFor} must return {@code false}
-     * for imports whose classes are NOT referenced in the embedded FXML2 markup.
+     * for imports whose classes are NOT referenced in the embedded FXML markup.
      */
     @Test
     void kotlinUnusedImportSuppressorDoesNotSuppressUnrelatedImports() {
@@ -952,7 +952,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
             KtFile ktFile = (KtFile) getFixture().getFile();
             List<KtImportDirective> imports = ktFile.getImportDirectives();
 
-            // javafx.beans.property.* is NOT used in the embedded FXML2 (no class from that package).
+            // javafx.beans.property.* is NOT used in the embedded FXML (no class from that package).
             KtImportDirective beansImport = imports.stream()
                     .filter(imp -> {
                         var fqName = imp.getImportedFqName();
@@ -962,14 +962,14 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
             var suppressor = new Fxml2KotlinUnusedImportSuppressor();
             assertFalse(suppressor.isSuppressedFor(beansImport, "UnusedImport"),
-                    "javafx.beans.property.* must NOT be suppressed (not used in embedded FXML2)");
+                    "javafx.beans.property.* must NOT be suppressed (not used in embedded FXML)");
         });
     }
 
     /**
      * {@link Fxml2KotlinUnusedImportSuppressor#isSuppressedFor} must return {@code true}
      * for a specific (non-wildcard) import when that class is directly referenced in the
-     * embedded FXML2 markup.
+     * embedded FXML markup.
      */
     @Test
     void kotlinUnusedImportSuppressorSuppressesMarkupSpecificImports() {
@@ -1021,9 +1021,9 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
      * An aliased Kotlin import ({@code import foo.Bar as Baz}) must NOT be
      * suppressed by {@link Fxml2KotlinUnusedImportSuppressor}.
      *
-     * <p>The compiler ignores aliased imports when collecting FXML2 imports because it
+     * <p>The compiler ignores aliased imports when collecting FXML imports because it
      * cannot forward an alias to the Java annotation processor.  The plugin must match
-     * this behavior: if the import is aliased it is never "needed" by the FXML2 markup.
+     * this behavior: if the import is aliased it is never "needed" by the FXML markup.
      */
     @Test
     void kotlinUnusedImportSuppressorDoesNotSuppressAliasedImport() {
@@ -1068,7 +1068,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
      * A non-class Kotlin import (top-level function) must NOT be suppressed by
      * {@link Fxml2KotlinUnusedImportSuppressor}.
      *
-     * <p>FXML2 markup can only reference classes; imports of top-level functions or
+     * <p>FXML markup can only reference classes; imports of top-level functions or
      * properties are irrelevant to the markup and must not be protected from the
      * {@code UnusedImport} inspection.
      */
@@ -1106,7 +1106,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
             var suppressor = new Fxml2KotlinUnusedImportSuppressor();
             assertFalse(suppressor.isSuppressedFor(fxCollImport, "UnusedImport"),
-                    "Non-class import must NOT be suppressed (FXCollections is not used as an FXML2 tag)");
+                    "Non-class import must NOT be suppressed (FXCollections is not used as an FXML tag)");
         });
     }
 
@@ -1132,7 +1132,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2EmbeddedKotlinImportOptimizer} must add back Kotlin imports that are
-     * needed by the embedded FXML2 markup but were removed (e.g. by the built-in Kotlin
+     * needed by the embedded FXML markup but were removed (e.g. by the built-in Kotlin
      * import optimizer, which does not understand that class names inside string literals are
      * "used").
      *
@@ -1200,12 +1200,12 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
         String text = ReadAction.compute(() -> getFixture().getFile().getText());
         assertTrue(text.contains("javafx.scene.control"),
                 "Optimizer must add back the javafx.scene.control import that is used in "
-                + "embedded Kotlin FXML2.\nActual source:\n" + text);
+                + "embedded Kotlin FXML.\nActual source:\n" + text);
     }
 
     /**
      * {@link Fxml2EmbeddedKotlinImportOptimizer} must NOT add imports that are NOT used
-     * in the embedded FXML2 markup. If an import was removed by the Kotlin optimizer and
+     * in the embedded FXML markup. If an import was removed by the Kotlin optimizer and
      * the embedded markup doesn't need it, the optimizer must leave it removed.
      */
     @Test
@@ -1258,15 +1258,15 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
         // layout.* must be restored (StackPane is used).
         assertTrue(text.contains("javafx.scene.layout"),
-                "Optimizer must restore layout.* (used in embedded FXML2).\nActual:\n" + text);
+                "Optimizer must restore layout.* (used in embedded FXML).\nActual:\n" + text);
 
         // control.* must NOT be restored (not used in embedded markup).
         assertFalse(text.contains("javafx.scene.control"),
-                "Optimizer must NOT restore control.* (unused in embedded FXML2).\nActual:\n" + text);
+                "Optimizer must NOT restore control.* (unused in embedded FXML).\nActual:\n" + text);
 
         // beans.* must NOT be restored (not used in embedded markup).
         assertFalse(text.contains("javafx.beans.property"),
-                "Optimizer must NOT restore beans.* (unused in embedded FXML2).\nActual:\n" + text);
+                "Optimizer must NOT restore beans.* (unused in embedded FXML).\nActual:\n" + text);
     }
 
     /**
@@ -1306,10 +1306,10 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     /**
      * End-to-end test: the full "Optimize Imports" pipeline (exactly as IntelliJ runs it -
      * {@link LanguageImportStatements#forFile} -> {@code processFile()} -> {@code run()}) must
-     * <em>not</em> remove Kotlin imports that are needed by the embedded FXML2 markup.
+     * <em>not</em> remove Kotlin imports that are needed by the embedded FXML markup.
      *
      * <p>The full "Optimize Imports" pipeline must not remove Kotlin imports that are
-     * needed by embedded FXML2 markup.  The plugin's Kotlin import optimizer must be
+     * needed by embedded FXML markup.  The plugin's Kotlin import optimizer must be
      * selected instead of the built-in one; if the built-in optimizer runs, it removes
      * all markup-referenced imports because it is unaware of the embedded XML content.
      */
@@ -1353,10 +1353,10 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
         // Both wildcard imports must still be present: StackPane and Button are both used.
         assertTrue(text.contains("javafx.scene.layout"),
                 "Optimize-imports pipeline must preserve layout.* (StackPane is used in "
-                + "embedded FXML2 markup).\nActual source:\n" + text);
+                + "embedded FXML markup).\nActual source:\n" + text);
         assertTrue(text.contains("javafx.scene.control"),
                 "Optimize-imports pipeline must preserve control.* (Button is used in "
-                + "embedded FXML2 markup).\nActual source:\n" + text);
+                + "embedded FXML markup).\nActual source:\n" + text);
     }
 
     // -----------------------------------------------------------------------
@@ -1365,7 +1365,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * Renaming a {@code @ComponentView}-annotated Kotlin class (Shift+F6) must NOT remove
-     * imports that are needed by the embedded FXML2 markup.
+     * imports that are needed by the embedded FXML markup.
      *
      * <p>Kotlin's {@code KotlinOptimizeImportsRefactoringHelper} runs after every refactoring
      * and removes imports that its {@code analyzeImports()} considers unused.  Since that
@@ -1435,10 +1435,10 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
         assertTrue(text.contains("javafx.scene.layout"),
                 "import javafx.scene.layout.* must survive Kotlin class rename "
-                + "(StackPane is used in embedded FXML2).\nActual source:\n" + text);
+                + "(StackPane is used in embedded FXML).\nActual source:\n" + text);
         assertTrue(text.contains("javafx.scene.control"),
                 "import javafx.scene.control.* must survive Kotlin class rename "
-                + "(Button is used in embedded FXML2).\nActual source:\n" + text);
+                + "(Button is used in embedded FXML).\nActual source:\n" + text);
     }
 
     // -----------------------------------------------------------------------
@@ -1497,21 +1497,21 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(labelTextField),
                     "isImplicitUsage must return true for a view-model field bound via "
-                    + "vm.labelText in a Kotlin @ComponentView class's embedded FXML2 markup");
+                    + "vm.labelText in a Kotlin @ComponentView class's embedded FXML markup");
             assertTrue(provider.isImplicitRead(labelTextField),
                     "isImplicitRead must return true for a view-model field bound via "
-                    + "vm.labelText in a Kotlin @ComponentView class's embedded FXML2 markup");
+                    + "vm.labelText in a Kotlin @ComponentView class's embedded FXML markup");
         });
     }
 
     // -----------------------------------------------------------------------
-    // Fxml2KotlinUnusedSymbolSuppressor: context class property used in embedded FXML2
+    // Fxml2KotlinUnusedSymbolSuppressor: context class property used in embedded FXML
     // -----------------------------------------------------------------------
 
     /**
      * {@link Fxml2KotlinUnusedSymbolSuppressor#isSuppressedFor} must return {@code true}
      * for a Kotlin property that is only referenced via a binding path originating from
-     * an {@code <fx:context>} element in another class's embedded FXML2 markup.
+     * an {@code <fx:context>} element in another class's embedded FXML markup.
      *
      * <p>In practice: a context class such as {@code MyContext} has a {@code val vm}
      * property that is never directly referenced in Java/Kotlin code, but is bound in
@@ -1519,7 +1519,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
      * "Property 'vm' is never used" because {@link
      * com.intellij.codeInsight.daemon.ImplicitUsageProvider} is never consulted for
      * {@code KtProperty} nodes.  The suppressor must close this gap by checking
-     * embedded FXML2 markup for a binding-segment reference that resolves (via
+     * embedded FXML markup for a binding-segment reference that resolves (via
      * {@code getNavigationElement()}) to the Kotlin property.
      */
     @Test
@@ -1536,7 +1536,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
                 """);
 
         // View class: uses CtxClassKt via fx:context and references vm in a binding.
-        // The annotation uses the multi-dollar raw string ($$""") so that the FXML2
+        // The annotation uses the multi-dollar raw string ($$""") so that the FXML
         // expression ${vm} is preserved verbatim and is not parsed as a Kotlin string
         // template.
         getFixture().configureByText("CtxViewKt.kt", """
@@ -1580,7 +1580,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
             var suppressor = new Fxml2KotlinUnusedSymbolSuppressor();
             assertTrue(suppressor.isSuppressedFor(vmProp, "unused"),
                     "isSuppressedFor must return true for KtProperty 'vm' in a context class "
-                    + "that is only referenced via an embedded FXML2 binding "
+                    + "that is only referenced via an embedded FXML binding "
                     + "(fx:context scenario). K2 reports it as unused because ImplicitUsageProvider "
                     + "is not consulted for KtProperty nodes.");
         });
@@ -1589,7 +1589,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
     /**
      * {@link ReferencesSearch} (global scope) on a field in a non-{@code @ComponentView}
      * class must find the binding-path segment in a <em>Kotlin</em> {@code @ComponentView}
-     * class's embedded FXML2 markup.
+     * class's embedded FXML markup.
      */
     @Test
     void findUsagesOnViewModelFieldFindsKotlinEmbeddedMarkupBinding() {
@@ -1640,7 +1640,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(foundInEmbedded,
                     "ReferencesSearch on KtFindVm.vmLabel must find the binding segment "
-                    + "'vmLabel' in the Kotlin @ComponentView class's embedded FXML2 markup.\n"
+                    + "'vmLabel' in the Kotlin @ComponentView class's embedded FXML markup.\n"
                     + "Found refs: " + refs.stream()
                             .map(r -> r.getClass().getSimpleName()
                                       + " in " + r.getElement().getContainingFile().getName())

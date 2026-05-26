@@ -17,12 +17,12 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 
 /**
- * Enlarges the search scope for fields and methods that may be referenced in FXML 2.0 files,
+ * Enlarges the search scope for fields and methods that may be referenced in FXML files,
  * either as {@code fx:id} values or as property attribute names (e.g.
  * {@code <FormattedLabel formatter="$doubleFormatter"/>}).
  *
  * <p>Without this, "Find Usages" for a code-behind field or a property-setter method
- * searches only Java/Kotlin source files and misses the FXML 2.0 use site.  By adding a
+ * searches only Java/Kotlin source files and misses the FXML use site.  By adding a
  * scope that includes all {@code .fxml} and {@code .fxml2} files in the project, IntelliJ
  * will pass those files to {@link Fxml2FxIdFieldSearcher} and
  * {@link Fxml2PropertyAttributeSearcher}, which then check for matching references.
@@ -36,7 +36,7 @@ public final class Fxml2UseScopeEnlarger extends UseScopeEnlarger {
         // This covers code-behind fields (fx:id), binding segment targets, and property
         // attribute declarations (e.g. setFormatter(Function<T,String>)).
         // Classes are enlarged so that "Find Usages" on a custom control class also finds
-        // its use as an XML element tag in standalone FXML 2.0 files.
+        // its use as an XML element tag in standalone FXML files.
         //
         // Kotlin source elements (KtProperty, KtNamedFunction) are handled separately below
         // because Kotlin's unused-declaration inspection (K2 mode) calls getUseScope() on the
@@ -50,8 +50,8 @@ public final class Fxml2UseScopeEnlarger extends UseScopeEnlarger {
             case PsiMethod m -> {
                 // 0-param: getters, xProperty() accessors, no-arg event handlers.
                 // 1-param: setters, single-event-arg handlers (e.g. void onClick(ActionEvent e)).
-                // 2+-param methods cannot be referenced from FXML2.
-                // Enlargement ensures the unused-declaration analysis includes FXML2 files in
+                // 2+-param methods cannot be referenced from FXML.
+                // Enlargement ensures the unused-declaration analysis includes FXML files in
                 // its word-index pre-check so MethodReferencesSearch is not skipped early.
                 if (m.getParameterList().getParametersCount() > 1) return null;
                 sourceFile = virtualFileOf(m.getContainingClass());
@@ -81,7 +81,7 @@ public final class Fxml2UseScopeEnlarger extends UseScopeEnlarger {
     /**
      * Returns the virtual file for a Kotlin source element ({@code KtProperty} or
      * {@code KtNamedFunction}) when the element should have its use scope enlarged to
-     * include FXML 2.0 files, or {@code null} if the element should not be enlarged.
+     * include FXML files, or {@code null} if the element should not be enlarged.
      *
      * <p>Enlargement is granted for:
      * <ul>
@@ -92,7 +92,7 @@ public final class Fxml2UseScopeEnlarger extends UseScopeEnlarger {
      *       {@code setLabel(T)}).</li>
      * </ul>
      *
-     * <p>Private members are excluded because they cannot be referenced from FXML 2.0 markup.
+     * <p>Private members are excluded because they cannot be referenced from FXML markup.
      *
      * <p>The entire method is guarded by {@link NoClassDefFoundError} so that it fails
      * silently when the Kotlin plugin is absent at runtime.

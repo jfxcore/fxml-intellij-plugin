@@ -22,8 +22,8 @@ import org.jetbrains.annotations.Nullable;
  * {@code EditorSelectWord} (also called on mouse double-click).
  *
  * <p>After the platform's default handler has determined the word at the caret,
- * this handler trims any leading FXML2 sigil character ({@code $}, {@code %})
- * from the selection when the caret is inside an FXML2 attribute value.
+ * this handler trims any leading FXML sigil character ({@code $}, {@code %})
+ * from the selection when the caret is inside an FXML attribute value.
  *
  * <p>Without this fix, double-clicking on {@code vm} in {@code $vm.sayHello}
  * produces the selection {@code $vm} because Java (and the XML editor) treat
@@ -66,7 +66,7 @@ public final class Fxml2WordSelectionHandler extends EditorActionHandler {
     }
 
     /**
-     * If the caret is inside an FXML2 attribute value and the selection starts with
+     * If the caret is inside an FXML attribute value and the selection starts with
      * a sigil character ({@code $} or {@code %}), removes that character
      * from the start of the selection.
      */
@@ -83,7 +83,7 @@ public final class Fxml2WordSelectionHandler extends EditorActionHandler {
         char first = text.charAt(start);
         if (first != '$' && first != '%') return;
 
-        // Only apply inside FXML2 contexts.
+        // Only apply inside FXML contexts.
         if (!isInFxml2Context(editor, project, start + 1)) return;
 
         // Trim the sigil.
@@ -91,8 +91,8 @@ public final class Fxml2WordSelectionHandler extends EditorActionHandler {
     }
 
     /**
-     * Returns {@code true} when {@code offset} falls inside an FXML2 document -
-     * either a standalone {@code .fxml}/{@code .fxml2} file or an embedded FXML2
+     * Returns {@code true} when {@code offset} falls inside an FXML document -
+     * either a standalone {@code .fxml}/{@code .fxml2} file or an embedded FXML
      * fragment inside a Java/Kotlin {@code @ComponentView} annotation.
      */
     private static boolean isInFxml2Context(@NotNull Editor editor,
@@ -102,12 +102,12 @@ public final class Fxml2WordSelectionHandler extends EditorActionHandler {
         PsiFile hostFile = docManager.getPsiFile(editor.getDocument());
         if (hostFile == null) return false;
 
-        // Case 1: the editor IS a standalone FXML2 file.
+        // Case 1: the editor IS a standalone FXML file.
         if (hostFile instanceof XmlFile && Fxml2FileType.isFxml2(hostFile)) {
             return true;
         }
 
-        // Case 2: the position is inside an injected FXML2 fragment.
+        // Case 2: the position is inside an injected FXML fragment.
         InjectedLanguageManager ilm = InjectedLanguageManager.getInstance(project);
         PsiElement injected = ilm.findInjectedElementAt(hostFile, offset);
         if (injected == null) return false;

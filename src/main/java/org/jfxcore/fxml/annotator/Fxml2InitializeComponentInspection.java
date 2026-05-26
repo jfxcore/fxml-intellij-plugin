@@ -32,7 +32,7 @@ import java.util.List;
  * Inspection that warns when a code-behind constructor (Java or Kotlin) does not call
  * {@code initializeComponent()}.
  *
- * <p>A class is considered a <em>code-behind class</em> when an FXML 2.0 file exists in the
+ * <p>A class is considered a <em>code-behind class</em> when an FXML file exists in the
  * project with {@code fx:subclass} set to the fully-qualified name of that class.
  *
  * <p>Suppression:
@@ -53,7 +53,7 @@ public final class Fxml2InitializeComponentInspection extends LocalInspectionToo
 
     @Override
     public @NotNull String getGroupDisplayName() {
-        return "FXML 2.0";
+        return "FXML/2";
     }
 
     @Override
@@ -214,7 +214,7 @@ public final class Fxml2InitializeComponentInspection extends LocalInspectionToo
 
     /**
      * Returns {@code true} if the given class is referenced as {@code fx:subclass} in any
-     * FXML 2.0 file in the project.
+     * FXML file in the project.
      */
     public static boolean isCodeBehindClass(@NotNull PsiClass psiClass, @NotNull Project project) {
         String qualifiedName = psiClass.getQualifiedName();

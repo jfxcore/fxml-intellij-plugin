@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests for binding expression resolution and error reporting in FXML2 attribute values.
+ * Tests for binding expression resolution and error reporting in FXML attribute values.
  *
  * <p>Covers all three compact binding syntaxes ({@code $...}, {@code ${...}},
  * {@code #{...}}) as well as the explicit
@@ -38,7 +38,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @BeforeEach
     void addCodeBehind() {
-        // Minimal generated base class (normally produced by the fxml2 compiler)
+        // Minimal generated base class (normally produced by the FXML compiler)
         getFixture().addClass("""
                 package test;
                 import javafx.scene.layout.BorderPane;
@@ -583,7 +583,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     /**
      * A {@code ReadOnlyStringProperty} is observable but not writable.
-     * The fxml2 compiler rejects {@code #{readOnlyCaption}} with
+     * The FXML compiler rejects {@code #{readOnlyCaption}} with
      * "is not a valid bidirectional binding source, required javafx.beans.property.Property".
      * The plugin must report the same error.
      */

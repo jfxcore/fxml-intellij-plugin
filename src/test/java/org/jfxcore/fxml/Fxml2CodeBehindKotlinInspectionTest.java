@@ -83,7 +83,7 @@ class Fxml2CodeBehindKotlinInspectionTest extends Fxml2TestBase {
     }
 
     /**
-     * A Kotlin class without a paired FXML2 file is not a code-behind class
+     * A Kotlin class without a paired FXML file is not a code-behind class
      * and must never produce a warning.
      */
     @Test

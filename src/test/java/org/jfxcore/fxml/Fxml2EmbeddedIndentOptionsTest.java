@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests that pressing Tab inside embedded FXML2 markup uses the XML indent size,
+ * Tests that pressing Tab inside embedded FXML markup uses the XML indent size,
  * not the Java indent size.
  *
  * <p>Implementation under test: {@link org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers}.
@@ -51,7 +51,7 @@ class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
     }
 
     /**
-     * Verifies that pressing Tab at column 0 inside embedded FXML2 markup inserts 2 spaces
+     * Verifies that pressing Tab at column 0 inside embedded FXML markup inserts 2 spaces
      * (the XML indent size) instead of 4 spaces (the Java indent size).
      *
      * <p>How the assertion works:<br>
@@ -82,7 +82,7 @@ class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
                 """);
 
         // Run the highlighting pass so that the language-injection infrastructure
-        // registers the embedded FXML2 XML fragment.  This is required before
+        // registers the embedded FXML XML fragment.  This is required before
         // TabAction can obtain the injected EditorWindow from InjectedLanguageUtil.
         getFixture().doHighlighting();
 
@@ -99,7 +99,7 @@ class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
         boolean hasFourSpaceIndent = text.contains("\n    \n");
 
         assertTrue(hasTwoSpaceIndent,
-                "Expected Tab to insert 2 spaces (XML indent) inside embedded FXML2 markup.\n" +
+                "Expected Tab to insert 2 spaces (XML indent) inside embedded FXML markup.\n" +
                 (hasFourSpaceIndent
                         ? "4 spaces were inserted instead - the Java indent was used.\n"
                         : "") +
@@ -107,7 +107,7 @@ class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
     }
 
     /**
-     * Verifies that pressing Shift+Tab on a line inside embedded FXML2 markup removes
+     * Verifies that pressing Shift+Tab on a line inside embedded FXML markup removes
      * 2 spaces (the XML indent size) instead of 4 spaces (the Java indent size).
      *
      * <p>The line under test starts with 4 spaces (two XML indent levels).  After
@@ -150,7 +150,7 @@ class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
         boolean hasNoIndent        = text.contains("\n<Button/>");
 
         assertTrue(hasTwoSpaceIndent,
-                "Expected Shift+Tab to remove 2 spaces (XML indent) inside embedded FXML2 markup.\n" +
+                "Expected Shift+Tab to remove 2 spaces (XML indent) inside embedded FXML markup.\n" +
                 (hasNoIndent
                         ? "All 4 spaces were removed instead - the Java indent was used.\n"                        : "") +
                 "Document text:\n" + text);

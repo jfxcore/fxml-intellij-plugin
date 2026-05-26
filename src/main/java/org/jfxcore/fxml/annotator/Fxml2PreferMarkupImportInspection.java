@@ -31,12 +31,12 @@ import java.util.List;
 
 /**
  * Inspection that reports Java or Kotlin import statements which are exclusively used
- * inside embedded FXML2 markup ({@code @ComponentView} annotation values) and offers a
+ * inside embedded FXML markup ({@code @ComponentView} annotation values) and offers a
  * quick-fix to replace them with {@code <?import?>} processing instructions inside the
  * markup.
  *
  * <h2>Rationale</h2>
- * When FXML2 markup is embedded in a Java or Kotlin file via {@code @ComponentView}, the
+ * When FXML markup is embedded in a Java or Kotlin file via {@code @ComponentView}, the
  * host file must carry Java/Kotlin-level import statements for every class referenced in
  * the markup. In many projects it is preferable to keep markup-only dependencies expressed
  * as {@code <?import?>} PIs within the markup itself rather than as top-level code imports,
@@ -57,7 +57,7 @@ import java.util.List;
  * </ol>
  *
  * <p>Disabled by default; opt in via
- * <em>Settings -> Editor -> Inspections -> FXML2</em>.
+ * <em>Settings -> Editor -> Inspections -> FXML/2</em>.
  * When enabled, <em>Fix all in file</em> and <em>Fix all in scope</em> are available
  * to batch-convert all such imports in one step.
  */
@@ -125,7 +125,7 @@ public final class Fxml2PreferMarkupImportInspection extends LocalInspectionTool
 
                 holder.registerProblem(
                         importStmt,
-                        "Import '" + fqn + "' is only used in embedded FXML2 markup; "
+                        "Import '" + fqn + "' is only used in embedded FXML markup; "
                                 + "consider <?import " + fqn + "?> instead",
                         ProblemHighlightType.WEAK_WARNING,
                         new MoveToMarkupFix());
@@ -163,7 +163,7 @@ public final class Fxml2PreferMarkupImportInspection extends LocalInspectionTool
 
                 holder.registerProblem(
                         importDirective,
-                        "Import '" + fqn + "' is only used in embedded FXML2 markup; "
+                        "Import '" + fqn + "' is only used in embedded FXML markup; "
                                 + "consider <?import " + fqn + "?> instead",
                         ProblemHighlightType.WEAK_WARNING,
                         new MoveToMarkupFix());
@@ -182,7 +182,7 @@ public final class Fxml2PreferMarkupImportInspection extends LocalInspectionTool
      *
      * <p>The fix:
      * <ol>
-     *   <li>Inserts {@code <?import fqn?>} into every embedded FXML2 markup block found
+     *   <li>Inserts {@code <?import fqn?>} into every embedded FXML markup block found
      *       in the same source file (so that each block remains self-contained).</li>
      *   <li>Deletes the original Java or Kotlin import statement.</li>
      * </ol>

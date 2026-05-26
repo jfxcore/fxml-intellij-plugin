@@ -43,8 +43,7 @@ import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 import java.util.Set;
 
 /**
- * Annotates invalid attributes and values in FXML 2.0 files with diagnostics that mirror
- * the fxml2 compiler's own error messages.
+ * Annotates invalid attributes and values in FXML files with diagnostics.
  */
 public final class Fxml2AttributeAnnotator implements Annotator {
 
@@ -352,7 +351,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
      * Validates an event-handler method reference: a plain method name assigned to an
      * {@code EventHandler}-typed property (e.g. {@code onAction="handleAction"}).
      *
-     * <p>Reports two distinct error cases, matching the fxml2 compiler:
+     * <p>Reports two distinct error cases, matching the FXML compiler:
      * <ol>
      *   <li>No method with the given name exists on the code-behind class.</li>
      *   <li>A method with the given name exists but no overload has a compatible
@@ -404,7 +403,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
      * is a subtype of {@code javafx.beans.value.ObservableValue}.
      *
      * <p>Used to validate that members accessed via the {@code ::} (observable-selection)
-     * operator in a binding path are actually observable, mirroring the fxml2 compiler's
+     * operator in a binding path are actually observable, mirroring the FXML compiler's
      * {@code INVALID_INVARIANT_REFERENCE} check.
      */
     private static boolean isNotObservableDeclaration(@Nullable PsiElement decl, @NotNull XmlFile xmlFile) {
@@ -883,7 +882,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
      * @param attrVal         the attribute value node that contains the markup extension text
      * @param paramsPart      the parameter portion of the markup extension, after the class name
      * @param paramsPartInRaw the offset of {@code paramsPart} within {@code attrVal.getValue()}
-     * @param xmlFile         the containing FXML2 file
+     * @param xmlFile         the containing FXML file
      * @param holder          the annotation holder for reporting errors
      */
     private static void annotateMarkupExtensionBindingArgs(

@@ -18,7 +18,7 @@ import org.junit.jupiter.api.TestInstance;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests that copying FXML2 files via the IntelliJ Project-Explorer F5 copy action works.
+ * Tests that copying FXML files via the IntelliJ Project-Explorer F5 copy action works.
  *
  * <p>Root cause: {@link Fxml2FileTypeOverrider#getOverriddenFileType} called
  * {@code file.isValid()} without guarding against the
@@ -68,13 +68,13 @@ class Fxml2CopyFileTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // 2. Integration: CopyFilesOrDirectoriesHandler can copy an FXML2 file
+    // 2. Integration: CopyFilesOrDirectoriesHandler can copy an FXML file
     // -----------------------------------------------------------------------
 
     /**
      * Verifies that the platform's {@code CopyFilesOrDirectoriesHandler}:
      * <ul>
-     *   <li>reports {@code canCopy = true} for a standalone FXML2 file, and</li>
+     *   <li>reports {@code canCopy = true} for a standalone FXML file, and</li>
      *   <li>successfully copies the file to the same directory under a new name.</li>
      * </ul>
      *
@@ -83,19 +83,19 @@ class Fxml2CopyFileTest extends Fxml2TestBase {
      */
     @Test
     void copyFxml2File_succeeds() {
-        // Create a minimal FXML2 file in the source root.
+        // Create a minimal FXML file in the source root.
         PsiFile original = getFixture().addFileToProject(
                 "test/OriginalView.fxml",
                 fxml2("javafx.scene.control.Button", "  <Button text=\"Hello\"/>\n"));
 
-        assertNotNull(original, "original FXML2 file should exist");
+        assertNotNull(original, "original FXML file should exist");
         assertEquals(Fxml2FileType.INSTANCE, original.getVirtualFile().getFileType(),
                 "file must be detected as Fxml2FileType");
 
         // canCopy must return true (needs read access).
         var elements = new com.intellij.psi.PsiElement[]{original};
         boolean canCopy = ReadAction.compute(() -> CopyHandler.canCopy(elements));
-        assertTrue(canCopy, "CopyHandler.canCopy must return true for an FXML2 PsiFile");
+        assertTrue(canCopy, "CopyHandler.canCopy must return true for an FXML PsiFile");
 
         // Perform the copy programmatically.
         PsiDirectory dir = ReadAction.compute(original::getContainingDirectory);
@@ -123,7 +123,7 @@ class Fxml2CopyFileTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Verifies that after copying an FXML2 file the {@code fx:subclass} attribute in
+     * Verifies that after copying an FXML file the {@code fx:subclass} attribute in
      * the copy reflects the new file name while the package prefix is preserved.
      *
      * <p>E.g. copying {@code OriginalView.fxml} (with
@@ -132,7 +132,7 @@ class Fxml2CopyFileTest extends Fxml2TestBase {
      */
     @Test
     void copyFxml2File_updatesSubclass() {
-        // Create a minimal FXML2 file whose fx:subclass we will inspect after copy.
+        // Create a minimal FXML file whose fx:subclass we will inspect after copy.
         PsiFile original = getFixture().addFileToProject(
                 "subtest/OriginalView.fxml",
                 fxml2("javafx.scene.control.Button", "  <Button/>\n", "com.example.OriginalView"));

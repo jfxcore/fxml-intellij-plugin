@@ -23,7 +23,7 @@ import java.util.Collection;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for custom markup extensions in FXML2 attribute values and element notation.
+ * Tests for custom markup extensions in FXML attribute values and element notation.
  *
  * <p>A custom markup extension is a class that implements
  * {@code org.jfxcore.markup.MarkupExtension} and is invoked with the
@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>5.4: Parameter configuration via {@code @NamedArg}, getter/setter</li>
  *   <li>5.5: {@code @DefaultProperty} on a markup extension class</li>
  *   <li>5.6: {@code @ReturnType} annotation for compile-time type checking</li>
- *   <li>Navigation: Ctrl+click navigates to the class; Find Usages finds FXML2 use sites</li>
+ *   <li>Navigation: Ctrl+click navigates to the class; Find Usages finds FXML use sites</li>
  * </ul>
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -590,7 +590,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     }
 
     /**
-     * Find Usages of the markup extension class discovers the FXML2 attribute value use site.
+     * Find Usages of the markup extension class discovers the FXML attribute value use site.
      */
     @Test
     void findUsagesOfExtensionClass_showsFxmlUseSite() {
@@ -618,12 +618,12 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
                 ReadAction.compute(() ->
                         usages.stream().anyMatch(ref ->
                                 ref.getElement().getContainingFile().getName().endsWith(".fxml"))),
-                "Find Usages of test.MyExtension must include the FXML2 file use site");
+                "Find Usages of test.MyExtension must include the FXML file use site");
     }
 
     // -----------------------------------------------------------------------
     // Generic type arguments  (typeArguments.md)
-    // The FXML 2.0 compiler accepts {ClassName<TypeArg>} with a literal '<' as a
+    // The FXML/2 compiler accepts {ClassName<TypeArg>} with a literal '<' as a
     // non-standard convenience form; the standard XML form uses &lt; / &gt; escapes.
     // In both cases IntelliJ decodes XML entities before handing the value to the
     // plugin, so both arrive at the parser as a literal '<' and are treated identically.
@@ -1002,7 +1002,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void unresolvedClassInMarkupExtParamBinding_offersAddImportQuickfix() {
-        // ItemType is a known class but NOT imported in the FXML2 file.
+        // ItemType is a known class but NOT imported in the FXML file.
         getFixture().addClass("""
                 package test;
                 import java.util.function.Function;
@@ -1038,7 +1038,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     /**
      * A static field defined only on an implemented interface must NOT resolve when referenced
      * via the implementing class name inside a markup extension parameter binding.
-     * Field resolution walks the superclass chain only, mirroring the fxml2 compiler, so
+     * Field resolution walks the superclass chain only, mirroring the FXML compiler, so
      * interface fields are invisible through implementing class names.
      */
     @Test

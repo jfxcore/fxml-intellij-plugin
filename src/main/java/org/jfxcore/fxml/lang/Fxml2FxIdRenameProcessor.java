@@ -17,13 +17,13 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Rename processor for {@code fx:id} attribute values in FXML 2.0 files.
+ * Rename processor for {@code fx:id} attribute values in FXML files.
  *
  * <p>When an {@code fx:id} value is renamed, this processor:
  * <ol>
  *   <li>Updates the {@code fx:id} attribute value itself (via the standard
  *       {@link com.intellij.psi.ElementManipulator}).</li>
- *   <li>Collects all binding-path segment references in the same FXML 2.0 file that
+ *   <li>Collects all binding-path segment references in the same FXML file that
  *       reference the same {@code fx:id}, so the rename framework calls
  *       {@link PsiReference#handleElementRename} on each to update the binding
  *       expression in-place.</li>
@@ -42,7 +42,7 @@ public final class Fxml2FxIdRenameProcessor extends RenamePsiElementProcessor {
     }
 
     /**
-     * Returns all binding-path segment references in the same FXML2 file that reference
+     * Returns all binding-path segment references in the same FXML file that reference
      * this {@code fx:id}.  The rename framework will call
      * {@link PsiReference#handleElementRename} on each, updating the binding expression.
      *

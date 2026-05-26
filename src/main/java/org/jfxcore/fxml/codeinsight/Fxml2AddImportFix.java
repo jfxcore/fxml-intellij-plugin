@@ -57,7 +57,7 @@ import java.util.Set;
 
 /**
  * Intention action that inserts a {@code <?import fqn?>} processing instruction for an
- * unresolved class name in an FXML 2.0 file.
+ * unresolved class name in an FXML file.
  *
  * <p>When exactly one candidate class is found, the import is inserted immediately.
  * When multiple candidates exist, a popup lets the user choose.
@@ -78,7 +78,7 @@ public final class Fxml2AddImportFix implements IntentionAction, LocalQuickFix, 
 
     /**
      * FQN prefixes that are pushed to the bottom of the candidate list (after unrecognized
-     * libraries), because they are legacy UI toolkits irrelevant to FXML 2.0.
+     * libraries), because they are legacy UI toolkits irrelevant to FXML.
      */
     private static final List<String> DEPRIORITIZED_PREFIXES = List.of("java.awt.", "javax.swing.");
 
@@ -86,7 +86,7 @@ public final class Fxml2AddImportFix implements IntentionAction, LocalQuickFix, 
     private final String simpleName;
 
     /**
-     * When {@code true} (the default), classes that cannot be instantiated or used as FXML 2.0
+     * When {@code true} (the default), classes that cannot be instantiated or used as FXML
      * tags (abstract classes, plain interfaces without static members, etc.) are filtered out.
      * Set to {@code false} when the fix is offered for a <em>declaring class</em> in a static
      * property attribute (e.g. {@code Command} in {@code Command.onAction}), in that context
@@ -111,10 +111,10 @@ public final class Fxml2AddImportFix implements IntentionAction, LocalQuickFix, 
      * Finds all classes whose simple name matches {@code simpleName} and are reachable
      * from the module's production-runtime classpath (COMPILE + RUNTIME scope order entries).
      * This excludes annotation processors, {@code compileOnly} build tools, Gradle internals,
-     * and other PROVIDED/TEST-only dependencies that should never appear as FXML 2.0 import choices.
+     * and other PROVIDED/TEST-only dependencies that should never appear as FXML import choices.
      * Classes already imported in the file are also excluded.
      *
-     * <p>Uses {@code checkUnusable = true} (the default; classes not usable as FXML2 tags
+     * <p>Uses {@code checkUnusable = true} (the default; classes not usable as FXML tags
      * are filtered). Use {@link #findCandidates(String, XmlFile, boolean)} when the class is
      * sought as a static-property declaring class rather than an instantiatable tag.
      */
@@ -127,7 +127,7 @@ public final class Fxml2AddImportFix implements IntentionAction, LocalQuickFix, 
 
     /**
      * Like {@link #findCandidates(String, XmlFile)} but allows callers to control whether
-     * classes that cannot be used as FXML2 tags are excluded.
+     * classes that cannot be used as FXML tags are excluded.
      *
      * @param checkUnusable if {@code true}, classes filtered by {@link #isUnusableInFxml} are
      *                      excluded (suitable for tag-name imports); if {@code false}, abstract
@@ -240,7 +240,7 @@ public final class Fxml2AddImportFix implements IntentionAction, LocalQuickFix, 
 
     /**
      * Returns {@code true} if the FQN belongs to an internal/implementation package that
-     * should never appear as an FXML2 import suggestion:
+     * should never appear as an FXML import suggestion:
      * <ul>
      *   <li>{@code com.sun.*}: JDK/JavaFX internal APIs (always excluded)</li>
      *   <li>any package segment named {@code internal} or {@code impl} in a <em>library</em>
@@ -273,8 +273,8 @@ public final class Fxml2AddImportFix implements IntentionAction, LocalQuickFix, 
     }
 
     /**
-     * Returns {@code true} if {@code cls} cannot be used as an FXML2 tag.
-     * A class is usable if it matches any of the fxml2 compiler's construction strategies:
+     * Returns {@code true} if {@code cls} cannot be used as an FXML tag.
+     * A class is usable if it matches any of the FXML compiler's construction strategies:
      *
      * <ul>
      *   <li>Public no-arg constructor -> default-object instantiation</li>
@@ -390,7 +390,7 @@ public final class Fxml2AddImportFix implements IntentionAction, LocalQuickFix, 
         String pkg = packageOf(fqn);
         if (existing.contains(fqn) || (!pkg.isEmpty() && existing.contains(pkg + ".*"))) return;
 
-        // For embedded FXML2 (injected into a Kotlin/Java @ComponentView annotation string), the
+        // For embedded FXML (injected into a Kotlin/Java @ComponentView annotation string), the
         // <?import?> PIs are part of the synthetic injection prefix: they have no backing
         // text in the host document.  Attempting to modify them via PSI triggers an
         // AssertionError in DocumentWindowImpl.calculateMinEditSequence.
@@ -547,7 +547,7 @@ public final class Fxml2AddImportFix implements IntentionAction, LocalQuickFix, 
 
     @Override
     public @NotNull String getFamilyName() {
-        return "Add FXML2 import";
+        return "Add FXML import";
     }
 
     @Override

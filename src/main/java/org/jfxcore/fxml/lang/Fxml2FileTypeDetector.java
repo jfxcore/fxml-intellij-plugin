@@ -11,13 +11,13 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Content-based file-type detector that promotes {@code .fxml} files to {@link Fxml2FileType}
- * when the file content shows the JFXcore FXML 2.0 namespace.
+ * when the file content shows the FXML/2 namespace.
  *
  * <h3>Detection strategy</h3>
  * <p>We scan the first {@value #DESIRED_PREFIX_LENGTH} bytes of the file for both:
  * <ol>
  *   <li>{@code xmlns="http://javafx.com/javafx"}: the standard JavaFX namespace, and</li>
- *   <li>{@code xmlns:fx="http://jfxcore.org/fxml/2.0"}: the JFXcore FXML 2.0 namespace.</li>
+ *   <li>{@code xmlns:fx="http://jfxcore.org/fxml/2.0"}: the FXML/2 namespace.</li>
  * </ol>
  * Only when <em>both</em> strings are present do we return {@link Fxml2FileType#INSTANCE};
  * otherwise {@code null} is returned and the platform continues with the next detector

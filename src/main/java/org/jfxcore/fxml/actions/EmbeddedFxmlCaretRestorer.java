@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Utility for deferring host-editor caret restoration after a PSI mutation has been applied
- * to an embedded (injected) FXML2 fragment.
+ * to an embedded (injected) FXML fragment.
  *
  * <p>When PSI elements inside an injected language fragment are mutated (e.g. via
  * {@link com.intellij.psi.xml.XmlAttribute#setValue} or
@@ -42,7 +42,7 @@ public final class EmbeddedFxmlCaretRestorer {
      * negative.
      *
      * @param project          the current project
-     * @param hostFile         the host Java/Kotlin file that embeds the FXML2 fragment
+     * @param hostFile         the host Java/Kotlin file that embeds the FXML fragment
      * @param targetHostOffset the desired caret position in the host document after the fix;
      *                         pass {@code -1} to suppress caret restoration
      */

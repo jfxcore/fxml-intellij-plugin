@@ -36,7 +36,7 @@ import java.util.ArrayList;
  * {@code Boolean}-typed binding path and are therefore a compile-time no-op.
  *
  * <p>When the resolved type of the last path segment is {@code java.lang.Boolean},
- * the fxml2 compiler skips any wrapping call and passes the observable directly to
+ * the FXML compiler skips any wrapping call and passes the observable directly to
  * the target property.  The {@code !!} prefix is therefore redundant and should be
  * removed to keep the expression clean.
  *

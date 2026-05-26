@@ -35,17 +35,17 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import java.util.List;
 
 /**
- * Utilities for working with FXML2 markup embedded via the
+ * Utilities for working with FXML markup embedded via the
  * {@code @org.jfxcore.markup.ComponentView} annotation.
  *
  * <p>The language injector wraps the user's markup in a synthetic
  * {@code <fxml2:embedded>} root element that carries the namespace declarations and
  * {@code fx:subclass}. Every method here uses the presence / namespace of that wrapper root
- * to detect embedded FXML2 files without relying on user-data keys.
+ * to detect embedded FXML files without relying on user-data keys.
  */
 public final class Fxml2EmbeddedUtil {
 
-    /** FQN of the {@code @ComponentView} annotation processed by the fxml2 compiler. */
+    /** FQN of the {@code @ComponentView} annotation processed by the FXML compiler. */
     public static final String MARKUP_ANNOTATION_FQN = "org.jfxcore.markup.ComponentView";
 
     /**
@@ -104,7 +104,7 @@ public final class Fxml2EmbeddedUtil {
     /**
      * Returns the {@link PsiLanguageInjectionHost} (typically a
      * {@link PsiLiteralExpression} text block) that contains the embedded markup, or
-     * {@code null} if {@code file} is not an embedded FXML2 file.
+     * {@code null} if {@code file} is not an embedded FXML file.
      */
     public static @Nullable PsiLanguageInjectionHost getInjectionHost(@NotNull XmlFile file) {
         if (!isEmbeddedFxml2(file)) return null;
@@ -114,7 +114,7 @@ public final class Fxml2EmbeddedUtil {
 
     /**
      * Returns the {@link PsiClass} whose {@code @ComponentView} annotation produced this injected
-     * FXML2 file, or {@code null} if it cannot be determined.
+     * FXML file, or {@code null} if it cannot be determined.
      *
      * <p>Handles both Java ({@code PsiLiteralExpression} host) and Kotlin
      * ({@code KtStringTemplateExpression} host) injection sources.
@@ -342,12 +342,12 @@ public final class Fxml2EmbeddedUtil {
     // -----------------------------------------------------------------------
 
     /**
-     * Walks the injected FXML2 XML of every {@code @ComponentView}-annotated class in
+     * Walks the injected FXML of every {@code @ComponentView}-annotated class in
      * {@code scope} that is the same as, or a subclass of, {@code containingClass},
      * and calls {@code consumer} for every {@code fx:id} attribute value equal to
      * {@code idName}.
      *
-     * <p>This is the embedded-FXML2 counterpart of the filename-index scan in
+     * <p>This is the embedded-FXML counterpart of the filename-index scan in
      * {@link Fxml2FxIdFieldSearcher}.
      */
     public static void findFxIdInEmbedded(
@@ -390,7 +390,7 @@ public final class Fxml2EmbeddedUtil {
 
     /**
      * Finds the {@link com.intellij.psi.xml.XmlAttributeValue} of the first {@code fx:id}
-     * declaration matching {@code field.getName()} in any embedded FXML2 of classes that
+     * declaration matching {@code field.getName()} in any embedded FXML of classes that
      * are or extend {@code field.getContainingClass()}.
      *
      * <p>Used by {@link Fxml2FxIdFindUsagesHandlerFactory} to resolve a Java field to its

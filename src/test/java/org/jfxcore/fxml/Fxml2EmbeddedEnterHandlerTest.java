@@ -14,9 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests that pressing Enter between attributes of an XML tag inside embedded FXML2 markup
+ * Tests that pressing Enter between attributes of an XML tag inside embedded FXML markup
  * produces a new line aligned with the first attribute of that tag: matching the behavior
- * of standalone FXML2 files.
+ * of standalone FXML files.
  *
  * <p>Implementation under test:
  * {@link org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers.EnterHandler}.
@@ -39,7 +39,7 @@ class Fxml2EmbeddedEnterHandlerTest extends Fxml2TestBase {
     }
 
     /**
-     * Verifies that pressing Enter between two attributes of an XML tag in embedded FXML2
+     * Verifies that pressing Enter between two attributes of an XML tag in embedded FXML
      * markup places the next attribute at the same column as the first attribute.
      *
      * <p>Setup: {@code <TextField text="hello" <caret>maxWidth="200"/>}

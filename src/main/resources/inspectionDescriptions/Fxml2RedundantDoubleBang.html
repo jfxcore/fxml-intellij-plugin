@@ -3,7 +3,7 @@
 Reports a redundant <code>!!</code> (BOOLIFY) operator in an fxml2 binding expression
 when the resolved type of the bound path is <code>Boolean</code>.
 <p>
-The fxml2 compiler treats <code>!!</code> on a <code>Boolean</code>-typed observable as a
+The FXML compiler treats <code>!!</code> on a <code>Boolean</code>-typed observable as a
 compile-time no-op: the observable is passed directly to the target property without any
 <code>BooleanBindings</code> wrapping.  The <code>!!</code> prefix is therefore unnecessary
 and can be safely removed.

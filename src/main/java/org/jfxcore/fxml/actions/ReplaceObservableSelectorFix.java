@@ -21,11 +21,11 @@ import org.jetbrains.annotations.Nullable;
  * Quick fix that replaces the observable-selection operator {@code ::} with a plain
  * member-access separator {@code .} at a specific position within an XML attribute value.
  *
- * <p>This fix is offered wherever the fxml2 compiler would report
+ * <p>This fix is offered wherever the FXML compiler would report
  * {@code INVALID_INVARIANT_REFERENCE}: a binding path segment accessed via {@code ::} whose
  * declared type is not an {@code ObservableValue} subtype.
  *
- * <p>When the FXML2 is embedded inside a Java or Kotlin {@code @ComponentView} text block
+ * <p>When the FXML is embedded inside a Java or Kotlin {@code @ComponentView} text block
  * (an injected language fragment), the edit is applied directly to the host document at the
  * mapped host offset.  The editor caret is then restored to the same character within the
  * member name that the user's cursor occupied before the fix was invoked.  The target offset
@@ -33,7 +33,7 @@ import org.jetbrains.annotations.Nullable;
  * {@link #isAvailable} call (which reliably reflects the cursor before Alt+Enter is pressed)
  * via a deferred callback that runs after both the PSI commit and the EditorWindowImpl caret
  * resync; a one-shot caret listener guards against any further resync that might fire
- * even later.  For standalone FXML2 files, {@link XmlAttribute#setValue} is used instead.
+ * even later.  For standalone FXML files, {@link XmlAttribute#setValue} is used instead.
  */
 public final class ReplaceObservableSelectorFix implements IntentionAction, PriorityAction {
 
@@ -138,7 +138,7 @@ public final class ReplaceObservableSelectorFix implements IntentionAction, Prio
     }
 
     /**
-     * Applies the fix when the FXML2 is embedded inside a Java or Kotlin
+     * Applies the fix when the FXML is embedded inside a Java or Kotlin
      * {@code @ComponentView} text block.
      *
      * <p>Direct host-document replacement is used instead of {@link XmlAttribute#setValue}

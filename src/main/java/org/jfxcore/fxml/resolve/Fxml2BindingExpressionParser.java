@@ -81,7 +81,7 @@ public final class Fxml2BindingExpressionParser {
      * @param strippedPath path with boolean operators already removed
      */
     public static @Nullable ContextSelector parseContextSelector(@NotNull String strippedPath) {
-        // "this.foo": the fxml2 compiler simply skips the "this" token and resolves
+        // "this.foo": the FXML compiler simply skips the "this" token and resolves
         // the rest against the ROOT context (code-behind class).  We represent this as
         // a null selector (default ROOT) with the "this." prefix consumed so callers
         // know the selector text to highlight.  We use selectorName="" to distinguish
@@ -263,7 +263,7 @@ public final class Fxml2BindingExpressionParser {
     /**
      * Represents a syntactic error in a binding expression.
      *
-     * @param message     human-readable error message (mirrors the fxml2 compiler)
+     * @param message     human-readable error message
      * @param errorOffset offset within the raw value (quotes excluded) where the error is located
      * @param errorLength length of the erroneous token (1 for a missing/unexpected single char)
      */
@@ -360,7 +360,7 @@ public final class Fxml2BindingExpressionParser {
      * returned.  Otherwise this method delegates to {@link #parse(String)}.
      *
      * @param value          raw attribute value without surrounding quotes
-     * @param prefixMappings prefix-char -> extension FQN map for the current FXML2 file
+     * @param prefixMappings prefix-char -> extension FQN map for the current FXML file
      * @return a {@link PrefixShorthandExpression}, {@link MarkupExtensionExpression},
      *         {@link ParsedExpression}, {@link ParseError}, or {@code null}
      */
@@ -518,7 +518,7 @@ public final class Fxml2BindingExpressionParser {
                     return new ParseError("Unknown XML namespace: " + ns, 0, value.length());
                 }
                 // Strip generic type arguments: {MyMarkupExtension<String> ...} -> extensionName "MyMarkupExtension".
-                // The FXML 2.0 compiler accepts both the literal '<' and the XML-escaped '&lt;' forms.
+                // The FXML/2 compiler accepts both the literal '<' and the XML-escaped '&lt;' forms.
                 // XmlAttributeValue.getValue() may return either form depending on the XML parser,
                 // so check for both.
                 int angleIdx = name.indexOf('<');

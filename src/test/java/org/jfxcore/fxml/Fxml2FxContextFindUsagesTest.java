@@ -35,9 +35,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Verifies that:
  * <ul>
  *   <li>The context class referenced via element notation ({@code <fx:context><MyCtx/></fx:context>})
- *       is found by "Find Usages" in both standalone and embedded FXML2.</li>
+ *       is found by "Find Usages" in both standalone and embedded FXML.</li>
  *   <li>Properties on the context class referenced in binding paths are found by "Find Usages"
- *       in both standalone and embedded FXML2.</li>
+ *       in both standalone and embedded FXML.</li>
  *   <li>Ctrl+click navigation from a class tag inside {@code <fx:context>} resolves to the
  *       class declaration.</li>
  *   <li>Ctrl+click navigation from a binding-path segment in {@code fx:context="$field"}
@@ -99,7 +99,7 @@ class Fxml2FxContextFindUsagesTest extends Fxml2TestBase {
 
     /**
      * "Find Usages" on the context class must discover its use as an element-notation
-     * context in a standalone FXML2 file.
+     * context in a standalone FXML file.
      */
     @Test
     void findUsagesOfContextClassInElementNotationStandalone() {
@@ -141,7 +141,7 @@ class Fxml2FxContextFindUsagesTest extends Fxml2TestBase {
 
     /**
      * "Find Usages" on the context class must discover its use as an element-notation
-     * context inside embedded FXML2 markup.
+     * context inside embedded FXML markup.
      */
     @Test
     void findUsagesOfContextClassInElementNotationEmbedded() {
@@ -179,7 +179,7 @@ class Fxml2FxContextFindUsagesTest extends Fxml2TestBase {
                     ref -> ref.getElement().getContainingFile() instanceof XmlFile xmlFile
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(foundInEmbedded,
-                    "Find Usages on FxuContext must find a reference in the embedded FXML2 markup. "
+                    "Find Usages on FxuContext must find a reference in the embedded FXML markup. "
                     + "Found refs: "
                     + refs.stream().map(r -> r.getClass().getSimpleName()
                             + " in " + r.getElement().getContainingFile().getName()).toList());
@@ -192,7 +192,7 @@ class Fxml2FxContextFindUsagesTest extends Fxml2TestBase {
 
     /**
      * "Find Usages" on a property accessor method of the context class must discover
-     * the binding-path segment that references it in a standalone FXML2 file where
+     * the binding-path segment that references it in a standalone FXML file where
      * {@code fx:context} is set.
      */
     @Test
@@ -239,7 +239,7 @@ class Fxml2FxContextFindUsagesTest extends Fxml2TestBase {
 
     /**
      * "Find Usages" on a property accessor method of the context class must discover
-     * the binding-path segment that references it in embedded FXML2 markup where
+     * the binding-path segment that references it in embedded FXML markup where
      * {@code fx:context} is set (attribute form).
      */
     @Test
@@ -283,7 +283,7 @@ class Fxml2FxContextFindUsagesTest extends Fxml2TestBase {
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(foundBinding,
                     "Find Usages on FxuContext.userNameProperty() must find the 'userName' "
-                    + "binding segment in embedded FXML2 with fx:context set. Found refs: "
+                    + "binding segment in embedded FXML with fx:context set. Found refs: "
                     + refs.stream().map(r -> r.getClass().getSimpleName()
                             + " in " + r.getElement().getContainingFile().getName()).toList());
         });
@@ -295,7 +295,7 @@ class Fxml2FxContextFindUsagesTest extends Fxml2TestBase {
 
     /**
      * Ctrl+click on a class tag inside {@code <fx:context>} must resolve to the class
-     * declaration in both standalone and embedded FXML2.
+     * declaration in both standalone and embedded FXML.
      */
     @Test
     void navigationFromContextClassTagToClassDeclaration() {

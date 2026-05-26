@@ -24,7 +24,7 @@ import org.junit.jupiter.api.TestInstance;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for the {@code <?prefix?>} processing-instruction support in FXML2 files.
+ * Tests for the {@code <?prefix?>} processing-instruction support in FXML files.
  *
  * <p>Covers the following prefix-declaration requirements:
  * <ul>
@@ -421,11 +421,11 @@ class Fxml2PrefixDeclarationTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2 with <?prefix?> override
+    // Embedded FXML with <?prefix?> override
     // -----------------------------------------------------------------------
 
     /**
-     * In embedded FXML2, {@code <?prefix % = test.MyExtension?>} must override the
+     * In embedded FXML, {@code <?prefix % = test.MyExtension?>} must override the
      * built-in {@code %} -> StaticResource default so that
      * {@link Fxml2ImportResolver#parsePrefixMappings} returns {@code test.MyExtension}
      * for {@code %}.
@@ -466,13 +466,13 @@ class Fxml2PrefixDeclarationTest extends Fxml2TestBase {
                     Fxml2ImportResolver.parsePrefixMappings(xmlFile);
             String mapped = mappings.get('%');
             assertEquals("test.MyExtension", mapped,
-                    "<?prefix % = test.MyExtension?> in embedded FXML2 must override "
+                    "<?prefix % = test.MyExtension?> in embedded FXML must override "
                     + "the default % -> StaticResource; got: " + mapped);
         });
     }
 
     /**
-     * In embedded FXML2, ctrl-clicking the {@code %} prefix character in a
+     * In embedded FXML, ctrl-clicking the {@code %} prefix character in a
      * {@code %key} attribute value must navigate to the class declared by an explicit
      * {@code <?prefix % = ClassName?>} PI, not to the built-in {@code StaticResource}.
      *
@@ -523,15 +523,15 @@ class Fxml2PrefixDeclarationTest extends Fxml2TestBase {
             // The prefix '%' is at offset 1 in attrVal.getText() (after the opening quote).
             PsiReference prefixRef = attrVal.findReferenceAt(1);
             assertNotNull(prefixRef,
-                    "No reference found at '%' prefix character (offset 1) in embedded FXML2");
+                    "No reference found at '%' prefix character (offset 1) in embedded FXML");
 
             PsiElement resolved = prefixRef.resolve();
             assertNotNull(resolved,
                     "Reference at '%' must resolve to the declared extension class (test.MyExtension), "
-                    + "not null; the <?prefix?> PI override must be visible from embedded FXML2");
+                    + "not null; the <?prefix?> PI override must be visible from embedded FXML");
             assertInstanceOf(PsiClass.class, resolved);
             assertEquals("test.MyExtension", ((PsiClass) resolved).getQualifiedName(),
-                    "% prefix override in embedded FXML2 must navigate to test.MyExtension, "
+                    "% prefix override in embedded FXML must navigate to test.MyExtension, "
                     + "not to the default StaticResource");
         });
     }
@@ -573,7 +573,7 @@ class Fxml2PrefixDeclarationTest extends Fxml2TestBase {
     }
 
     /**
-     * In embedded FXML2, renaming the class declared in a {@code <?prefix % = MyExtension?>} PI
+     * In embedded FXML, renaming the class declared in a {@code <?prefix % = MyExtension?>} PI
      * must NOT rename the {@code %} prefix character in attribute values such as {@code %greeting}.
      * The {@code %} is a symbolic alias for the class, not a textual occurrence of the class name,
      * and must therefore be excluded from the set of references updated by the rename refactoring.

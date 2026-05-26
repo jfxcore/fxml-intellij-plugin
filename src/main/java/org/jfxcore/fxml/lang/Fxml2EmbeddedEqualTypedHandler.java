@@ -21,20 +21,20 @@ import com.intellij.psi.xml.XmlTokenType;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Intercepts {@code =} typed after an XML attribute name inside embedded FXML2 markup
+ * Intercepts {@code =} typed after an XML attribute name inside embedded FXML markup
  * (a {@code @ComponentView} annotation text block) and inserts double quotes
  * ({@code =""}) with the caret positioned between them.
  *
  * <h2>Problem</h2>
  * <p>IntelliJ's built-in {@code XmlEqTypedHandler} chooses the quote character via
  * {@code file.getContext().getText()}, when that text starts with {@code '"'} it uses
- * single quotes ({@code =''}). For embedded FXML2 the injection host is a Java
+ * single quotes ({@code =''}). For embedded FXML the injection host is a Java
  * text-block literal whose text begins with {@code '"""'}, so the first character is
  * {@code '"'}: causing the handler to (incorrectly) select single quotes.
  *
  * <h2>Fix</h2>
  * <p>This {@link TypedHandlerDelegate} runs <em>before</em> the default handler.  When
- * {@code =} is typed in an embedded FXML2 XML attribute-name position it:
+ * {@code =} is typed in an embedded FXML XML attribute-name position it:
  * <ol>
  *   <li>inserts {@code =""} and places the caret between the quotes;</li>
  *   <li>commits the document so the host Java PSI is up-to-date before inspections
@@ -80,7 +80,7 @@ public final class Fxml2EmbeddedEqualTypedHandler extends TypedHandlerDelegate {
 
         if (c != '=') return Result.CONTINUE;
 
-        // Only act inside embedded FXML2 XML files.
+        // Only act inside embedded FXML files.
         if (!(file instanceof XmlFile xmlFile)) return Result.CONTINUE;
         if (!Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile)) return Result.CONTINUE;
 

@@ -27,7 +27,7 @@ final class Fxml2KotlinImportHelper {
      * Returns the import targets declared in {@code file} if it is a {@link KtFile},
      * or an empty list if {@code file} is not a Kotlin file.
      *
-     * @param file the PSI file that is the host of an embedded FXML2 injection
+     * @param file the PSI file that is the host of an embedded FXML injection
      * @return non-static import targets, in declaration order; wildcard imports are
      *         returned with the {@code .*} suffix restored
      */

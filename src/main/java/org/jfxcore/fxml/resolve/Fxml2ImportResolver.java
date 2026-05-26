@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Resolves unqualified or fully-qualified Java type names used as FXML2 element tag names
+ * Resolves unqualified or fully-qualified Java type names used as FXML element tag names
  * against the {@code <?import ...?>} processing instructions in the containing file.
  *
  * <p>Resolution order mirrors the fxml-compiler's {@code Resolver.getPotentialClassNames}:
@@ -101,12 +101,12 @@ public final class Fxml2ImportResolver {
      * ClassPathResource, {@code %} -> StaticResource).  The implicit defaults are added
      * last with {@link Map#putIfAbsent} so that explicit declarations override them.
      *
-     * @param file the FXML2 file to scan
+     * @param file the FXML file to scan
      * @return an unmodifiable map, never {@code null}
      */
     public static @NotNull Map<Character, String> parsePrefixMappings(@NotNull XmlFile file) {
         return CachedValuesManager.getCachedValue(file, PREFIX_MAPPINGS_CACHE, () -> {
-            // For embedded FXML2 files, the prefix mappings depend on the host Java file
+            // For embedded FXML files, the prefix mappings depend on the host Java file
             // (which the injection framework reflects into the XML prolog). Use the Java-language
             // modification tracker so that edits to the host file invalidate the cache, while
             // edits to unrelated non-Java files (CSS, resource bundles, other FXML) do not.
@@ -123,7 +123,7 @@ public final class Fxml2ImportResolver {
         Map<Character, String> result = new LinkedHashMap<>();
         XmlDocument document = file.getDocument();
         if (document != null) {
-            // Standalone FXML2: <?prefix?> PIs appear in the document prolog, before the
+            // Standalone FXML: <?prefix?> PIs appear in the document prolog, before the
             // root element.
             XmlProlog prolog = document.getProlog();
             if (prolog != null) {
@@ -132,7 +132,7 @@ public final class Fxml2ImportResolver {
                     parsePrefixInstruction(pi, result);
                 }
             }
-            // Embedded FXML2: the injection wraps the annotation value inside a synthetic
+            // Embedded FXML: the injection wraps the annotation value inside a synthetic
             // root element (<fxml2:embedded>).  Any <?prefix?> PIs written by the user appear
             // as direct children of that wrapper element, before the user's own root tag.
             // The prolog only contains the synthetic <?xml?> and <?import?> PIs injected from
@@ -214,14 +214,14 @@ public final class Fxml2ImportResolver {
      * using the imports declared in {@code contextFile}.
      *
      * @param tagName     the raw XML tag local name
-     * @param contextFile the FXML2 file that provides the import declarations
+     * @param contextFile the FXML file that provides the import declarations
      * @return the resolved class, or {@code null} if none could be found
      */
     public static @Nullable PsiClass resolve(@NotNull String tagName, @NotNull XmlFile contextFile) {
         Project project = contextFile.getProject();
         // XML files may be assigned a project-wide resolve scope by IntelliJ's XML support
         // rather than a module-specific one.  Computing the scope from the containing module
-        // matches the fxml2 compiler's view: only types on the module's compile classpath
+        // matches the FXML compiler's view: only types on the module's compile classpath
         // are resolvable, which excludes unrelated source sets and test-only roots.
         GlobalSearchScope scope = compileScope(contextFile);
         JavaPsiFacade facade = JavaPsiFacade.getInstance(project);
@@ -282,7 +282,7 @@ public final class Fxml2ImportResolver {
     /**
      * Returns the compile-classpath scope for the module that contains {@code file}.
      *
-     * <p>This is the scope that mirrors what the fxml2 compiler sees: the module's own
+     * <p>This is the scope that mirrors what the FXML compiler sees: the module's own
      * production source roots plus all declared compile-time dependencies and the SDK.
      * Test source roots of the same module are excluded.
      *
@@ -308,7 +308,7 @@ public final class Fxml2ImportResolver {
      * <ol>
      *   <li><b>Standalone .fxml files</b>: returns the {@code <?import?>} PIs found in the
      *       XML prolog.</li>
-     *   <li><b>Embedded FXML2 fragments</b> (injected via {@code @ComponentView}):
+     *   <li><b>Embedded FXML fragments</b> (injected via {@code @ComponentView}):
      *       <ul>
      *         <li>The prolog holds the <em>synthesised</em> Java/Kotlin import PIs added by
      *             {@link org.jfxcore.fxml.lang.Fxml2MarkupAnnotationInjector}.</li>
@@ -328,7 +328,7 @@ public final class Fxml2ImportResolver {
     public static @NotNull List<String> parseImports(@NotNull XmlFile file) {
         // Cache the result per XmlFile. For standalone .fxml files the import list is
         // entirely determined by the file's own processing instructions, so the file itself
-        // is the only dependency. For embedded FXML2 files the injection framework folds the
+        // is the only dependency. For embedded FXML files the injection framework folds the
         // host Java file's imports into the XML prolog, so changes to the host Java file
         // (and only Java changes) may also affect the result; use the Java-language
         // modification tracker to invalidate the cache precisely on Java PSI changes, while
@@ -344,7 +344,7 @@ public final class Fxml2ImportResolver {
     }
 
     private static @NotNull List<String> parseImportsImpl(@NotNull XmlFile file) {
-        // For embedded FXML2 files, merge host imports (prolog) with any user-written fxml
+        // For embedded FXML files, merge host imports (prolog) with any user-written fxml
         // <?import?> PIs placed inside the wrapper root element.
         if (Fxml2EmbeddedUtil.isEmbeddedFxml2(file)) {
             return parseImportsForEmbedded(file);
@@ -364,13 +364,13 @@ public final class Fxml2ImportResolver {
     }
 
     /**
-     * Computes the merged import list for an embedded FXML2 file.
+     * Computes the merged import list for an embedded FXML file.
      *
      * <p>The result follows the fxml-compiler's order:
      * host (Java/Kotlin) imports first, then user-written fxml {@code <?import?>} PIs that
      * are not already covered by a host import.
      *
-     * @param file an embedded FXML2 file (must satisfy {@link Fxml2EmbeddedUtil#isEmbeddedFxml2})
+     * @param file an embedded FXML file (must satisfy {@link Fxml2EmbeddedUtil#isEmbeddedFxml2})
      * @return the merged, deduplicated import list
      */
     private static @NotNull List<String> parseImportsForEmbedded(@NotNull XmlFile file) {
@@ -414,13 +414,13 @@ public final class Fxml2ImportResolver {
      * Scans the {@code <fxml2:embedded>} wrapper root for user-written {@code <?import?>}
      * processing instructions.
      *
-     * <p>In an embedded FXML2 file the user-supplied markup is injected as the <em>body</em>
+     * <p>In an embedded FXML file the user-supplied markup is injected as the <em>body</em>
      * of a synthetic {@code <fxml2:embedded>} wrapper element, so any {@code <?import?>} PIs
      * written at the top of the annotation value appear as children of that root element -
      * not in the XML prolog.  This method collects them by walking the root element's
      * immediate children and stopping at the first actual element child.
      *
-     * @param file the embedded FXML2 file
+     * @param file the embedded FXML file
      * @return the list of import targets found inside the wrapper root, in document order
      */
     public static @NotNull List<String> parseImportsFromWrapperRoot(@NotNull XmlFile file) {

@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2EmbedMarkupIntentionTest extends Fxml2TestBase {
 
-    /** A minimal standalone FXML2 file with a self-closing root element. */
+    /** A minimal standalone FXML file with a self-closing root element. */
     private static final String FXML_SELF_CLOSING =
             """
             <?xml version="1.0" encoding="UTF-8"?>

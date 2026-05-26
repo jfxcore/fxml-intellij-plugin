@@ -15,8 +15,8 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Tests that double-click word selection (EditorSelectWord action) inside embedded FXML2 markup
- * does not include FXML2 sigil characters ({@code $}, {@code #}, {@code %}) in the selection.
+ * Tests that double-click word selection (EditorSelectWord action) inside embedded FXML markup
+ * does not include FXML sigil characters ({@code $}, {@code #}, {@code %}) in the selection.
  *
  * <p>In Java, {@code $} is a valid identifier character, so double-clicking on "vm" in
  * {@code $vm.field} would normally select {@code $vm}. The plugin must trim the
@@ -58,7 +58,7 @@ class Fxml2WordSelectionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2: $ prefix (evaluate binding)
+    // Embedded FXML: $ prefix (evaluate binding)
     // -----------------------------------------------------------------------
 
     /**
@@ -186,11 +186,11 @@ class Fxml2WordSelectionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Standalone FXML2 files (word-selection must work correctly)
+    // Standalone FXML files (word-selection must work correctly)
     // -----------------------------------------------------------------------
 
     /**
-     * In a standalone FXML2 file, double-clicking on "vm" in {@code $vm<caret>.message}
+     * In a standalone FXML file, double-clicking on "vm" in {@code $vm<caret>.message}
      * should still select just "vm".
      */
     @Test

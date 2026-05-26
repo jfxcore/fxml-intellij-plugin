@@ -19,7 +19,7 @@ import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 
 /**
- * Rename handler for {@code fx:id} attribute values and binding-path segments in FXML2 files.
+ * Rename handler for {@code fx:id} attribute values and binding-path segments in FXML files.
  *
  * <p>Enables the rename refactoring (Shift+F6) when the caret is at:
  * <ul>
@@ -52,7 +52,7 @@ public final class Fxml2FxIdRenameHandler implements RenameHandler {
         XmlAttributeValue fxIdVal = findFxIdAttrVal(dataContext);
         if (fxIdVal == null) return;
 
-        // Prefer to rename the code-behind field: its rename cascades back to all FXML2
+        // Prefer to rename the code-behind field: its rename cascades back to all FXML
         // occurrences (fx:id value and binding expressions) via isReferenceTo().
         PsiField codeBehindField = resolveCodeBehindField(fxIdVal);
         PsiElement toRename = codeBehindField != null ? codeBehindField : fxIdVal;
@@ -74,7 +74,7 @@ public final class Fxml2FxIdRenameHandler implements RenameHandler {
      *   <li>If the caret is inside a {@link Fxml2BindingSegmentReference} whose resolved
      *       {@code LightFieldBuilder} navigates to an {@link XmlAttributeValue}, that
      *       attribute value (the declaration site) is returned.</li>
-     *   <li>Otherwise, if the caret is inside an {@code fx:id} attribute value in an FXML2
+     *   <li>Otherwise, if the caret is inside an {@code fx:id} attribute value in an FXML
      *       file, that attribute value is returned directly.</li>
      * </ol>
      *

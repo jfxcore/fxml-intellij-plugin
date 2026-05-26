@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Covers:
  * <ul>
  *   <li>The inspection reports a Java import that is only referenced inside
- *       embedded FXML2 markup (not in Java code itself).</li>
+ *       embedded FXML markup (not in Java code itself).</li>
  *   <li>The inspection is silent when the import is also used in Java code.</li>
  *   <li>The inspection is silent when the import already has a {@code <?import?>}
  *       counterpart in the markup (duplicate guard).</li>

@@ -168,12 +168,12 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // fx:controller / fx:root: FXML1 directives unsupported in FXML2
+    // fx:controller / fx:root: FXML/1 directives unsupported in FXML/2
     // -----------------------------------------------------------------------
 
     /**
      * Doc ({@code code-behind.md}): {@code fx:controller} is an FXML 1.0 directive and
-     * should not be valid in an FXML 2.0 file. It should be treated as an unknown intrinsic.
+     * should not be valid in an FXML/2 file. It should be treated as an unknown intrinsic.
      */
     @Test
     void fxControllerAttributeIsUnknownIntrinsic() {

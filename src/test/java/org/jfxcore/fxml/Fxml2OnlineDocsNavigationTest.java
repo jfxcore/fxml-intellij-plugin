@@ -18,7 +18,7 @@ import org.junit.jupiter.api.TestInstance;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Verifies that Ctrl+click navigation on FXML2 language keywords and symbols that are not
+ * Verifies that Ctrl+click navigation on FXML language keywords and symbols that are not
  * backed by actual Java code resolves to a {@link Fxml2NamespaceUrlReference.UrlNavigationTarget}
  * pointing to the corresponding online documentation page.
  *
@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
-    // Shared FXML2 content used by multiple tests.
+    // Shared FXML content used by multiple tests.
     private static final String COMMON_FXML = """
             <?xml version="1.0" encoding="UTF-8"?>
             <?import javafx.scene.control.Label?>

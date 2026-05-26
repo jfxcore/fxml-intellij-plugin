@@ -15,7 +15,7 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
  *
  * <p>Implements two extension points:
  * <ul>
- *   <li>{@code xml.fileNSInfoProvider}: tells the XML plugin that FXML 2.0 files use
+ *   <li>{@code xml.fileNSInfoProvider}: tells the XML plugin that FXML files use
  *       {@value Fxml2ImportResolver#JAVAFX_NAMESPACE} as their default namespace.</li>
  *   <li>{@code psi.metaDataContributor}: registers {@link Fxml2NamespaceDescriptor} as the
  *       metadata object for any document whose root tag carries that namespace, which makes
@@ -50,7 +50,7 @@ public final class Fxml2NamespaceDataProvider implements XmlFileNSInfoProvider, 
     // Helpers
     // -----------------------------------------------------------------------
 
-    /** Returns {@code true} for FXML 2.0 files. */
+    /** Returns {@code true} for FXML/2 files. */
     private static boolean isFxml2(@NotNull XmlFile file) {
         return Fxml2FileType.isFxml2(file);
     }

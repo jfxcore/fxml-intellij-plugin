@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Tests that "Comment with Line Comment" (Ctrl+/) and "Comment with Block Comment"
  * (Ctrl+Shift+/) use XML comment syntax when the caret/selection is inside embedded
- * FXML2 markup in a {@code @ComponentView} text block.
+ * FXML markup in a {@code @ComponentView} text block.
  *
  * <p>Without the fix, "Comment with Line Comment" inserts {@code //} (Java) instead of
  * {@code <!-- ... -->} (XML), because the platform's {@code CommentByLineCommentHandler}
@@ -56,7 +56,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
     /**
      * Returns the text of the host Java document.
      *
-     * <p>When the caret is inside an embedded FXML2 fragment the test fixture's
+     * <p>When the caret is inside an embedded FXML fragment the test fixture's
      * {@code getEditor()} may return the injected {@code EditorWindow}.  Its document
      * contains the synthetic XML wrapper with namespace URIs that include {@code ://},
      * which would confuse assertions about Java-style {@code //} comments.
@@ -79,7 +79,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
 
     /**
      * Verifies that triggering "Comment with Line Comment" when the caret is on an
-     * XML tag line inside embedded FXML2 wraps the line content in {@code <!-- ... -->}.
+     * XML tag line inside embedded FXML wraps the line content in {@code <!-- ... -->}.
      *
      * <p>Without the fix the action inserts {@code //} (Java line comment).
      */
@@ -117,7 +117,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
 
     /**
      * Verifies that triggering "Comment with Line Comment" on a multi-line selection
-     * inside embedded FXML2 wraps every selected line in {@code <!-- ... -->}.
+     * inside embedded FXML wraps every selected line in {@code <!-- ... -->}.
      */
     @Test
     void lineCommentOnMultipleFxml2LinesAddsXmlComments() {
@@ -231,7 +231,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
 
     /**
      * Verifies that "Comment with Line Comment" on a Java code line (outside embedded
-     * FXML2) still inserts {@code //}: the plugin must not break Java commenting.
+     * FXML) still inserts {@code //}: the plugin must not break Java commenting.
      */
     @Test
     void lineCommentOnJavaCodeProducesSlashSlash() {
@@ -259,23 +259,23 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Line comment: mixed Java + FXML2 selection
+    // Line comment: mixed Java + FXML selection
     // -----------------------------------------------------------------------
 
     /**
-     * Verifies that when a selection spans both FXML2 lines and Java/Kotlin lines,
-     * ALL lines (FXML2 and Java alike) receive {@code //} comments.
+     * Verifies that when a selection spans both FXML lines and Java/Kotlin lines,
+     * ALL lines (FXML and Java alike) receive {@code //} comments.
      *
      * <p>Using {@code //} for the entire mixed selection is required for symmetry:
      * the Java structural lines (e.g. {@code @ComponentView("""}) are the glue that
-     * makes IntelliJ recognize the text block content as FXML2.  Once those lines are
-     * commented out the FXML2 injection disappears, so a subsequent un-comment action
-     * would no longer see any FXML2 content.  By using {@code //} for everything in the
+     * makes IntelliJ recognize the text block content as FXML.  Once those lines are
+     * commented out the FXML injection disappears, so a subsequent un-comment action
+     * would no longer see any FXML content.  By using {@code //} for everything in the
      * mixed case, both the comment and the un-comment pass operate identically.
      */
     @Test
     void lineCommentOnMixedSelectionUsesJavaCommentsForAll() {
-        // The selection starts on an FXML2 line and ends on a Java line.
+        // The selection starts on an FXML line and ends on a Java line.
         getFixture().configureByText("TestView.java",
                 """
                 package test;
@@ -297,27 +297,27 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
 
         String text = getHostText();
 
-        // All lines, including the FXML2 line, must receive Java "//" comments.
+        // All lines, including the FXML line, must receive Java "//" comments.
         assertFalse(text.contains("<!--"),
-                "FXML2 line must NOT get XML comment in a mixed selection; got:\n" + text);
+                "FXML line must NOT get XML comment in a mixed selection; got:\n" + text);
         assertTrue(hasJavaLineComment(text),
                 "Expected Java line comment '//' for all lines in:\n" + text);
     }
 
     /**
-     * Verifies that comment+uncomment on a mixed Java+FXML2 selection is fully symmetric.
+     * Verifies that comment+uncomment on a mixed Java+FXML selection is fully symmetric.
      *
      * <p>The test simulates the result that the platform's Java commenter would produce
      * for the mixed selection (all lines prefixed with {@code // }), then verifies that
      * a second invocation of "Comment with Line Comment" on those same lines un-comments
-     * everything back to the original content.  Because the FXML2 injection is broken
+     * everything back to the original content.  Because the FXML injection is broken
      * by the {@code //} on the structural Java lines, the un-comment pass must use the
-     * platform's Java un-commenter (not our FXML2-aware handler).
+     * platform's Java un-commenter (not our FXML-aware handler).
      */
     @Test
     void lineCommentOnMixedSelectionIsReversible() {
         // Simulate the state AFTER the platform's Java commenter has run on a mixed
-        // selection spanning an FXML2 line and structural Java lines.
+        // selection spanning an FXML line and structural Java lines.
         // The platform prefixes each line with "// " at column 0.
         getFixture().configureByText("TestView.java",
                 """
@@ -337,7 +337,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
 
         getFixture().doHighlighting();
 
-        // Uncomment: the FXML2 injection is gone (structural lines are commented out),
+        // Uncomment: the FXML injection is gone (structural lines are commented out),
         // so all lines must be treated as Java and un-prefixed with "//".
         getFixture().performEditorAction("CommentByLineComment");
 
@@ -357,7 +357,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
 
     /**
      * Verifies that "Comment with Block Comment" (Ctrl+Shift+/) wraps the selection in
-     * {@code <!--} / {@code -->} when the caret is inside embedded FXML2 markup.
+     * {@code <!--} / {@code -->} when the caret is inside embedded FXML markup.
      */
     @Test
     void blockCommentOnFxml2SelectionAddsXmlBlockComment() {
@@ -470,7 +470,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
 
     /**
      * Verifies that pressing "Comment with Block Comment" twice on a selection of
-     * <em>indented</em> FXML2 lines preserves the original indentation exactly.
+     * <em>indented</em> FXML lines preserves the original indentation exactly.
      *
      * <p>The {@code uncommentBlock} implementation must not strip any character immediately
      * after {@code <!--} when that character is part of the original indentation.  Only an
@@ -517,7 +517,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
     }
 
     /**
-     * Verifies that pressing "Comment with Block Comment" twice on an FXML2 selection
+     * Verifies that pressing "Comment with Block Comment" twice on an FXML selection
      * performs a full round-trip: the first press wraps the selection in
      * {@code <!--} / {@code -->}, and the second press removes the markers, restoring
      * the original content.
@@ -568,16 +568,16 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
     }
 
     /**
-     * Verifies that "Comment with Block Comment" on a selection spanning both FXML2 lines
+     * Verifies that "Comment with Block Comment" on a selection spanning both FXML lines
      * and Java/Kotlin code falls back to Java {@code /* }&#42;{@code /} block comments.
      *
      * <p>Using XML {@code <!--} ... {@code -->} for a mixed selection would be incorrect
      * because the Java structural lines (e.g. the {@code @ComponentView} annotation line)
-     * must also be commented out; XML comment syntax is not valid outside the FXML2 injection.
+     * must also be commented out; XML comment syntax is not valid outside the FXML injection.
      */
     @Test
     void blockCommentOnMixedFxml2AndJavaSelectionUsesJavaBlockComment() {
-        // Selection starts inside FXML2 and ends in Java code.
+        // Selection starts inside FXML and ends in Java code.
         getFixture().configureByText("TestView.java",
                 """
                 package test;
@@ -606,7 +606,7 @@ class Fxml2EmbeddedCommentHandlerTest extends Fxml2TestBase {
     }
 
     /**
-     * Verifies that "Comment with Block Comment" on Java code (outside embedded FXML2)
+     * Verifies that "Comment with Block Comment" on Java code (outside embedded FXML)
      * still inserts Java block comments: the plugin must not break Java block commenting.
      */
     @Test

@@ -25,7 +25,7 @@ import java.util.List;
 
 /**
  * Resolves a literal attribute value string to the PSI element it refers to,
- * following the fxml2 compiler's type-coercion rules in order:
+ * following the FXML compiler's type-coercion rules in order:
  * enum constant, Color literal, static field on the declaring class,
  * {@code @NamedArg} constructor, primitives/String.
  */
@@ -73,7 +73,7 @@ public final class Fxml2AttributeValueResolver {
      *
      * @param ownerClass the generic class whose type parameters are to be substituted
      * @param tag        the XML tag that may carry an {@code fx:typeArguments} attribute
-     * @param xmlFile    the containing FXML 2.0 file (for import resolution)
+     * @param xmlFile    the containing FXML file (for import resolution)
      * @return a substitutor with the concrete mappings, or {@link PsiSubstitutor#EMPTY}
      */
     public static @NotNull PsiSubstitutor buildTagTypeSubstitutor(
@@ -125,7 +125,7 @@ public final class Fxml2AttributeValueResolver {
      *
      * @param value     the raw attribute value (plain class name, e.g. {@code "String"})
      * @param classType the property type, which must be {@code java.lang.Class<T>}
-     * @param xmlFile   the containing FXML 2.0 file (for import resolution)
+     * @param xmlFile   the containing FXML file (for import resolution)
      * @param scope     the resolve scope
      * @return the resolved {@link PsiClass}, or {@code null}
      */

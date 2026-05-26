@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import javax.swing.Icon;
 
 /**
- * A soft {@link com.intellij.psi.PsiReference} on an FXML 2.0 namespace URI attribute value
+ * A soft {@link com.intellij.psi.PsiReference} on an FXML/2 namespace URI attribute value
  * (e.g. {@code "http://jfxcore.org/fxml/2.0"}).
  * Ctrl+click opens the corresponding documentation URL in the system browser.
  */

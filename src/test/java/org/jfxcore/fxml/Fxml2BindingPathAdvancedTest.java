@@ -12,7 +12,7 @@ import org.junit.jupiter.api.TestInstance;
  *   <li>8.4 Generic type witness: {@code methodName&lt;TypeArg&gt;}</li>
  * </ul>
  *
- * <p>Corresponds to {@code binding/binding-path.md} in the fxml2 compiler documentation.
+ * <p>Corresponds to {@code binding/binding-path.md} in the FXML compiler documentation.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2BindingPathAdvancedTest extends Fxml2TestBase {

@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>Self-reference on the definition site (for "highlight usages")</li>
  *   <li>Navigation to the code-behind field when one exists</li>
  *   <li>{@link Fxml2BindingSegmentReference#isReferenceTo} matches the fx:id definition</li>
- *   <li>Embedded FXML2 ({@code @ComponentView} annotation): equivalent coverage for injected XML</li>
+ *   <li>Embedded FXML ({@code @ComponentView} annotation): equivalent coverage for injected XML</li>
  * </ul>
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -552,7 +552,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
 
     /**
      * The rename handler must report itself as available when the caret is positioned
-     * on an {@code fx:id} attribute value in an FXML2 file.
+     * on an {@code fx:id} attribute value in an FXML file.
      */
     @Test
     void renameHandlerAvailableOnFxIdPosition() {
@@ -700,7 +700,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2 (@ComponentView): fx:id reference tests
+    // Embedded FXML (@ComponentView): fx:id reference tests
     // -----------------------------------------------------------------------
 
     /**
@@ -737,7 +737,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
 
     /**
      * A {@link Fxml2FxIdReference} must be present on the {@code fx:id} attribute value
-     * inside embedded FXML2 (injected XML from a {@code @ComponentView} annotation), and its
+     * inside embedded FXML (injected XML from a {@code @ComponentView} annotation), and its
      * {@link Fxml2FxIdReference#resolve()} must return {@code null}: the fx:id is a
      * declaration, not a use-site reference.
      */
@@ -835,7 +835,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
     }
 
     /**
-     * A binding segment in embedded FXML2 that references an {@code fx:id} name must have
+     * A binding segment in embedded FXML that references an {@code fx:id} name must have
      * its {@link Fxml2BindingSegmentReference#isReferenceTo} return {@code true} for the
      * fx:id {@link XmlAttributeValue} in the same injected file.
      */
@@ -893,13 +893,13 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
             assertNotNull(segRef,
                     "No Fxml2BindingSegmentReference for 'myBindBtn' in embedded binding");
             assertTrue(segRef.isReferenceTo(fxIdVal),
-                    "Binding segment in embedded FXML2 must isReferenceTo the fx:id XmlAttributeValue");
+                    "Binding segment in embedded FXML must isReferenceTo the fx:id XmlAttributeValue");
         });
     }
 
     /**
      * {@link ReferencesSearch} on a code-behind field must find the {@code fx:id}
-     * {@link XmlAttributeValue} in embedded FXML2 as a {@link Fxml2FxIdReference} usage -
+     * {@link XmlAttributeValue} in embedded FXML as a {@link Fxml2FxIdReference} usage -
      * via {@link org.jfxcore.fxml.lang.Fxml2FxIdFieldSearcher}.
      */
     @Test

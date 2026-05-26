@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 /**
- * Tests that correspond to the fxml2 compiler's DefineBlockTest and
+ * Tests that correspond to the FXML compiler's DefineBlockTest and
  * CollectionsTest
  * ({@code src/compilerTest/java/org/jfxcore/compiler/DefineBlockTest.java},
  * {@code src/compilerTest/java/org/jfxcore/compiler/CollectionsTest.java}).

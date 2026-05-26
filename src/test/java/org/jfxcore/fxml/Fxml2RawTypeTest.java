@@ -8,7 +8,7 @@ import org.junit.jupiter.api.TestInstance;
 /**
  * Tests for the raw-type warning inspection ({@link Fxml2RawTypeInspection}).
  *
- * <p>When a generic class tag is used without {@code fx:typeArguments}, the fxml2 compiler
+ * <p>When a generic class tag is used without {@code fx:typeArguments}, the FXML compiler
  * treats it as a raw type. The plugin mirrors this with a WARNING-level inspection.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

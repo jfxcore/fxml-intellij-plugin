@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
  * <p>Identical to {@link XMLParserDefinition} except that {@link #createFile(FileViewProvider)}
  * returns a {@link Fxml2EmbeddedXmlFile}, which overrides
  * {@link Fxml2EmbeddedXmlFile#findElementAt(int)} to apply the same identifier-segment
- * narrowing used by {@link Fxml2FileViewProvider} in standalone FXML2 files.
+ * narrowing used by {@link Fxml2FileViewProvider} in standalone FXML files.
  */
 final class Fxml2EmbeddedXmlParserDefinition extends XMLParserDefinition {
 

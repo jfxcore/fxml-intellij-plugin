@@ -11,7 +11,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Overrides the file type for {@code .fxml} files that carry the JFXcore FXML 2.0 namespace,
+ * Overrides the file type for {@code .fxml} files that carry the FXML/2 namespace,
  * returning {@link Fxml2FileType#INSTANCE} for them.
  *
  * <h3>Why a FileTypeOverrider instead of a FileTypeDetector?</h3>

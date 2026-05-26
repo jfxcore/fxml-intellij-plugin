@@ -56,12 +56,12 @@ public abstract class CreateFxmlFileIntention implements IntentionAction, Priori
 
     @Override
     public final @NotNull String getText() {
-        return "Create FXML file";
+        return "Create FXML/2 file";
     }
 
     @Override
     public final @NotNull String getFamilyName() {
-        return "Create FXML file";
+        return "Create FXML/2 file";
     }
 
     @Override

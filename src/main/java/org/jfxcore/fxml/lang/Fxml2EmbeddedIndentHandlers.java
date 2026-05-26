@@ -37,7 +37,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Hosts three extension-point implementations that make Tab, Shift+Tab, and Enter
  * use the XML indent size (e.g. from EditorConfig {@code *.fxml} rules) and the correct
- * XML attribute alignment when the caret is inside embedded FXML2 markup in a
+ * XML attribute alignment when the caret is inside embedded FXML markup in a
  * {@code @ComponentView} annotation.
  *
  * <h2>Tab: {@link IndentOptionsProvider}</h2>
@@ -59,7 +59,7 @@ import org.jetbrains.annotations.Nullable;
  * on the host document, which returns the Java indent size instead of the XML
  * indent size.
  * {@link UnindentHandler} overrides the action handler, detects when the caret
- * is inside an embedded FXML2 fragment, and applies the correct XML indent step.
+ * is inside an embedded FXML fragment, and applies the correct XML indent step.
  *
  * <h2>Enter: {@link EnterHandler}</h2>
  * <p>{@code EnterAction} has {@code setInjectedContext(true)}, so the whole Enter
@@ -68,8 +68,8 @@ import org.jetbrains.annotations.Nullable;
  * <em>host</em> (Java) formatter, which produces tag-indent alignment (wrong)
  * instead of first-attribute alignment (correct).
  * {@link EnterHandler} intercepts Enter between XML tag attributes in embedded
- * FXML2 markup and directly inserts the correct {@code \n + spaces} string -
- * matching the standalone-FXML2 attribute-alignment behavior: then returns
+ * FXML markup and directly inserts the correct {@code \n + spaces} string -
+ * matching the standalone-FXML attribute-alignment behavior: then returns
  * {@code Result.Stop} to suppress all further processing.
  */
 public final class Fxml2EmbeddedIndentHandlers {
@@ -85,7 +85,7 @@ public final class Fxml2EmbeddedIndentHandlers {
      * {@code com.intellij.fileIndentOptionsProvider} extension point.
      *
      * <p>Returns correct XML indent options for injected {@link Fxml2EmbeddedXmlLanguage}
-     * {@link VirtualFileWindow} fragments so that pressing Tab inside embedded FXML2
+     * {@link VirtualFileWindow} fragments so that pressing Tab inside embedded FXML
      * markup uses the same indent size as {@code Ctrl+Alt+L} formatting.
      */
     public static final class IndentOptionsProvider extends FileIndentOptionsProvider {
@@ -128,7 +128,7 @@ public final class Fxml2EmbeddedIndentHandlers {
      * {@code com.intellij.editorActionHandler} extension point, action
      * {@code EditorUnindentSelection} (Shift+Tab).
      *
-     * <p>When the caret is inside an embedded FXML2 fragment the handler removes
+     * <p>When the caret is inside an embedded FXML fragment the handler removes
      * the XML indent size (resolved via
      * {@link Fxml2EmbedMarkupUtil#getEffectiveXmlIndentSize}) from the start of
      * each affected line.  For all other positions it falls through to the platform's
@@ -158,7 +158,7 @@ public final class Fxml2EmbeddedIndentHandlers {
             if (project != null && tryHandleEmbeddedFxml2(editor, project)) {
                 return;
             }
-            // Not an embedded FXML2 context: let the original handler do its job.
+            // Not an embedded FXML context: let the original handler do its job.
             if (myDelegate != null) {
                 myDelegate.execute(editor, caret, dataContext);
             }
@@ -166,7 +166,7 @@ public final class Fxml2EmbeddedIndentHandlers {
 
         /**
          * Returns {@code true} and performs the unindent when the caret is inside an
-         * embedded FXML2 fragment; returns {@code false} to fall through to the delegate.
+         * embedded FXML fragment; returns {@code false} to fall through to the delegate.
          */
         private static boolean tryHandleEmbeddedFxml2(@NotNull Editor editor,
                                                       @NotNull Project project) {
@@ -246,7 +246,7 @@ public final class Fxml2EmbeddedIndentHandlers {
      * {@code com.intellij.enterHandlerDelegate} extension point.
      *
      * <p>{@code EnterAction} has {@code setInjectedContext(true)}, so when the caret
-     * is inside an embedded FXML2 fragment the whole Enter-handler chain receives the
+     * is inside an embedded FXML fragment the whole Enter-handler chain receives the
      * <em>injected</em> editor.  After the newline is inserted, the platform's
      * {@code scheduleIndentAdjustment} delegates to the top-level (Java/Kotlin)
      * formatter which produces wrong "tag indent" alignment instead of the correct
@@ -268,7 +268,7 @@ public final class Fxml2EmbeddedIndentHandlers {
                                       @NotNull DataContext dataContext,
                                       @Nullable EditorActionHandler originalHandler) {
 
-            // Only act on embedded FXML2 injected XML files.
+            // Only act on embedded FXML injected XML files.
             // EnterAction has setInjectedContext(true), so editor/file are for the
             // injected fragment when the caret is inside one.
             if (!(file instanceof XmlFile xmlFile)) return Result.Continue;

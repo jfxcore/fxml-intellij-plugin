@@ -1598,7 +1598,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
 
     /**
      * Elements declared with {@code fx:id} in the FXML file are accessible as named
-     * binding sources in the default (root) context: the fxml2 compiler injects a field
+     * binding sources in the default (root) context: the FXML compiler injects a field
      * for each {@code fx:id} into the generated base class.
      *
      * <p>Completing a partial name that matches {@code fx:id} values (e.g. {@code myBu}
@@ -1959,7 +1959,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
      * expression that appears as a parameter of a markup extension invocation
      * (e.g. {@code {MyExtension $ItemType.label<caret>}}) the IDE must offer the
      * static members of {@code ItemType} as completions, even when {@code ItemType}
-     * is not imported in the FXML2 file.
+     * is not imported in the FXML file.
      */
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
@@ -2039,7 +2039,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * When the fxml2 compiler hasn't run yet ("stale build"), the generated base class
+     * When the FXML compiler hasn't run yet ("stale build"), the generated base class
      * ({@code FooBase extends BorderPane}) doesn't exist, so the code-behind class does
      * not inherit root-element properties through its supertype chain.
      *

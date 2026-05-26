@@ -22,19 +22,19 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 /**
  * Suppresses false-positive "Field/Method 'X' is never used" and "Field 'X' is assigned but
  * never accessed" warnings for fields and property-accessor methods that are referenced only
- * inside embedded FXML2 markup (binding expressions in {@code @ComponentView} annotations).
+ * inside embedded FXML markup (binding expressions in {@code @ComponentView} annotations).
  *
  * <h3>Why is this needed?</h3>
  * <p>IntelliJ's unused-field/method analysis works by calling
  * {@link com.intellij.psi.search.searches.ReferencesSearch} over the
  * {@link com.intellij.psi.search.SearchScope} produced by all registered
  * {@link com.intellij.psi.search.UseScopeEnlarger}s.  For
- * <em>standalone</em> FXML2 files, {@link Fxml2UseScopeEnlarger} adds
+ * <em>standalone</em> FXML files, {@link Fxml2UseScopeEnlarger} adds
  * {@code .fxml}/{@code .fxml2} files to that scope; the word-index search then
  * finds the attribute value and the {@link Fxml2BindingSegmentReference} on it
  * resolves to the Java field/method, making IntelliJ treat it as "used".
  *
- * <p>For <em>embedded</em> FXML2 markup (inside a {@code @ComponentView} text-block
+ * <p>For <em>embedded</em> FXML markup (inside a {@code @ComponentView} text-block
  * annotation), the XML exists only as an injected language fragment: it does not
  * appear in any file index.  Word-index searches therefore never reach it, so the
  * binding-segment references inside that fragment are never found, and IntelliJ
@@ -62,7 +62,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  *   <li>for a {@link PsiClass} or constructor: checks whether the class is used as
  *       an XML element tag (e.g. {@code <CustomLabel/>}) or as a markup extension in
  *       an attribute value (e.g. {@code text="{MyExt value=foo}"}) in any
- *       {@code @ComponentView}-annotated class's embedded FXML2;</li>
+ *       {@code @ComponentView}-annotated class's embedded FXML;</li>
  *   <li>tries the <em>fast path</em>: if the containing class has {@code @ComponentView},
  *       checks its own injected {@link XmlFile} for binding-segment references;</li>
  *   <li>falls back to the <em>cross-class path</em>: searches all
@@ -92,7 +92,7 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
 
     /**
      * Returns {@code true} when {@code element} is a {@link PsiField}, {@link PsiMethod},
-     * {@link PsiClass}, or constructor and the injected FXML2 XML of some
+     * {@link PsiClass}, or constructor and the injected FXML of some
      * {@code @ComponentView}-annotated class contains at least one reference to it.
      *
      * <p>For {@link PsiClass} and constructors, the class is considered referenced when:
@@ -109,7 +109,7 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
      *       the binding segment {@code "vm"} resolves directly to that field.</li>
      *   <li><b>Property-accessor methods</b>: {@code public ObjectProperty<MainViewModel> vmProperty()}
      *      : the binding segment {@code "vm"} resolves to the {@code vmProperty()} method
-     *       (not the private backing field), matching the fxml2 compiler's actual behavior.</li>
+     *       (not the private backing field), matching the FXML compiler's actual behavior.</li>
      *   <li><b>View-model members</b>: when the containing class does <em>not</em> carry
      *       {@code @ComponentView} but is referenced from a view's embedded markup via a
      *       multi-segment binding path: e.g. {@code {fx:Observe vm.labelText}} in
@@ -117,9 +117,9 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
      * </ul>
      */
     static boolean isReferencedInEmbeddedFxml(@NotNull PsiElement element) {
-        // A PsiClass used as an FXML2 element tag (e.g. <sample.app.CustomLabel/>) or as a
+        // A PsiClass used as an FXML element tag (e.g. <sample.app.CustomLabel/>) or as a
         // markup extension in an attribute value (e.g. text="{MyExt value=foo}") is implicitly
-        // used, the FXML2 runtime instantiates it.
+        // used, the FXML runtime instantiates it.
         if (element instanceof PsiClass psiClass) {
             return isClassTaggedInEmbeddedFxml(psiClass)
                     || isClassUsedAsMarkupExtensionInEmbeddedFxml(psiClass);
@@ -239,7 +239,7 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
     }
 
     /**
-     * Cross-class embedded FXML2 search for Kotlin source declarations ({@code KtProperty},
+     * Cross-class embedded FXML search for Kotlin source declarations ({@code KtProperty},
      * {@code KtNamedFunction}).
      *
      * <p>K2's unused-symbol analysis never calls {@link ImplicitUsageProvider} for
@@ -283,9 +283,9 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
 
     /**
      * Returns {@code true} if any {@code @ComponentView}-annotated class in the project has
-     * embedded FXML2 markup that uses {@code psiClass} as an XML element tag.
+     * embedded FXML markup that uses {@code psiClass} as an XML element tag.
      *
-     * <p>This covers the case where a custom control is instantiated in embedded FXML2 via
+     * <p>This covers the case where a custom control is instantiated in embedded FXML via
      * a fully-qualified or imported class name, e.g.
      * {@code <sample.app.CustomLabel fx:typeArguments="Double" item="1e2"/>}.
      */
@@ -310,7 +310,7 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
 
     /**
      * Returns {@code true} if any {@code @ComponentView}-annotated class in the project has
-     * embedded FXML2 markup that uses {@code psiClass} as a markup extension in an attribute
+     * embedded FXML markup that uses {@code psiClass} as a markup extension in an attribute
      * value (e.g. {@code text="{MyExt value=foo}"}).
      *
      * <p>This is the companion check to {@link #isClassTaggedInEmbeddedFxml} for the

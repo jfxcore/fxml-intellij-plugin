@@ -8,7 +8,7 @@ import org.junit.jupiter.api.TestInstance;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * Tests for property assignment validation in FXML2 files.
+ * Tests for property assignment validation in FXML files.
  *
  * <p>Covers attribute/element property assignment, coercion rules (enum, number,
  * boolean, Insets, Color, array, collection), duplicate properties, read-only
@@ -69,7 +69,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
      * Multiple children of the same unresolvable class type inside an unresolvable parent
      * must NOT produce "X is set more than once" errors.
      *
-     * <p>Uppercase-starting tag names denote class instantiations in FXML2 by convention;
+     * <p>Uppercase-starting tag names denote class instantiations in FXML by convention;
      * they must not be treated as property-element tags even when their import is missing.
      * The annotation reports "Cannot resolve symbol 'VBox'" for the VBox (whose parent
      * BorderPane IS resolved), but stays silent for the Button children (whose parent VBox

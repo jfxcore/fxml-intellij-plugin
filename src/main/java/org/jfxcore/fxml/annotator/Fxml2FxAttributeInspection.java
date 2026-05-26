@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Validates {@code fx:} intrinsic attributes in FXML 2.0 files, mirroring the compiler's
+ * Validates {@code fx:} intrinsic attributes in FXML files, mirroring the compiler's
  * {@code IntrinsicsTransform} checks:
  * <ul>
  *   <li>Unknown intrinsic names -> {@code "Unknown intrinsic: X"}</li>
@@ -163,13 +163,13 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                 continue;
             }
 
-            // 1a. fx:subclass is explicitly forbidden in embedded FXML 2.0, since the code-behind class is
+            // 1a. fx:subclass is explicitly forbidden in embedded FXML, since the code-behind class is
             //     always derived from the @ComponentView-annotated Java class, never from markup.
             if ("subclass".equals(localName) && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile)) {
                 //noinspection DialogTitleCapitalization
                 problems.add(manager.createProblemDescriptor(
                         attr,
-                        "fx:subclass is not allowed in embedded FXML 2.0",
+                        "fx:subclass is not allowed in embedded FXML",
                         (LocalQuickFix) null,
                         ProblemHighlightType.GENERIC_ERROR,
                         isOnTheFly));
@@ -705,8 +705,8 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
     /**
      * Returns {@code true} when {@code tag} is the effective document root element.
      *
-     * <p>In standalone FXML2, the effective root is the document's root tag.  In
-     * embedded FXML2 the injector wraps the user's markup in a synthetic
+     * <p>In standalone FXML, the effective root is the document's root tag.  In
+     * embedded FXML the injector wraps the user's markup in a synthetic
      * {@code <fxml2:embedded>} element, making it the XML document root.  The
      * user-written root is therefore the first child of that wrapper, and it must
      * be treated as the effective root for placement checks such as

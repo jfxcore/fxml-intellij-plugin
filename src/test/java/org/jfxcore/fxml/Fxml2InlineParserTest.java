@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 /**
- * Tests that correspond to the fxml2 compiler's InlineParserTest
+ * Tests that correspond to the FXML compiler's InlineParserTest
  * ({@code src/test/java/org/jfxcore/compiler/parse/InlineParserTest.java}).
  *
  * <p>The InlineParser is responsible for parsing curly-brace expressions that

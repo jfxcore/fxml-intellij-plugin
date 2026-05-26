@@ -20,7 +20,7 @@ import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser.ParsedExpression;
 
 /**
  * Two inverse intention actions for converting between the compact (short) and long-form
- * (markup-extension) notations for FXML 2.0 binding expressions in attribute values.
+ * (markup-extension) notations for FXML binding expressions in attribute values.
  *
  * <p>Compact <-> long-form mapping:
  * <ul>

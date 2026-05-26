@@ -24,10 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>Covers:
  * <ul>
- *   <li>The inspection reports a problem when a standalone FXML2 file has a
+ *   <li>The inspection reports a problem when a standalone FXML file has a
  *       code-behind sibling.</li>
  *   <li>The inspection is silent when no code-behind sibling exists.</li>
- *   <li>The inspection is silent for embedded FXML2 fragments.</li>
+ *   <li>The inspection is silent for embedded FXML fragments.</li>
  *   <li>The quick-fix (via the inspection) embeds the markup and deletes the FXML file.</li>
  * </ul>
  */

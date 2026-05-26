@@ -171,8 +171,8 @@ class Fxml2CreateFxmlFileIntentionTest extends Fxml2TestBase {
 
         // Act
         CreateFxmlFileIntention.skipConfirmationForTesting = true;
-        IntentionAction action = getFixture().findSingleIntention("Create FXML file");
-        assertNotNull(action, "Create FXML file intention must be available");
+        IntentionAction action = getFixture().findSingleIntention("Create FXML/2 file");
+        assertNotNull(action, "Create FXML/2 file intention must be available");
         getFixture().launchAction(action);
 
         // Assert: FXML file was created
@@ -224,8 +224,8 @@ class Fxml2CreateFxmlFileIntentionTest extends Fxml2TestBase {
 
         // Act
         CreateFxmlFileIntention.skipConfirmationForTesting = true;
-        IntentionAction action = getFixture().findSingleIntention("Create FXML file");
-        assertNotNull(action, "Create FXML file intention must be available");
+        IntentionAction action = getFixture().findSingleIntention("Create FXML/2 file");
+        assertNotNull(action, "Create FXML/2 file intention must be available");
         getFixture().launchAction(action);
 
         // Assert: FXML file was created
@@ -282,8 +282,8 @@ class Fxml2CreateFxmlFileIntentionTest extends Fxml2TestBase {
                 JAVA_WITH_CHILDREN.replace("@ComponentView", "@Compon<caret>entView"));
 
         CreateFxmlFileIntention.skipConfirmationForTesting = true;
-        IntentionAction action = getFixture().findSingleIntention("Create FXML file");
-        assertNotNull(action, "Create FXML file intention must be available");
+        IntentionAction action = getFixture().findSingleIntention("Create FXML/2 file");
+        assertNotNull(action, "Create FXML/2 file intention must be available");
         getFixture().launchAction(action);
 
         VirtualFile fxmlVF = getFixture().findFileInTempDir("TestEmbed.fxml");
@@ -355,8 +355,8 @@ class Fxml2CreateFxmlFileIntentionTest extends Fxml2TestBase {
                 """);
 
         CreateFxmlFileIntention.skipConfirmationForTesting = true;
-        IntentionAction action = getFixture().findSingleIntention("Create FXML file");
-        assertNotNull(action, "Create FXML file intention must be available");
+        IntentionAction action = getFixture().findSingleIntention("Create FXML/2 file");
+        assertNotNull(action, "Create FXML/2 file intention must be available");
         getFixture().launchAction(action);
 
         VirtualFile fxmlVF = getFixture().findFileInTempDir("MainView.fxml");
@@ -421,8 +421,8 @@ class Fxml2CreateFxmlFileIntentionTest extends Fxml2TestBase {
                 """);
 
         CreateFxmlFileIntention.skipConfirmationForTesting = true;
-        IntentionAction action = getFixture().findSingleIntention("Create FXML file");
-        assertNotNull(action, "Create FXML file intention must be available");
+        IntentionAction action = getFixture().findSingleIntention("Create FXML/2 file");
+        assertNotNull(action, "Create FXML/2 file intention must be available");
         getFixture().launchAction(action);
 
         VirtualFile fxmlVF = getFixture().findFileInTempDir("MainView.fxml");
@@ -486,8 +486,8 @@ class Fxml2CreateFxmlFileIntentionTest extends Fxml2TestBase {
                 """);
 
         CreateFxmlFileIntention.skipConfirmationForTesting = true;
-        IntentionAction action = getFixture().findSingleIntention("Create FXML file");
-        assertNotNull(action, "Create FXML file intention must be available");
+        IntentionAction action = getFixture().findSingleIntention("Create FXML/2 file");
+        assertNotNull(action, "Create FXML/2 file intention must be available");
         getFixture().launchAction(action);
 
         VirtualFile fxmlVF = getFixture().findFileInTempDir("MainView.fxml");
@@ -536,8 +536,8 @@ class Fxml2CreateFxmlFileIntentionTest extends Fxml2TestBase {
     void contextMenuShowsDocumentation() {
         getFixture().configureByText("TestView.java",
                 JAVA_WITH_ANNOTATION.replace("@ComponentView", "@Compon<caret>entView"));
-        IntentionAction action = getFixture().findSingleIntention("Create FXML file");
-        assertNotNull(action, "Create FXML file intention must be available");
+        IntentionAction action = getFixture().findSingleIntention("Create FXML/2 file");
+        assertNotNull(action, "Create FXML/2 file intention must be available");
 
         getFixture().checkIntentionPreviewHtml(action,
                 "Creates a new <code>.fxml</code> file from the embedded markup " +

@@ -24,16 +24,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Persistent index that maps fully-qualified class names (from FXML2 import declarations)
+ * Persistent index that maps fully-qualified class names (from FXML import declarations)
  * to the source files that declare them.
  *
- * <p>Two sources of FXML2 import data are indexed:
+ * <p>Two sources of FXML import data are indexed:
  * <ol>
- *   <li><b>Standalone FXML2 files</b> ({@code .fxml} / {@code .fxml2}): any
+ *   <li><b>Standalone FXML files</b> ({@code .fxml} / {@code .fxml2}): any
  *       {@code <?import fully.qualified.ClassName?>} processing instruction whose
- *       containing file carries the FXML2 namespace URI
+ *       containing file carries the FXML/2 namespace URI
  *       ({@code http://jfxcore.org/fxml/2.0}).</li>
- *   <li><b>Embedded FXML2 in Java files</b>: both the host file's
+ *   <li><b>Embedded FXML in Java files</b>: both the host file's
  *       {@code import} declarations and any {@code <?import?>} PIs written inside
  *       a {@code @ComponentView} annotation value.</li>
  * </ol>
@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  * Wildcard package imports are stored verbatim with the trailing {@code .*} so
  * query callers can disambiguate exact from wildcard results.
  *
- * <p>This index enables O(1) "Find Usages of Java class in FXML2" queries and
+ * <p>This index enables O(1) "Find Usages of Java class in FXML" queries and
  * supports change-impact analysis: because the index is rebuilt only when file
  * content changes (not on every Java PSI modification), it does not contribute
  * to the "Analyzing code" delay experienced after commits.
@@ -56,13 +56,13 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
      */
     public static final ID<String, Void> KEY = ID.create("fxml2.classReference");
 
-    /** FXML2 namespace URI used by both the file detector and the FXML2 compiler. */
+    /** FXML/2 namespace URI used by the file detector. */
     private static final String FXML2_NS = "http://jfxcore.org/fxml/2.0";
 
-    /** FQN of the @ComponentView annotation processed by the fxml2 compiler. */
+    /** FQN of the @ComponentView annotation. */
     private static final String COMPONENT_VIEW_ANNOTATION = "@ComponentView";
 
-    /** Matches {@code <?import target?>} in raw XML / FXML2 text. */
+    /** Matches {@code <?import target?>} in raw XML / FXML text. */
     private static final Pattern IMPORT_PI_PATTERN =
             Pattern.compile("<\\?import\\s+([^?]+?)\\s*\\?>");
 
@@ -130,13 +130,13 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
     // -----------------------------------------------------------------------
 
     /**
-     * Extracts FXML2 import targets from a standalone {@code .fxml} or {@code .fxml2} file.
+     * Extracts FXML import targets from a standalone {@code .fxml} or {@code .fxml2} file.
      *
-     * <p>Only files that carry the FXML2 namespace URI are processed; plain FXML
-     * (JavaFX 1/2) and generic XML files are skipped.
+     * <p>Only files that carry the FXML/2 namespace URI are processed; classic FXML and
+     * generic XML files are skipped.
      */
     private static @NotNull Map<String, Void> indexXmlFile(@NotNull CharSequence content) {
-        // Quick rejection: only index files with the FXML2 namespace.
+        // Quick rejection: only index files with the FXML/2 namespace.
         if (notContains(content, FXML2_NS)) {
             return Collections.emptyMap();
         }
@@ -153,18 +153,18 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
     }
 
     /**
-     * Extracts import targets from a Java file that embeds FXML2 via {@code @ComponentView}.
+     * Extracts import targets from a Java file that embeds FXML via {@code @ComponentView}.
      *
      * <p>Two categories of imports are indexed:
      * <ol>
      *   <li>Top-level Java {@code import} statements: these are automatically available
-     *       inside the embedded FXML2 fragment (the injector folds them into the XML prolog).</li>
+     *       inside the embedded FXML fragment (the injector folds them into the XML prolog).</li>
      *   <li>{@code <?import?>} processing instructions written inside the
      *       {@code @ComponentView} annotation value.</li>
      * </ol>
      *
      * <p>The Java file must contain a {@code @ComponentView} reference; files that do not
-     * embed FXML2 are indexed only for their Java imports if they also carry the annotation
+     * embed FXML are indexed only for their Java imports if they also carry the annotation
      * identifier in any form (false positives are bounded and acceptable for index purposes).
      */
     private static @NotNull Map<String, Void> indexJavaFile(@NotNull CharSequence content) {
@@ -175,7 +175,7 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
 
         Map<String, Void> result = new HashMap<>();
 
-        // Index regular Java import statements (they become available to the embedded FXML2).
+        // Index regular Java import statements (they become available to the embedded FXML).
         Matcher javaMatcher = JAVA_IMPORT_PATTERN.matcher(content);
         while (javaMatcher.find()) {
             String importTarget = javaMatcher.group(1).trim();
@@ -202,7 +202,7 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
     // -----------------------------------------------------------------------
 
     /**
-     * Returns all source files (both standalone FXML2 and Java files with embedded FXML2)
+     * Returns all source files (both standalone FXML and Java files with embedded FXML)
      * that declare an import for the given fully-qualified class name or wildcard package.
      *
      * <p>Both exact imports ({@code javafx.scene.control.Label}) and wildcard packages

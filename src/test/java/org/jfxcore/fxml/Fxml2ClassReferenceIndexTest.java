@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link Fxml2ClassReferenceIndex}: verifies that the persistent index
- * correctly extracts import declarations from standalone FXML2 files and from
- * embedded FXML2 fragments in Java source files.
+ * correctly extracts import declarations from standalone FXML files and from
+ * embedded FXML fragments in Java source files.
  *
  * <p>These tests exercise the "Find Usages of Java class in FXML" data path,
  * which depends on an accurate index of which files import which fully-qualified
@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
 
     // -----------------------------------------------------------------------
-    // Standalone FXML2 file tests
+    // Standalone FXML file tests
     // -----------------------------------------------------------------------
 
     @Test
@@ -84,7 +84,7 @@ class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
 
     @Test
     void nonFxml2FileIsNotIndexed() {
-        // A plain XML file without the FXML2 namespace must not appear in the index.
+        // A plain XML file without the FXML/2 namespace must not appear in the index.
         getFixture().configureByText("plain.xml", """
                 <?xml version="1.0"?>
                 <?import javafx.scene.control.Label?>
@@ -97,7 +97,7 @@ class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
         );
 
         assertTrue(files.stream().noneMatch(f -> f.getName().equals("plain.xml")),
-                "A file without the FXML2 namespace must not be indexed");
+                "A file without the FXML/2 namespace must not be indexed");
     }
 
     @Test
@@ -117,12 +117,12 @@ class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2 (Java @ComponentView) tests
+    // Embedded FXML (Java @ComponentView) tests
     // -----------------------------------------------------------------------
 
     @Test
     void embeddedImportInJavaAnnotationIsIndexed() {
-        // A Java file that embeds FXML2 via @ComponentView; its imports should
+        // A Java file that embeds FXML via @ComponentView; its imports should
         // be picked up by the embedded indexer.
         getFixture().configureByText("EmbeddedView.java", """
                 import org.jfxcore.markup.ComponentView;
@@ -148,7 +148,7 @@ class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
 
     @Test
     void javaHostImportIsIndexedForEmbeddedFxml() {
-        // Java imports in the host class are available to the embedded FXML2 fragment
+        // Java imports in the host class are available to the embedded FXML fragment
         // and should therefore also be indexed.
         getFixture().configureByText("HostImportView.java", """
                 import org.jfxcore.markup.ComponentView;

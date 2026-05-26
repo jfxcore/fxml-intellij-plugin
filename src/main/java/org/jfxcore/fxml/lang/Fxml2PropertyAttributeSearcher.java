@@ -31,13 +31,13 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 /**
  * {@link ReferencesSearch} extension that, when "Find Usages" is invoked on a Java
  * property-accessor method (getter, setter, or {@code xProperty()} method) or field, also
- * searches FXML2 files for XML attribute names that reference the element as a property
+ * searches FXML files for XML attribute names that reference the element as a property
  * assignment.
  *
  * <h3>Why is this needed?</h3>
  * <p>For an attribute like {@code <FormattedLabel formatter="$doubleFormatter"/>}, the
- * fxml2 compiler maps the attribute name {@code formatter} to the setter
- * {@code setFormatter(Function<T,String>)}.  Navigation from the FXML2 attribute to the
+ * FXML compiler maps the attribute name {@code formatter} to the setter
+ * {@code setFormatter(Function<T,String>)}.  Navigation from the FXML attribute to the
  * setter already works via {@link Fxml2PropertyAttributeDescriptor#getDeclaration()}.
  *
  * <p>However, "Find Usages" on {@code setFormatter} shows no results because:
@@ -46,7 +46,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  *       resolves to {@code setFormatter}.</li>
  *   <li>{@link Fxml2UseScopeEnlarger} only enlarges the search scope for multi-parameter
  *       methods; single-parameter methods (setters) require this dedicated searcher to
- *       make "Find Usages" include FXML2 files.</li>
+ *       make "Find Usages" include FXML files.</li>
  * </ol>
  *
  * <p>This searcher bridges that gap: given a target {@link com.intellij.psi.PsiMethod} or
@@ -55,12 +55,12 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  *   <li>derives the property name (e.g. {@code "formatter"} from {@code setFormatter});</li>
  *   <li>uses the word index (IN_PLAIN_TEXT context, since XML attribute names are indexed
  *       with {@code IN_PLAIN_TEXT | IN_FOREIGN_LANGUAGES}) to locate candidate standalone
- *       FXML2 files efficiently;</li>
- *   <li>walks each candidate file (and all embedded FXML2 markup) for XML attributes whose
+ *       FXML files efficiently;</li>
+ *   <li>walks each candidate file (and all embedded FXML markup) for XML attributes whose
  *       name matches and whose {@link Fxml2PropertyAttributeDescriptor#getDeclaration()}
  *       is equivalent to the target;</li>
  *   <li>emits a synthetic {@link PsiReference} on the attribute's name element so that
- *       IntelliJ shows the FXML2 use site in the "Find Usages" results.</li>
+ *       IntelliJ shows the FXML use site in the "Find Usages" results.</li>
  * </ol>
  *
  * <h3>Word-index context note</h3>
@@ -99,7 +99,7 @@ public final class Fxml2PropertyAttributeSearcher
     }
 
     /**
-     * Searches standalone and embedded FXML2 files in {@code globalScope} for
+     * Searches standalone and embedded FXML files in {@code globalScope} for
      * property-attribute usages of {@code target} with the given {@code propertyName}.
      * Called both from the {@link ReferencesSearch} path (this class) and from the
      * {@link com.intellij.psi.search.searches.MethodReferencesSearch} path
@@ -113,7 +113,7 @@ public final class Fxml2PropertyAttributeSearcher
 
         Project project = ReadAction.compute(target::getProject);
 
-        // 1. Standalone FXML2 files: use the word index (IN_PLAIN_TEXT context) to locate
+        // 1. Standalone FXML files: use the word index (IN_PLAIN_TEXT context) to locate
         //    candidate files containing the property name, then walk each file for matches.
         ReadAction.run(() ->
             PsiSearchHelper.getInstance(project).processAllFilesWithWordInText(
@@ -128,7 +128,7 @@ public final class Fxml2PropertyAttributeSearcher
                     /* caseSensitively= */ false)
         );
 
-        // 2. Embedded FXML2 markup: injected XML is not indexed, but Java text-block content
+        // 2. Embedded FXML markup: injected XML is not indexed, but Java text-block content
         //    is indexed as IN_PLAIN_TEXT (and Kotlin raw strings as IN_STRINGS), so we can
         //    use the word index to pre-filter to only the host files containing the property name.
         ReadAction.run(() ->

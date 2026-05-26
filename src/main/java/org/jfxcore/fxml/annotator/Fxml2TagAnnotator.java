@@ -24,10 +24,10 @@ import org.jfxcore.fxml.resolve.Fxml2TagResolver;
 import java.util.Set;
 
 /**
- * Annotates unresolvable class and property element tags in FXML 2.0 files.
+ * Annotates unresolvable class and property element tags in FXML files.
  *
  * <p>Because {@link org.jfxcore.fxml.lang.Fxml2XmlExtension.Fxml2TagNameReference#isSoft()}
- * returns {@code true}, IntelliJ's built-in XML reference inspection never fires for FXML 2.0 tags.
+ * returns {@code true}, IntelliJ's built-in XML reference inspection never fires for FXML tags.
  * This annotator is therefore the sole source of tag-name errors, ensuring:
  * <ul>
  *   <li>Each error is reported exactly once (visiting the tag, not the start/end name tokens).</li>
@@ -58,7 +58,7 @@ public final class Fxml2TagAnnotator implements Annotator {
 
     private static void annotateTag(
             @NotNull XmlTag tag, @NotNull XmlFile xmlFile, @NotNull AnnotationHolder holder) {
-        // Synthetic wrapper root injected for @ComponentView embedded FXML 2.0; never annotate it.
+        // Synthetic wrapper root injected for @ComponentView embedded FXML; never annotate it.
         if (Fxml2EmbeddedUtil.isWrapperRoot(tag)) return;
         if (Fxml2ImportResolver.FXML2_NAMESPACE.equals(tag.getNamespace())) {
             String fxLocalName = tag.getLocalName();
@@ -82,7 +82,7 @@ public final class Fxml2TagAnnotator implements Annotator {
         XmlTag parentTag = tag.getParentTag();
         if (parentTag == null || Fxml2EmbeddedUtil.isWrapperRoot(parentTag)) {
             // Treat a wrapper-root parent the same as no parent: the tag is at the top
-            // of the user markup in an embedded FXML 2.0 fragment.
+            // of the user markup in an embedded FXML fragment.
             errorWithFix(holder, tag, "Cannot resolve symbol '" + localName + "'",
                     !localName.contains(".") ? new Fxml2AddImportFix(localName) : null);
             return;

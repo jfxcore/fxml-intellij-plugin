@@ -58,10 +58,10 @@ intellijPlatform {
 
     pluginConfiguration {
         id = "org.jfxcore.fxml"
-        name = "FXML 2.0 for JavaFX"
+        name = "FXML/2 for JavaFX"
         version = project.version.toString()
         description = """
-            IDE support for the <a href="https://jfxcore.github.io/fxml-compiler">FXML 2.0</a>
+            IDE support for the <a href="https://jfxcore.github.io/fxml-compiler">FXML/2</a>
             markup format for JavaFX UIs.<br/><br/>
 
             Features include:

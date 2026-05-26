@@ -65,7 +65,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for embedded FXML2 support via the {@code @ComponentView} annotation.
+ * Tests for embedded FXML support via the {@code @ComponentView} annotation.
  *
  * <p>Each test configures a Java file with a class annotated with
  * {@code @org.jfxcore.markup.ComponentView}. The language injector
@@ -149,7 +149,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     /**
      * Directly verifies that {@link org.jfxcore.fxml.resolve.Fxml2ImportResolver#parseImports}
      * returns a non-empty list and that {@code StackPane} resolves for the injected XML file.
-     * This pinpoints whether the import-resolution path is working at all for embedded FXML2.
+     * This pinpoints whether the import-resolution path is working at all for embedded FXML.
      */
     @Test
     void importResolutionWorksForInjectedFile() {
@@ -163,7 +163,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             var imports = org.jfxcore.fxml.resolve.Fxml2ImportResolver.parseImports(xmlFile);
             assertFalse(imports.isEmpty(),
-                    "parseImports must return non-empty for embedded FXML2. " +
+                    "parseImports must return non-empty for embedded FXML. " +
                     "Prolog: " + (xmlFile.getDocument() != null ? xmlFile.getDocument().getProlog() : "null-doc") +
                     ", isInjected: " + InjectedLanguageManager.getInstance(getFixture().getProject()).isInjectedFragment(xmlFile) +
                     ", rootName: " + (xmlFile.getRootTag() != null ? xmlFile.getRootTag().getName() : "null-root"));
@@ -240,9 +240,9 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
             XmlFile xmlFile = getInjectedXmlFile();
             assertNotNull(xmlFile, "Injected XmlFile must be present after highlighting");
             assertTrue(Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile),
-                    "Injected file must be recognized as embedded FXML2 via wrapper namespace");
+                    "Injected file must be recognized as embedded FXML via wrapper namespace");
             assertTrue(Fxml2FileType.isFxml2(xmlFile),
-                    "isFxml2(PsiFile) must return true for injected FXML2 fragment");
+                    "isFxml2(PsiFile) must return true for injected FXML fragment");
         });
     }
 
@@ -292,7 +292,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * An element tag whose class cannot be resolved through the Java imports must
-     * produce a "Cannot resolve symbol" error, exactly as in a standalone FXML2 file.
+     * produce a "Cannot resolve symbol" error, exactly as in a standalone FXML file.
      */
     @Test
     void unknownTagProducesError() {
@@ -305,15 +305,15 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                 h -> h.getDescription() != null
                      && h.getDescription().contains("UnknownWidget123"));
         assertTrue(hasUnresolved,
-                "Expected a 'Cannot resolve symbol UnknownWidget123' error in embedded FXML2");
+                "Expected a 'Cannot resolve symbol UnknownWidget123' error in embedded FXML");
     }
 
     // -----------------------------------------------------------------------
-    // 18: fx:subclass forbidden in embedded FXML2
+    // 18: fx:subclass forbidden in embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * {@code fx:subclass} is not allowed in embedded FXML2: the code-behind class
+     * {@code fx:subclass} is not allowed in embedded FXML: the code-behind class
      * is always the Java class carrying the {@code @ComponentView} annotation.
      * {@link Fxml2FxAttributeInspection} must report a specific error when it
      * appears on any element of the embedded markup.
@@ -335,7 +335,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                      && h.getDescription().toLowerCase().contains("fx:subclass")
                      && h.getDescription().toLowerCase().contains("embedded"));
         assertTrue(hasFxClassError,
-                "Expected a specific error about fx:subclass being forbidden in embedded FXML2. "
+                "Expected a specific error about fx:subclass being forbidden in embedded FXML. "
                 + "Errors found: " + errors.stream()
                         .filter(h -> h.getDescription() != null)
                         .map(h -> "\"" + h.getDescription() + "\"")
@@ -360,7 +360,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     /**
-     * {@code fx:context} on the user's root element in embedded FXML2 must not produce
+     * {@code fx:context} on the user's root element in embedded FXML must not produce
      * an "Unexpected intrinsic: context" error.  The injector wraps the user's markup in
      * a synthetic {@code <fxml2:embedded>} element, which means the user's root tag is the
      * first child of the document root, not the document root itself.  The inspection must
@@ -433,7 +433,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * The "unused import" inspection must NOT fire for embedded FXML2: the
+     * The "unused import" inspection must NOT fire for embedded FXML: the
      * {@code <?import?>} PIs in the injected prefix come from the host Java imports
      * and are not user-editable.
      */
@@ -452,7 +452,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * A Java import that is only referenced in a {@code <?prefix X = ClassName?>}
-     * processing instruction inside the embedded FXML2 markup must not be reported as
+     * processing instruction inside the embedded FXML markup must not be reported as
      * "Unused import statement" by IntelliJ's built-in Java highlight pass.
      *
      * <p>This tests {@link org.jfxcore.fxml.lang.Fxml2JavaUnusedImportHighlightFilter}
@@ -493,7 +493,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * Ctrl+click on the class name in a {@code <?prefix ^ = ClassName?>} processing
-     * instruction inside embedded FXML2 must navigate to the named class.
+     * instruction inside embedded FXML must navigate to the named class.
      */
     @Test
     void ctrlClickOnClassNameInEmbeddedPrefixDeclaration_navigatesToClass() {
@@ -550,7 +550,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * IntelliJ's built-in Java "Unused import statement" warning must NOT fire for
-     * imports that are only referenced inside the embedded FXML2 markup (i.e. inside the
+     * imports that are only referenced inside the embedded FXML markup (i.e. inside the
      * {@code @ComponentView} string literal), because those imports are needed to resolve
      * the class tags in the markup.
      *
@@ -559,7 +559,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     @Test
     void javaBuiltinUnusedImportWarningNotShownForFxml2NeededImports() {
         // The Java file imports both javafx.scene.layout.* and javafx.scene.control.*.
-        // Only StackPane (from layout) appears in the FXML2 markup.
+        // Only StackPane (from layout) appears in the FXML markup.
         // javafx.scene.control.* is also synthesised into the injected markup as
         // <?import javafx.scene.control.*?>: so the injector considers it "needed",
         // but the plain Java code does not reference any control class directly.
@@ -578,7 +578,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                 .toList();
 
         assertTrue(unusedImportDescriptions.isEmpty(),
-                "Expected no 'Unused import statement' for imports needed by embedded FXML2 markup, "
+                "Expected no 'Unused import statement' for imports needed by embedded FXML markup, "
                         + "but got: " + unusedImportDescriptions);
     }
 
@@ -588,7 +588,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
      * {@code GlobalInspectionContextImpl}).
      *
      * <p>The import {@code javafx.scene.control.*} is not directly used in Java code, but
-     * it is needed by the embedded FXML2 markup. Without
+     * it is needed by the embedded FXML markup. Without
      * {@link org.jfxcore.fxml.lang.Fxml2InspectionExtensionsFactory}, the batch run
      * would report it as "Unused import".
      *
@@ -602,7 +602,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
         getFixture().configureByText("EmbeddedView.java",
                 javaWithMarkup("EmbeddedView", "    <StackPane/>\n"));
 
-        // Warm up the injection so FXML2 PSI is present during batch inspection.
+        // Warm up the injection so FXML PSI is present during batch inspection.
         getFixture().doHighlighting();
 
         Project project = getFixture().getProject();
@@ -632,10 +632,10 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                 Collection<CommonProblemDescriptor> problems =
                         context.getPresentation(wrapper).getProblemDescriptors();
 
-                // Both imports (layout.* and control.*) are needed by the embedded FXML2 markup.
+                // Both imports (layout.* and control.*) are needed by the embedded FXML markup.
                 // The Fxml2InspectionExtensionsFactory hook must have suppressed them.
                 assertTrue(problems.isEmpty(),
-                        "Expected no batch 'Unused import' problems for FXML2-needed imports, "
+                        "Expected no batch 'Unused import' problems for FXML-needed imports, "
                                 + "but got: " + problems.stream()
                                 .map(CommonProblemDescriptor::getDescriptionTemplate)
                                 .toList());
@@ -649,7 +649,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * A Java import for a class referenced only in a {@code converter=} parameter path
-     * inside embedded FXML2 markup must not be reported as "Unused import statement" by
+     * inside embedded FXML markup must not be reported as "Unused import statement" by
      * IntelliJ's built-in Java highlight pass.
      *
      * <p>The converter class is not used anywhere in plain Java code; it appears as the
@@ -674,7 +674,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                 """);
 
         // The Java file imports converters.BindingConverter, referenced only in the
-        // converter= path inside the embedded FXML2 markup, not in plain Java code.
+        // converter= path inside the embedded FXML markup, not in plain Java code.
         getFixture().configureByText("ConverterImportView.java", """
                 package test;
                 import org.jfxcore.markup.ComponentView;
@@ -692,7 +692,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                 """);
         getFixture().doHighlighting();
 
-        // Verify that the import is recognized as needed by the FXML2 markup.
+        // Verify that the import is recognized as needed by the FXML markup.
         // Without the fix, collectUsedSimpleNames() ignores the converter= path, so
         // isImportNeededByXmlFile() returns false for converters.BindingConverter, and
         // the import is flagged as "Unused import statement" in the real IDE.
@@ -714,11 +714,11 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Intention actions suppressed for embedded FXML2
+    // Intention actions suppressed for embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * {@link org.jfxcore.fxml.actions.CreateCodeBehindIntention} must NOT be offered inside embedded FXML2 -
+     * {@link org.jfxcore.fxml.actions.CreateCodeBehindIntention} must NOT be offered inside embedded FXML -
      * the annotated class is already the code-behind.
      */
     @Test
@@ -789,7 +789,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
             assertNotNull(field, "Field 'myBtn' must exist on EmbeddedViewBase");
 
             // Verify via ReferencesSearch (which uses Fxml2FxIdFieldSearcher) that the
-            // fx:id in the embedded FXML2 is found as a reference to the field.
+            // fx:id in the embedded FXML is found as a reference to the field.
             var refs = ReferencesSearch.search(field,
                     GlobalSearchScope.projectScope(
                             getFixture().getProject())).findAll();
@@ -798,7 +798,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                            && attrVal.getContainingFile() instanceof XmlFile xmlFile
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(foundInEmbedded,
-                    "ReferencesSearch on 'myBtn' must find the fx:id in embedded FXML2.\n"
+                    "ReferencesSearch on 'myBtn' must find the fx:id in embedded FXML.\n"
                     + "References found: " + refs.stream()
                             .map(r -> r.getElement().getContainingFile().getName()
                                       + "@" + r.getElement().getClass().getSimpleName())
@@ -808,7 +808,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2FxIdFindUsagesHandlerFactory} must locate the {@link XmlAttributeValue}
-     * of {@code fx:id="myBtn"} in the embedded FXML2 when starting from the Java field.
+     * of {@code fx:id="myBtn"} in the embedded FXML when starting from the Java field.
      */
     @Test
     void fxIdFindUsagesHandlerFindsEmbeddedFxId() {
@@ -849,7 +849,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             var factory = new Fxml2FxIdFindUsagesHandlerFactory();
             assertTrue(factory.canFindUsages(field),
-                    "Factory must accept a PsiField that has an fx:id in embedded FXML2");
+                    "Factory must accept a PsiField that has an fx:id in embedded FXML");
 
             var handler = factory.createFindUsagesHandler(field, false);
             assertNotNull(handler,
@@ -862,7 +862,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                          && attrVal.getContainingFile() instanceof XmlFile xmlFile
                          && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(hasEmbeddedAttrVal,
-                    "Handler primaries must include the fx:id XmlAttributeValue in embedded FXML2.\n"
+                    "Handler primaries must include the fx:id XmlAttributeValue in embedded FXML.\n"
                     + "Primaries: " + Arrays.stream(primaries)
                             .map(p -> p.getClass().getSimpleName()
                                       + " in " + p.getContainingFile().getName())
@@ -1015,14 +1015,14 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                 h -> h.getDescription() != null
                      && h.getDescription().contains("nonExistentField"));
         assertTrue(hasUnresolved,
-                "Expected an unresolved-binding error for 'nonExistentField' in embedded FXML2");
+                "Expected an unresolved-binding error for 'nonExistentField' in embedded FXML");
     }
 
     /**
-     * A binding segment that references an {@code fx:id} name inside embedded FXML2 must
+     * A binding segment that references an {@code fx:id} name inside embedded FXML must
      * resolve to the code-behind field, and that field's {@link PsiElement#getNavigationElement()}
      * must return the {@link XmlAttributeValue} of the {@code fx:id} in the <em>injected</em>
-     * XML file: exactly as it does for standalone FXML2 files.
+     * XML file: exactly as it does for standalone FXML files.
      */
     @Test
     void fxIdGotoDeclarationFromBinding() {
@@ -1087,7 +1087,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                     .map(r -> (Fxml2BindingSegmentReference) r)
                     .findFirst().orElse(null);
             assertNotNull(segRef,
-                    "No Fxml2BindingSegmentReference for 'myNavBtn' in embedded FXML2 binding");
+                    "No Fxml2BindingSegmentReference for 'myNavBtn' in embedded FXML binding");
 
             // Resolving the segment reference must yield a PsiField.
             PsiElement resolved = segRef.resolve();
@@ -1097,21 +1097,21 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                     + resolved.getClass().getSimpleName());
 
             // The field's navigation element must be the fx:id XmlAttributeValue
-            // in the injected FXML2 file.
+            // in the injected FXML file.
             assertEquals(finalFxIdVal, resolved.getNavigationElement(),
                     "Binding segment 'myNavBtn' must navigate to the fx:id XmlAttributeValue "
-                    + "in the injected embedded FXML2 file");
+                    + "in the injected embedded FXML file");
         });
     }
 
     // -----------------------------------------------------------------------
-    // fxIdFindUsages: Find Usages on fx:id value in embedded FXML2
+    // fxIdFindUsages: Find Usages on fx:id value in embedded FXML
     // -----------------------------------------------------------------------
 
     /**
      * {@link Fxml2FxIdFindUsagesHandlerFactory} invoked on the {@code fx:id} attribute value
-     * in embedded FXML2 must return a handler whose primary elements include both the
-     * {@link XmlAttributeValue} and the code-behind field: same as for standalone FXML2.
+     * in embedded FXML must return a handler whose primary elements include both the
+     * {@link XmlAttributeValue} and the code-behind field: same as for standalone FXML.
      */
     @Test
     void fxIdFindUsages() {
@@ -1159,14 +1159,14 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             var factory = new Fxml2FxIdFindUsagesHandlerFactory();
             assertTrue(factory.canFindUsages(fxIdVal),
-                    "Factory must accept XmlAttributeValue from embedded FXML2");
+                    "Factory must accept XmlAttributeValue from embedded FXML");
 
             var handler = factory.createFindUsagesHandler(fxIdVal, false);
             assertNotNull(handler, "Handler must be created for embedded fx:id");
 
             List<PsiElement> primaries = Arrays.asList(handler.getPrimaryElements());
             assertTrue(primaries.contains(fxIdVal),
-                    "Primaries must include the fx:id XmlAttributeValue from embedded FXML2");
+                    "Primaries must include the fx:id XmlAttributeValue from embedded FXML");
             assertTrue(primaries.stream()
                             .anyMatch(e -> e instanceof PsiField f && "myFuBtn".equals(f.getName())),
                     "Primaries must include the code-behind field 'myFuBtn'.\nPrimaries: "
@@ -1177,13 +1177,13 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // codeCompletion: tag name completion in embedded FXML2
+    // codeCompletion: tag name completion in embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * Tag-name completion inside an embedded FXML2 string must suggest class names that
+     * Tag-name completion inside an embedded FXML string must suggest class names that
      * are reachable through the host Java file's import declarations: the same set that
-     * the {@code Fxml2CompletionContributor} suggests in standalone FXML2 files.
+     * the {@code Fxml2CompletionContributor} suggests in standalone FXML files.
      */
     @Test
     void codeCompletionInEmbeddedFxml2() {
@@ -1209,13 +1209,13 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
         LookupElement[] completions = getFixture().completeBasic();
         assertNotNull(completions,
-                "completeBasic() must return results inside embedded FXML2 tag position");
+                "completeBasic() must return results inside embedded FXML tag position");
 
         boolean hasButton = Arrays.stream(completions)
                 .anyMatch(c -> "Button".equals(c.getLookupString()));
         assertTrue(hasButton,
                 "Completion must suggest 'Button' from the javafx.scene.control.* import "
-                + "in embedded FXML2. Got: "
+                + "in embedded FXML. Got: "
                 + Arrays.stream(completions)
                         .map(LookupElement::getLookupString)
                         .limit(30)
@@ -1227,18 +1227,18 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Attribute-name completion in embedded FXML2 must insert {@code =""} (double quotes),
+     * Attribute-name completion in embedded FXML must insert {@code =""} (double quotes),
      * not {@code =''} (single quotes).
      *
      * <p>{@code XmlAttributeInsertHandler} checks
      * {@code file.getContext().getText().startsWith("\"")} and, if true, switches to single
-     * quotes.  For embedded FXML2 the context element is the host Java text block
+     * quotes.  For embedded FXML the context element is the host Java text block
      * ({@code """..."""}), which also starts with {@code '"'}.  The plugin's insert handler
      * must therefore always use double quotes, ignoring the context text.
      */
     @Test
     void attributeNameCompletionInEmbeddedFxml2UsesDoubleQuotes() {
-        // Place the caret at a plain attribute-name position inside embedded FXML2.
+        // Place the caret at a plain attribute-name position inside embedded FXML.
         // 'minH' uniquely matches 'minHeight' on TextField, so completion auto-inserts.
         getFixture().configureByText("AttrInsertTest.java", javaWithMarkup("AttrInsertView",
                 """
@@ -1267,10 +1267,10 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
         String docText = getFixture().getEditor().getDocument().getText();
         assertTrue(docText.contains("minHeight=\"\""),
-                "Attribute name completion in embedded FXML2 must insert =\"\" (double quotes). "
+                "Attribute name completion in embedded FXML must insert =\"\" (double quotes). "
                 + "Document text:\n" + docText);
         assertFalse(docText.contains("minHeight=''"),
-                "Attribute name completion in embedded FXML2 must NOT insert ='' (single quotes). "
+                "Attribute name completion in embedded FXML must NOT insert ='' (single quotes). "
                 + "Document text:\n" + docText);
     }
 
@@ -1279,7 +1279,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Renaming an {@code fx:id} attribute value in the injected FXML2 XML must propagate
+     * Renaming an {@code fx:id} attribute value in the injected FXML must propagate
      * the change back through the injection host to the Java string literal.
      */
     @Test
@@ -1339,11 +1339,11 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // AddImportForClassReferenceIntention in embedded FXML2
+    // AddImportForClassReferenceIntention in embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * When the user writes a fully-qualified class name inside embedded FXML2 markup
+     * When the user writes a fully-qualified class name inside embedded FXML markup
      * (e.g. {@code <javafx.scene.control.Button/>}) and the class is not yet imported
      * in the host Java file, {@code AddImportForClassReferenceIntention} must:
      * <ol>
@@ -1377,7 +1377,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
         // The intention should now be available at the caret position.
         IntentionAction action = getFixture().findSingleIntention("Add import for class reference");
         assertNotNull(action,
-                "AddImportForClassReferenceIntention must be available inside embedded FXML2 "
+                "AddImportForClassReferenceIntention must be available inside embedded FXML "
                 + "when the caret is on an unimported FQN class name.");
 
         // Invoke it.
@@ -1410,7 +1410,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     /**
-     * When the user writes a fully-qualified project-source class name as an embedded FXML2
+     * When the user writes a fully-qualified project-source class name as an embedded FXML
      * element tag (e.g. {@code <test.CustomLabel/>}) and the class is not yet imported in the
      * host Java file, {@code AddImportForClassReferenceIntention} must:
      * <ol>
@@ -1420,7 +1420,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
      * </ol>
      *
      * <p>Applies to project-source classes (not just library classes), since both must be
-     * explicitly imported to allow use of the simple class name in FXML2 markup.
+     * explicitly imported to allow use of the simple class name in FXML markup.
      */
     @Test
     void addImportIntentionInsertsJavaImportForProjectSourceClass() {
@@ -1452,7 +1452,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
         IntentionAction action = getFixture().findSingleIntention("Add import for class reference");
         assertNotNull(action,
                 "AddImportForClassReferenceIntention must be available for a project-source class "
-                + "used as a FQN element tag in embedded FXML2.");
+                + "used as a FQN element tag in embedded FXML.");
 
         getFixture().launchAction(action);
 
@@ -1474,7 +1474,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     /**
-     * When an unresolved simple class name is used as a tag in embedded FXML2
+     * When an unresolved simple class name is used as a tag in embedded FXML
      * (e.g. {@code <ImportTestLabel/>} without a corresponding Java import), the annotator
      * must attach an "Add import" quick fix to the "Cannot resolve symbol" error.
      * Applying the fix must insert a Java {@code import} statement into the host Java file.
@@ -1511,7 +1511,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                 "Add import for 'SimpleNameImportLabel'");
         assertNotNull(action,
                 "Fxml2AddImportFix must be attached to the 'Cannot resolve symbol' error "
-                + "for an unresolved simple class name in embedded FXML2.");
+                + "for an unresolved simple class name in embedded FXML.");
 
         getFixture().launchAction(action);
 
@@ -1525,7 +1525,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
         });
 
         assertTrue(javaText.contains("import test.SimpleNameImportLabel;"),
-                "Java file must contain the import for the class resolved via the 'Add import' quick fix in embedded FXML2.\n"
+                "Java file must contain the import for the class resolved via the 'Add import' quick fix in embedded FXML.\n"
                 + "Actual source:\n" + javaText);
     }
 
@@ -1535,7 +1535,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * Renaming a {@code @ComponentView}-annotated Java class (Shift+F6) must NOT remove
-     * imports that are needed by the embedded FXML2 markup.
+     * imports that are needed by the embedded FXML markup.
      *
      * <p>Root cause: IntelliJ's {@code OptimizeImportsRefactoringHelper} (a
      * {@code RefactoringHelper} registered for all refactoring operations) calls
@@ -1591,10 +1591,10 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
         assertTrue(text.contains("javafx.scene.layout"),
                 "import javafx.scene.layout.* must survive class rename "
-                + "(StackPane is used in embedded FXML2).\nActual source:\n" + text);
+                + "(StackPane is used in embedded FXML).\nActual source:\n" + text);
         assertTrue(text.contains("javafx.scene.control"),
                 "import javafx.scene.control.* must survive class rename "
-                + "(Button is used in embedded FXML2).\nActual source:\n" + text);
+                + "(Button is used in embedded FXML).\nActual source:\n" + text);
     }
 
     // -----------------------------------------------------------------------
@@ -1602,7 +1602,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Renaming a class that is referenced as an XML tag in embedded FXML2 markup must:
+     * Renaming a class that is referenced as an XML tag in embedded FXML markup must:
      * <ol>
      *   <li>Keep the simple (unqualified) tag name, not substitute the fully-qualified name.</li>
      *   <li>Update the Java {@code import} statement to the new fully-qualified name.</li>
@@ -1700,7 +1700,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2EmbeddedJavaImportOptimizer} must add back Java imports that are needed
-     * by the embedded FXML2 markup but were removed (e.g. by IntelliJ's built-in Java import
+     * by the embedded FXML markup but were removed (e.g. by IntelliJ's built-in Java import
      * optimizer, which does not understand that class names inside string literals are "used").
      *
      * <p>The test simulates this by:
@@ -1767,12 +1767,12 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
         String text = ReadAction.compute(() -> getFixture().getFile().getText());
         assertTrue(text.contains("javafx.scene.control"),
                 "Optimizer must add back the javafx.scene.control import that is used in "
-                + "embedded FXML2.\nActual source:\n" + text);
+                + "embedded FXML.\nActual source:\n" + text);
     }
 
     /**
      * {@link Fxml2EmbeddedJavaImportOptimizer} must NOT add imports that are NOT used
-     * in the embedded FXML2 markup.  If an import was removed by the Java optimizer and
+     * in the embedded FXML markup.  If an import was removed by the Java optimizer and
      * the embedded markup doesn't need it, the optimizer must leave it removed.
      */
     @Test
@@ -1823,15 +1823,15 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
         // layout.* must be restored (StackPane is used).
         assertTrue(text.contains("javafx.scene.layout"),
-                "Optimizer must restore layout.* (used in embedded FXML2).\nActual:\n" + text);
+                "Optimizer must restore layout.* (used in embedded FXML).\nActual:\n" + text);
 
         // control.* must NOT be restored (not used in embedded markup).
         assertFalse(text.contains("javafx.scene.control"),
-                "Optimizer must NOT restore control.* (unused in embedded FXML2).\nActual:\n" + text);
+                "Optimizer must NOT restore control.* (unused in embedded FXML).\nActual:\n" + text);
 
         // beans.* must NOT be restored (not used in embedded markup).
         assertFalse(text.contains("javafx.beans.property"),
-                "Optimizer must NOT restore beans.* (unused in embedded FXML2).\nActual:\n" + text);
+                "Optimizer must NOT restore beans.* (unused in embedded FXML).\nActual:\n" + text);
     }
 
     /**
@@ -1936,12 +1936,12 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must recognize a field as implicitly
      * used when the field's containing class carries a {@code @ComponentView} annotation
-     * and the embedded FXML2 markup references the field in a binding expression
+     * and the embedded FXML markup references the field in a binding expression
      * (e.g. {@code {fx:Observe vm.text}}).
      *
      * <p>IntelliJ's unused-field analysis uses a word-index search that never reaches
      * injected language fragments.  Without this provider, binding-segment references
-     * inside embedded FXML2 are invisible to the analysis and the field is falsely
+     * inside embedded FXML are invisible to the analysis and the field is falsely
      * reported as "never used" even though Ctrl+click correctly navigates to its usages.
      */
     @Test
@@ -1982,16 +1982,16 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
             var provider = new Fxml2EmbeddedImplicitUsageProvider();
 
             assertTrue(provider.isImplicitUsage(vmField),
-                    "isImplicitUsage must return true for a field referenced in embedded FXML2 binding");
+                    "isImplicitUsage must return true for a field referenced in embedded FXML binding");
             assertTrue(provider.isImplicitRead(vmField),
-                    "isImplicitRead must return true for a field referenced in embedded FXML2 binding");
+                    "isImplicitRead must return true for a field referenced in embedded FXML binding");
         });
     }
 
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must NOT suppress the unused-field
      * warning for a field that is defined in an {@code @ComponentView} class but is
-     * <em>not</em> referenced anywhere in the embedded FXML2 markup.
+     * <em>not</em> referenced anywhere in the embedded FXML markup.
      */
     @Test
     void implicitUsageProviderDoesNotSuppressGenuinelyUnusedField() {
@@ -2027,9 +2027,9 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
             var provider = new Fxml2EmbeddedImplicitUsageProvider();
 
             assertFalse(provider.isImplicitUsage(field),
-                    "isImplicitUsage must return false for a field NOT referenced in embedded FXML2");
+                    "isImplicitUsage must return false for a field NOT referenced in embedded FXML");
             assertFalse(provider.isImplicitRead(field),
-                    "isImplicitRead must return false for a field NOT referenced in embedded FXML2");
+                    "isImplicitRead must return false for a field NOT referenced in embedded FXML");
         });
     }
 
@@ -2039,7 +2039,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must recognize a package-private static field
-     * as implicitly used when the embedded FXML2 markup references it in a binding expression
+     * as implicitly used when the embedded FXML markup references it in a binding expression
      * (e.g. {@code $staticText}).
      *
      * <p>The field must not be flagged as "never used" even when it has package-private
@@ -2075,9 +2075,9 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
             var provider = new Fxml2EmbeddedImplicitUsageProvider();
 
             assertTrue(provider.isImplicitUsage(field),
-                    "isImplicitUsage must return true for a package-private static field referenced in embedded FXML2 binding");
+                    "isImplicitUsage must return true for a package-private static field referenced in embedded FXML binding");
             assertTrue(provider.isImplicitRead(field),
-                    "isImplicitRead must return true for a package-private static field referenced in embedded FXML2 binding");
+                    "isImplicitRead must return true for a package-private static field referenced in embedded FXML binding");
         });
     }
 
@@ -2087,7 +2087,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must recognize a property-accessor method
-     * (the {@code fooProperty()} convention) as implicitly used when the embedded FXML2 markup
+     * (the {@code fooProperty()} convention) as implicitly used when the embedded FXML markup
      * references the property via its short name in a binding expression.
      *
      * <p>Example: a private {@code StringProperty message} with public {@code messageProperty()},
@@ -2133,17 +2133,17 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(messagePropertyMethod),
                     "isImplicitUsage must return true for messageProperty() referenced as "
-                    + "'message' in embedded FXML2 binding");
+                    + "'message' in embedded FXML binding");
             assertTrue(provider.isImplicitRead(messagePropertyMethod),
                     "isImplicitRead must return true for messageProperty() referenced as "
-                    + "'message' in embedded FXML2 binding");
+                    + "'message' in embedded FXML binding");
         });
     }
 
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must NOT suppress the unused-method
      * warning for a method in an {@code @ComponentView} class that is not referenced
-     * anywhere in the embedded FXML2 markup.
+     * anywhere in the embedded FXML markup.
      */
     @Test
     void implicitUsageProviderDoesNotSuppressGenuinelyUnusedMethod() {
@@ -2175,9 +2175,9 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
             var provider = new Fxml2EmbeddedImplicitUsageProvider();
 
             assertFalse(provider.isImplicitUsage(unusedPropertyMethod),
-                    "isImplicitUsage must return false for a method NOT referenced in embedded FXML2");
+                    "isImplicitUsage must return false for a method NOT referenced in embedded FXML");
             assertFalse(provider.isImplicitRead(unusedPropertyMethod),
-                    "isImplicitRead must return false for a method NOT referenced in embedded FXML2");
+                    "isImplicitRead must return false for a method NOT referenced in embedded FXML");
         });
     }
 
@@ -2189,7 +2189,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must recognize a field in a
      * <em>non-{@code @ComponentView}</em> class (e.g. a view model) as implicitly used
-     * when it is referenced from another class's embedded FXML2 markup via a multi-segment
+     * when it is referenced from another class's embedded FXML markup via a multi-segment
      * binding path such as {@code {fx:Observe model.displayText}}.
      *
      * <p>The annotated view class carries {@code @ComponentView} and has a field
@@ -2243,16 +2243,16 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(displayTextField),
                     "isImplicitUsage must return true for a view-model field bound via "
-                    + "model.displayText in another class's embedded FXML2 markup");
+                    + "model.displayText in another class's embedded FXML markup");
             assertTrue(provider.isImplicitRead(displayTextField),
                     "isImplicitRead must return true for a view-model field bound via "
-                    + "model.displayText in another class's embedded FXML2 markup");
+                    + "model.displayText in another class's embedded FXML markup");
         });
     }
 
     /**
      * {@link ReferencesSearch} (global scope) on a field in a non-{@code @ComponentView}
-     * class must find the binding-path segment in another class's embedded FXML2 markup.
+     * class must find the binding-path segment in another class's embedded FXML markup.
      *
      * <p>This is the "Find Usages" direction: performing "Find Usages" on
      * {@code MainViewModel.labelText} must discover {@code {fx:Observe vm.labelText}} in
@@ -2306,7 +2306,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(foundInEmbedded,
                     "ReferencesSearch on FindVm.vmLabel must find the binding segment "
-                    + "'vmLabel' in the embedded FXML2 markup of FindVmView.\n"
+                    + "'vmLabel' in the embedded FXML markup of FindVmView.\n"
                     + "Found refs: " + refs.stream()
                             .map(r -> r.getClass().getSimpleName()
                                       + " in " + r.getElement().getContainingFile().getName())
@@ -2316,12 +2316,12 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     // -----------------------------------------------------------------------
     // Fxml2BindingSegmentSearcher: Find Usages on property accessor
-    //        finds binding segments in embedded FXML2 markup
+    //        finds binding segments in embedded FXML markup
     // -----------------------------------------------------------------------
 
     /**
      * {@link ReferencesSearch} on a property-accessor method (e.g. {@code messageProperty()})
-     * must find the binding-path segment {@code "message"} in the embedded FXML2 markup via
+     * must find the binding-path segment {@code "message"} in the embedded FXML markup via
      * {@link org.jfxcore.fxml.lang.Fxml2BindingSegmentSearcher}'s global-search path.
      *
      * <p>The word-based {@code CachesBasedRefSearcher} cannot find these usages because the
@@ -2371,7 +2371,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(foundInEmbedded,
                     "ReferencesSearch on messageProperty() must find the 'message' binding "
-                    + "segment in embedded FXML2 markup.\nFound refs: "
+                    + "segment in embedded FXML markup.\nFound refs: "
                     + refs.stream()
                             .map(r -> r.getClass().getSimpleName()
                                       + " in " + r.getElement().getContainingFile().getName())
@@ -2380,11 +2380,11 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // fxml <?import?> inside embedded FXML2
+    // fxml <?import?> inside embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * An embedded FXML2 markup may contain {@code <?import?>} processing instructions in
+     * An embedded FXML markup may contain {@code <?import?>} processing instructions in
      * addition to (or instead of) Java imports. The tag must resolve correctly when only a
      * fxml {@code <?import?>} PI covers the class: no Java import for that class.
      *
@@ -2472,8 +2472,8 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     /**
-     * An unused fxml {@code <?import?>} PI inside embedded FXML2 must be flagged by
-     * {@link Fxml2UnusedImportsInspection}, just as in a standalone FXML2 file.
+     * An unused fxml {@code <?import?>} PI inside embedded FXML must be flagged by
+     * {@link Fxml2UnusedImportsInspection}, just as in a standalone FXML file.
      *
      * <p>The synthesised Java-import PIs in the prolog must NOT be flagged (they are not
      * user-editable).
@@ -2503,7 +2503,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                      && h.getDescription().contains("Unused import"));
         assertTrue(hasUnused,
                 "Expected 'Unused import' warning for <?import javafx.scene.control.Button?> "
-                + "inside embedded FXML2 when Button is not used in the markup.\n"
+                + "inside embedded FXML when Button is not used in the markup.\n"
                 + "Warnings: " + warnings.stream()
                         .filter(Objects::nonNull)
                         .map(HighlightInfo::getDescription)
@@ -2511,7 +2511,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     }
 
     /**
-     * A used fxml {@code <?import?>} PI inside embedded FXML2 must NOT be flagged as unused.
+     * A used fxml {@code <?import?>} PI inside embedded FXML must NOT be flagged as unused.
      */
     @Test
     void usedFxmlImportInsideEmbeddedMarkupIsNotFlagged() {
@@ -2540,7 +2540,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                      && h.getDescription().contains("Unused import"));
         assertFalse(hasUnused,
                 "Expected NO 'Unused import' warning for <?import javafx.scene.control.Button?> "
-                + "inside embedded FXML2 when Button is used in the markup.\n"
+                + "inside embedded FXML when Button is used in the markup.\n"
                 + "Warnings: " + warnings.stream()
                         .filter(Objects::nonNull)
                         .map(HighlightInfo::getDescription)
@@ -2550,7 +2550,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     /**
      * Verifies that {@link org.jfxcore.fxml.resolve.Fxml2ImportResolver#parseImports} returns
      * the merged list of Java imports (prolog) and user-written fxml imports (inside wrapper
-     * root) for an embedded FXML2 file.
+     * root) for an embedded FXML file.
      */
     @Test
     void parseImportsReturnsMergedImportsForEmbeddedFxml() {
@@ -2598,7 +2598,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
      * When the cursor is on a property-accessor method in the host Java file
      * (e.g. {@code messageProperty()} in a {@code @ComponentView} class), identifier
      * highlighting must also light up the corresponding binding-path segments in the
-     * embedded FXML2 markup (e.g. the {@code "message"} segment in
+     * embedded FXML markup (e.g. the {@code "message"} segment in
      * {@code {fx:Observe message}}).
      *
      * <p>This is verified by calling {@link ReferencesSearch} with a
@@ -2656,7 +2656,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
             assertTrue(foundInEmbedded,
                     "ReferencesSearch with LocalSearchScope(host Java file) on messageProperty() "
-                    + "must find the 'message' binding segment in the embedded FXML2 markup "
+                    + "must find the 'message' binding segment in the embedded FXML markup "
                     + "(identifier-under-caret highlighting from Java declaration site).\n"
                     + "Found refs: "
                      + refs.stream()
@@ -2672,11 +2672,11 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must recognize a {@link PsiClass} as
-     * implicitly used when the embedded FXML2 markup uses it as an XML element tag
+     * implicitly used when the embedded FXML markup uses it as an XML element tag
      * (e.g. {@code <test.CustomLabel/>}).
      *
      * <p>A class that has no explicit Java-side usages but is referenced as an XML element
-     * tag in embedded FXML2 markup must not be flagged as "never used".
+     * tag in embedded FXML markup must not be flagged as "never used".
      */
     @Test
     void implicitUsageProviderSuppressesUnusedWarningForClassUsedAsTag() {
@@ -2715,18 +2715,18 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(customLabel),
                     "isImplicitUsage must return true for a class used as XML element tag "
-                    + "in embedded FXML2 markup");
+                    + "in embedded FXML markup");
             assertTrue(provider.isImplicitRead(customLabel),
                     "isImplicitRead must return true for a class used as XML element tag "
-                    + "in embedded FXML2 markup");
+                    + "in embedded FXML markup");
         });
     }
 
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must recognize the no-arg constructor of a
-     * class as implicitly used when the class is used as an XML element tag in embedded FXML2.
+     * class as implicitly used when the class is used as an XML element tag in embedded FXML.
      *
-     * <p>When a class is instantiated via an XML element tag in embedded FXML2, its no-arg
+     * <p>When a class is instantiated via an XML element tag in embedded FXML, its no-arg
      * constructor must not be flagged as "never used" even if it has no explicit Java-side
      * callers.
      */
@@ -2771,10 +2771,10 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(ctor),
                     "isImplicitUsage must return true for a constructor whose class is used "
-                    + "as XML element tag in embedded FXML2 markup");
+                    + "as XML element tag in embedded FXML markup");
             assertTrue(provider.isImplicitRead(ctor),
                     "isImplicitRead must return true for a constructor whose class is used "
-                    + "as XML element tag in embedded FXML2 markup");
+                    + "as XML element tag in embedded FXML markup");
         });
     }
 
@@ -2784,11 +2784,11 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must recognize a {@link PsiClass} as
-     * implicitly used when embedded FXML2 markup uses it as a markup extension in an
+     * implicitly used when embedded FXML markup uses it as a markup extension in an
      * attribute value (e.g. {@code text="{MyExt value=foo}"}).
      *
      * <p>A markup extension class that has no explicit Java-side instantiation but is
-     * referenced as {@code {ClassName ...}} in embedded FXML2 must not be flagged as
+     * referenced as {@code {ClassName ...}} in embedded FXML must not be flagged as
      * "never used".
      */
     @Test
@@ -2831,19 +2831,19 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(simpleExt),
                     "isImplicitUsage must return true for a class used as markup extension "
-                    + "in embedded FXML2 attribute value");
+                    + "in embedded FXML attribute value");
             assertTrue(provider.isImplicitRead(simpleExt),
                     "isImplicitRead must return true for a class used as markup extension "
-                    + "in embedded FXML2 attribute value");
+                    + "in embedded FXML attribute value");
         });
     }
 
     /**
      * {@link Fxml2EmbeddedImplicitUsageProvider} must recognize the constructor of a
-     * markup extension class as implicitly used when embedded FXML2 markup invokes that
+     * markup extension class as implicitly used when embedded FXML markup invokes that
      * class via markup extension attribute notation.
      *
-     * <p>The fxml2 compiler instantiates the markup extension class via its constructor;
+     * <p>The FXML compiler instantiates the markup extension class via its constructor;
      * the constructor must not be flagged as "never used" even if no Java code explicitly
      * calls it.
      */
@@ -2894,20 +2894,20 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(ctor),
                     "isImplicitUsage must return true for a constructor whose class is used "
-                    + "as a markup extension in embedded FXML2");
+                    + "as a markup extension in embedded FXML");
             assertTrue(provider.isImplicitRead(ctor),
                     "isImplicitRead must return true for a constructor whose class is used "
-                    + "as a markup extension in embedded FXML2");
+                    + "as a markup extension in embedded FXML");
         });
     }
 
     /**
      * {@link org.jfxcore.fxml.lang.Fxml2EmbeddedClassTagSearcher} must report a reference
-     * from the embedded FXML2 attribute value back to the markup extension class when "Find
+     * from the embedded FXML attribute value back to the markup extension class when "Find
      * Usages" is invoked on the class.
      *
      * <p>A markup extension class used solely via {@code {ClassName ...}} in another class's
-     * embedded FXML2 markup must appear as a usage when "Find Usages" is invoked on the class.
+     * embedded FXML markup must appear as a usage when "Find Usages" is invoked on the class.
      */
     @Test
     void embeddedClassTagSearcherFindsUsageOfMarkupExtensionClass() {
@@ -2958,7 +2958,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
 
             assertTrue(foundInEmbedded,
-                    "ReferencesSearch on FindExt must find a usage in the embedded FXML2 "
+                    "ReferencesSearch on FindExt must find a usage in the embedded FXML "
                     + "attribute value (markup extension notation).\n"
                     + "Found refs: "
                     + refs.stream()
@@ -2970,10 +2970,10 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
     /**
      * {@link org.jfxcore.fxml.lang.Fxml2EmbeddedClassTagSearcher} must report a
-     * {@code PsiReference} from the embedded FXML2 element tag back to the target
+     * {@code PsiReference} from the embedded FXML element tag back to the target
      * {@link PsiClass} when "Find Usages" is invoked on the class.
      *
-     * <p>A class used solely as an element tag in another class's embedded FXML2 markup
+     * <p>A class used solely as an element tag in another class's embedded FXML markup
      * must appear as a usage when "Find Usages" is invoked on that class.
      */
     @Test
@@ -3019,7 +3019,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
                            && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile));
 
             assertTrue(foundInEmbedded,
-                    "ReferencesSearch on SearchLabel must find a usage in the embedded FXML2 tag.\n"
+                    "ReferencesSearch on SearchLabel must find a usage in the embedded FXML tag.\n"
                     + "Found refs: "
                     + refs.stream()
                             .map(r -> r.getClass().getSimpleName()
@@ -3031,11 +3031,11 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
     /**
      * {@link org.jfxcore.fxml.lang.Fxml2EmbeddedClassTagSearcher} must report a
      * {@code PsiReference} when "Find Usages" is invoked on a <b>constructor</b> of a class
-     * used as a markup extension in embedded FXML2 markup.
+     * used as a markup extension in embedded FXML markup.
      *
      * <p>When a class is instantiated via a markup extension expression
      * (e.g. {@code {ExtClass value=foo}}) in a {@code @ComponentView} text-block, its
-     * constructor is implicitly called by the FXML2 runtime.  Invoking "Find Usages"
+     * constructor is implicitly called by the FXML runtime.  Invoking "Find Usages"
      * on that constructor must therefore discover the embedded markup as a usage site.
      */
     @Test
@@ -3090,7 +3090,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
             assertTrue(foundInEmbedded,
                     "ReferencesSearch on CtorExt constructor must find a usage in the embedded "
-                    + "FXML2 attribute value (markup extension notation).\n"
+                    + "FXML attribute value (markup extension notation).\n"
                     + "Found refs: "
                     + refs.stream()
                             .map(r -> r.getClass().getSimpleName()
@@ -3108,7 +3108,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
      * is invoked on the constructor.
      *
      * <p>This test verifies that {@code MethodReferencesSearch} on the constructor of a
-     * class used as an XML element tag in embedded FXML2 finds the tag as a usage site.
+     * class used as an XML element tag in embedded FXML finds the tag as a usage site.
      */
     @Test
     void findUsagesViaMethodSearchOnConstructorFindsEmbeddedElementTag() {

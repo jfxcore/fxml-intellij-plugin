@@ -29,12 +29,12 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 import java.util.List;
 
 /**
- * Inspection that reports standalone FXML2 files which have a code-behind sibling
+ * Inspection that reports standalone FXML files which have a code-behind sibling
  * and offers a quick-fix to embed the markup into the code-behind class as a
  * {@code @ComponentView} annotation.
  *
  * <p>Disabled by default; opt in via
- * <em>Settings -> Editor -> Inspections -> FXML2</em>.
+ * <em>Settings -> Editor -> Inspections -> FXML/2</em>.
  * When enabled, <em>Fix all in file</em> and <em>Fix all in scope</em>
  * become available to batch-embed FXML files into their code-behind classes.
  * The inspection also participates in <em>Code -> Code Cleanup</em>

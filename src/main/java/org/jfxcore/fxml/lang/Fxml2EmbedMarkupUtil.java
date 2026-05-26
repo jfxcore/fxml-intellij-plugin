@@ -268,7 +268,7 @@ public final class Fxml2EmbedMarkupUtil {
             rawContent = reindent(rawContent, currentRootIndent, 0);
         }
 
-        // Wrap in a synthetic root that declares the FXML2 namespaces so that
+        // Wrap in a synthetic root that declares the FXML/2 namespaces so that
         // fx:-prefixed elements inside the user markup resolve without errors.
         final String wrappedXml =
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -602,7 +602,7 @@ public final class Fxml2EmbedMarkupUtil {
             }
 
             // $$"""...""": Kotlin 2.x multi-dollar string; $ characters in the markup
-            // are treated as literals, allowing FXML2 binding shortcuts unescaped.
+            // are treated as literals, allowing FXML binding shortcuts unescaped.
             String annotationText = "@ComponentView($$\"\"\"\n" + formattedContent + "\"\"\")\n";
 
             // Insert annotation immediately before the class declaration
@@ -663,7 +663,7 @@ public final class Fxml2EmbedMarkupUtil {
     }
 
     /**
-     * Builds the complete content of a standalone FXML2 file from a (stripped) markup
+     * Builds the complete content of a standalone FXML file from a (stripped) markup
      * body string, the host class FQN, and a list of import targets.
      *
      * <p>The markup body may contain leading processing instructions (e.g.
@@ -677,7 +677,7 @@ public final class Fxml2EmbedMarkupUtil {
      * @param fqn        the fully-qualified class name for the {@code fx:subclass} attribute
      * @param imports    FQNs (or wildcard FQNs ending with {@code .*}) to emit as
      *                   {@code <?import?>} processing instructions
-     * @return the full FXML2 file text
+     * @return the full FXML file text
      */
     public static @NotNull String buildFxmlContent(
             @NotNull String markupBody,

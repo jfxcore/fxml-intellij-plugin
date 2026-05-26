@@ -30,16 +30,16 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Reports {@code fx:id} attributes whose value is never used in the FXML2 file
+ * Reports {@code fx:id} attributes whose value is never used in the FXML file
  * or in the code-behind class.
  *
- * <p>In FXML2, the compiler generates a protected field for each {@code fx:id} in the
+ * <p>In FXML/2, the compiler generates a protected field for each {@code fx:id} in the
  * generated base class. An {@code fx:id} is considered <em>used</em> when:
  * <ul>
  *   <li>The generated field is accessed from the code-behind class
  *       (e.g. {@code fx:id="myButton"} and the code-behind contains {@code myButton.setText(...)}), or</li>
  *   <li>The value appears as a binding-path segment in a binding expression
- *       in the same FXML2 file (e.g. {@code text="${myButton.text}"} or
+ *       in the same FXML file (e.g. {@code text="${myButton.text}"} or
  *       {@code Command.onAction="$myButton.fire"}).</li>
  * </ul>
  *
@@ -57,7 +57,7 @@ public final class Fxml2UnusedFxIdInspection extends XmlSuppressableInspectionTo
 
     @Override
     public @NotNull String getGroupDisplayName() {
-        return "FXML 2.0";
+        return "FXML/2";
     }
 
     @Override
@@ -134,7 +134,7 @@ public final class Fxml2UnusedFxIdInspection extends XmlSuppressableInspectionTo
     /**
      * Returns {@code true} when the {@code fx:id} value is never used:
      * the generated field is not accessed from the code-behind class
-     * and no binding-segment reference in the FXML2 file resolves to it.
+     * and no binding-segment reference in the FXML file resolves to it.
      */
     private static boolean isFxIdUnused(
             @NotNull String idValue,
@@ -153,7 +153,7 @@ public final class Fxml2UnusedFxIdInspection extends XmlSuppressableInspectionTo
      * Returns {@code true} when the code-behind class accesses a field
      * whose name matches the {@code fx:id} value.
      * <p>
-     * In FXML2, the compiler generates a protected field for each {@code fx:id}
+     * In FXML/2, the compiler generates a protected field for each {@code fx:id}
      * in the generated base class. This checks whether the code-behind class
      * actually references that field (e.g. {@code myButton.setText(...)}).
      */
@@ -196,7 +196,7 @@ public final class Fxml2UnusedFxIdInspection extends XmlSuppressableInspectionTo
     /**
      * Returns {@code true} when the code-behind's extends list contains a type matching the
      * compiler-generated base class name ({@code <ClassName>Base}) that cannot be resolved.
-     * This indicates that the fxml2 compiler has not yet produced the generated class, so
+     * This indicates that the FXML compiler has not yet produced the generated class, so
      * field-based usage analysis cannot be trusted.
      */
     private static boolean hasUnresolvableGeneratedBaseClass(@NotNull PsiClass codeBehind) {
@@ -246,7 +246,7 @@ public final class Fxml2UnusedFxIdInspection extends XmlSuppressableInspectionTo
     }
 
    /**
-      * Returns {@code true} when any {@link Fxml2BindingSegmentReference} in the FXML2
+     * Returns {@code true} when any {@link Fxml2BindingSegmentReference} in the FXML
      * file resolves to the {@code fx:id} declaration identified by {@code idValue}.
      */
     private static boolean hasBindingSegmentReference(

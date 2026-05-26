@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.psi.KtClassOrObject;
 import org.jetbrains.kotlin.psi.KtFile;
 
 /**
- * "Optimize Imports (FXML2)" intention for Kotlin source files.
+ * "Optimize Imports (FXML/2)" intention for Kotlin source files.
  *
  * <p>Available when the caret is inside the import section of a Kotlin file that has at
  * least one {@code @ComponentView}-annotated class.

@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests that setter methods and other property accessors referenced via plain XML
- * attribute names in standalone FXML2 files are not incorrectly flagged as "never used".
+ * attribute names in standalone FXML files are not incorrectly flagged as "never used".
  *
  * <h3>Scenario</h3>
  * <p>A custom node class {@code FormattedLabel<T>} exposes a {@code formatter} property
@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   public void setFormatter(Function&lt;T,String&gt; fn) { ... }
  * </pre>
  *
- * <p>A standalone FXML2 file assigns the property via:
+ * <p>A standalone FXML file assigns the property via:
  * <pre>
  *   &lt;FormattedLabel formatter="$doubleFormatter"/&gt;
  * </pre>
@@ -97,7 +97,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must report {@code setFormatter}
      * as implicitly used when the {@code formatter} attribute appears in a standalone
-     * FXML2 file (even if no {@code Fxml2BindingSegmentReference} points to it).
+     * FXML file (even if no {@code Fxml2BindingSegmentReference} points to it).
      */
     @Test
     void setterReferencedViaPropertyAttributeIsRecognizedAsUsed() {
@@ -122,10 +122,10 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(setFormatter),
                     "isImplicitUsage must return true for setFormatter referenced via "
-                    + "property attribute in standalone FXML2");
+                    + "property attribute in standalone FXML");
             assertTrue(provider.isImplicitRead(setFormatter),
                     "isImplicitRead must return true for setFormatter referenced via "
-                    + "property attribute in standalone FXML2");
+                    + "property attribute in standalone FXML");
         });
     }
 
@@ -134,7 +134,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * {@link ReferencesSearch} must return the FXML2 attribute {@code formatter}
+     * {@link ReferencesSearch} must return the FXML attribute {@code formatter}
      * as a usage of {@code setFormatter} when "Find Usages" is invoked.
      */
     @Test
@@ -159,14 +159,14 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
             Collection<PsiReference> refs = ReferencesSearch.search(
                     setFormatter, GlobalSearchScope.allScope(project)).findAll();
 
-            assertFalse(refs.isEmpty(), "ReferencesSearch must find at least one usage of setFormatter in FXML2");
+            assertFalse(refs.isEmpty(), "ReferencesSearch must find at least one usage of setFormatter in FXML");
         });
     }
 
     /**
      * IntelliJ may invoke the searcher with the backing field as the target when the
      * user runs "Find Usages" on a setter method. The searcher must still find the
-     * FXML2 attribute by recognising both as part of the same property.
+     * FXML attribute by recognising both as part of the same property.
      */
     @Test
     void findUsagesOnBackingFieldFindsPropertyAttributeInFxml2() {
@@ -192,7 +192,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
 
             assertTrue(refs.stream().anyMatch(r -> r.getElement().getText().equals("formatter")
                     && r.getElement().getContainingFile().getName().endsWith(".fxml")),
-                    "ReferencesSearch on backing field must find formatter attribute in FXML2");
+                    "ReferencesSearch on backing field must find formatter attribute in FXML");
         });
     }
 
@@ -239,7 +239,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(formatterProperty),
                     "isImplicitUsage must return true for formatterProperty() referenced via "
-                    + "fx:Observe binding in standalone FXML2");
+                    + "fx:Observe binding in standalone FXML");
         });
     }
 
@@ -253,7 +253,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
 
     /**
      * When a setter method (e.g. {@code setProperty1}) is renamed to a new setter name
-     * (e.g. {@code setProperty2}), the FXML2 property-attribute reference must rename
+     * (e.g. {@code setProperty2}), the FXML property-attribute reference must rename
      * the XML attribute to the derived property name ({@code property2}), not to the
      * raw new setter name ({@code setProperty2}).
      *
@@ -289,7 +289,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
             }
         });
         PsiReference ref = refHolder[0];
-        assertNotNull(ref, "Must find a FXML2 attribute reference to setFormatter");
+        assertNotNull(ref, "Must find a FXML attribute reference to setFormatter");
 
         // Simulate what IntelliJ calls during rename refactoring when the setter is
         // renamed to setFormatter2: the reference must produce the property name.
@@ -302,14 +302,14 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
                             }
                         }));
 
-        // The attribute in the FXML2 file must now be "formatter2", not "setFormatter2".
+        // The attribute in the FXML file must now be "formatter2", not "setFormatter2".
         String fxmlText = ReadAction.compute(() -> getFixture().getFile().getText());
         assertTrue(fxmlText.contains("formatter2="),
                 "Attribute must be renamed to 'formatter2' (property name), not 'setFormatter2'.\n"
-                + "Actual FXML2 text:\n" + fxmlText);
+                + "Actual FXML text:\n" + fxmlText);
         assertFalse(fxmlText.contains("setFormatter2"),
                 "Attribute must NOT contain the raw setter name 'setFormatter2'.\n"
-                + "Actual FXML2 text:\n" + fxmlText);
+                + "Actual FXML text:\n" + fxmlText);
     }
 
     // -----------------------------------------------------------------------
@@ -374,7 +374,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
 
     /**
      * When the caret is on a property attribute name (e.g. {@code formatter}) in an
-     * FXML2 file, {@link Fxml2PropertyAttributeRenameHandler#findRenameTarget} must
+     * FXML file, {@link Fxml2PropertyAttributeRenameHandler#findRenameTarget} must
      * return the backing field (not the setter method), so that IntelliJ pre-fills
      * the rename dialog with the property name rather than the accessor name.
      */
@@ -387,7 +387,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
         ));
         getFixture().doHighlighting();
 
-        // Find the formatter attribute in the FXML2 file.
+        // Find the formatter attribute in the FXML file.
         XmlAttribute[] attrHolder = new XmlAttribute[1];
         ReadAction.run(() -> {
             XmlFile xmlFile = (XmlFile) getFixture().getFile();
@@ -398,7 +398,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
                 if (attr != null) { attrHolder[0] = attr; break; }
             }
         });
-        assertNotNull(attrHolder[0], "Must find formatter attribute in FXML2");
+        assertNotNull(attrHolder[0], "Must find formatter attribute in FXML");
 
         // The rename handler must redirect to the backing field, not the setter.
         PsiElement renameTarget = ReadAction.compute(() ->
@@ -416,13 +416,13 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
 
     /**
      * Renaming the backing field (the target selected by the rename handler) to a new
-     * property name must update the FXML2 attribute to the new property name, not to
+     * property name must update the FXML attribute to the new property name, not to
      * the setter name.
      *
      * <p>This is the functional end-to-end variant of the rename-from-use-site scenario:
      * the handler redirects to the field, the field is renamed, and all three accessors
      * (setter, getter, {@code xProperty()} method) are renamed via the standard Java
-     * triad rename.  The FXML2 attribute must follow with the property name, not the
+     * triad rename.  The FXML attribute must follow with the property name, not the
      * raw setter name.
      */
     @Test
@@ -450,18 +450,18 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
         com.intellij.openapi.application.ApplicationManager.getApplication()
                 .invokeAndWait(() -> getFixture().renameElement(fieldHolder[0], "formatter2"));
 
-        // The FXML2 attribute must now read "formatter2", not "setFormatter2".
+        // The FXML attribute must now read "formatter2", not "setFormatter2".
         String fxmlText = ReadAction.compute(() -> getFixture().getFile().getText());
         assertTrue(fxmlText.contains("formatter2="),
                 "Attribute must be renamed to 'formatter2' after backing-field rename.\n"
-                + "Actual FXML2 text:\n" + fxmlText);
+                + "Actual FXML text:\n" + fxmlText);
         assertFalse(fxmlText.contains("setFormatter2"),
                 "Attribute must NOT contain the raw setter name 'setFormatter2'.\n"
-                + "Actual FXML2 text:\n" + fxmlText);
+                + "Actual FXML text:\n" + fxmlText);
     }
 
     /**
-     * A setter on a class that does NOT appear in any FXML2 file must NOT be
+     * A setter on a class that does NOT appear in any FXML file must NOT be
      * reported as implicitly used.
      */
     @Test
@@ -488,7 +488,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
             var provider = new Fxml2StandaloneImplicitUsageProvider();
 
             assertFalse(provider.isImplicitUsage(setHidden),
-                    "isImplicitUsage must return false for a setter NOT referenced in any FXML2 file");
+                    "isImplicitUsage must return false for a setter NOT referenced in any FXML file");
         });
     }
 }

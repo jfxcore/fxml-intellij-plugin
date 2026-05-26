@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Tells the platform to delegate formatting of an embedded FXML2 injected fragment
+ * Tells the platform to delegate formatting of an embedded FXML injected fragment
  * back to its host (Java or Kotlin) file.
  *
  * <p>When the user presses Ctrl+Alt+L while the caret is inside an injected XML

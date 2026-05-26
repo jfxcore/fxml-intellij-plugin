@@ -26,7 +26,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 
 /**
  * {@link ReferencesSearch} extension that finds {@link Fxml2BindingSegmentReference}s
- * in FXML 2.0 files that resolve to a given Java element.
+ * in FXML files that resolve to a given Java element.
  *
  * <p>This is needed for <em>identifier-under-caret highlighting</em>, when the caret is
  * on a binding-path segment (e.g. {@code disabled} in
@@ -43,20 +43,20 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  * <p>This searcher handles both:
  * <ul>
  *   <li><b>{@link LocalSearchScope}</b>: identifier-under-caret highlighting.  Walks all
- *       {@link XmlAttributeValue} elements in each FXML 2.0 file in the scope and checks
+ *       {@link XmlAttributeValue} elements in each FXML file in the scope and checks
  *       whether any {@link Fxml2BindingSegmentReference} resolves to the target element via
  *       {@link PsiReference#isReferenceTo}.</li>
  *   <li><b>{@link GlobalSearchScope}</b>: "Find Usages" on a property accessor method or
  *       field.  The word-based {@code CachesBasedRefSearcher} cannot find these usages
  *       because the binding-path segment text (e.g. {@code "vm"}) differs from the method
  *       name (e.g. {@code "vmProperty"}).  This searcher extracts the property name,
- *       searches standalone FXML 2.0 files via the word index, and also searches embedded
- *       FXML 2.0 markup directly (since injected fragments are not indexed).  This ensures
+ *       searches standalone FXML files via the word index, and also searches embedded
+ *       FXML markup directly (since injected fragments are not indexed).  This ensures
  *       "Find Usages" on {@code vmProperty()} correctly shows the {@code "vm"} use sites
  *       in the markup.</li>
  * </ul>
  *
- * <p>For <em>embedded</em> FXML 2.0 files (injected via {@code @ComponentView}), the local
+ * <p>For <em>embedded</em> FXML files (injected via {@code @ComponentView}), the local
  * scope searcher also adds a synthetic reference for the host Kotlin/Java declaration that
  * the target element was resolved from.  This ensures that identifier-under-caret
  * highlighting from a binding expression segment (e.g. {@code vm} in
@@ -68,7 +68,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  * <ol>
  *   <li><b>Host file in scope</b> ({@link #addDeclarationReferenceForHostFile}): when the
  *       host Kotlin/Java file appears as a scope element, checks whether the target's
- *       navigation element lives there, confirms that the file's embedded FXML 2.0 markup
+ *       navigation element lives there, confirms that the file's embedded FXML markup
  *       references the target, and emits a synthetic reference on the declaration's
  *       name-identifier token.</li>
  * </ol>
@@ -98,7 +98,7 @@ public final class Fxml2BindingSegmentSearcher
                         : scopeElement.getContainingFile();
 
                 if (file instanceof XmlFile xmlFile && Fxml2FileType.isFxml2(xmlFile)) {
-                    // Walk the FXML2 file for binding-segment references to the target.
+                    // Walk the FXML file for binding-segment references to the target.
                     collectMatchingSegments(xmlFile, target, consumer);
 
                 } else {
@@ -134,14 +134,14 @@ public final class Fxml2BindingSegmentSearcher
 
     /**
      * Handles "Find Usages" (GlobalSearchScope) for property accessors referenced as
-     * binding-path segments in FXML2 files.
+     * binding-path segments in FXML files.
      *
      * <p>When the target is {@code vmProperty()}, the markup uses "vm" (not "vmProperty")
      * as the segment text, so the word-based {@code CachesBasedRefSearcher} cannot find
      * the references.  This method extracts the property name ("vm") and:
      * <ol>
-     *   <li>Searches standalone FXML2 files via the word index.</li>
-     *   <li>Searches embedded FXML2 markup in the target's containing class directly
+     *   <li>Searches standalone FXML files via the word index.</li>
+     *   <li>Searches embedded FXML markup in the target's containing class directly
      *       (injected fragments are not indexed, so word search cannot reach them).</li>
      * </ol>
      */
@@ -155,7 +155,7 @@ public final class Fxml2BindingSegmentSearcher
 
         Project project = ReadAction.compute(target::getProject);
 
-        // 1. Standalone FXML2 files: use the word index to find candidates efficiently.
+        // 1. Standalone FXML files: use the word index to find candidates efficiently.
         //    processAllFilesWithWord, and everything it calls transitively, requires a
         //    read action held for the entire duration (same pattern as Fxml2FxIdFieldSearcher).
         ReadAction.run(() ->
@@ -171,7 +171,7 @@ public final class Fxml2BindingSegmentSearcher
                     false)
         );
 
-        // 2. Embedded FXML2 markup: injected XML is not indexed, but Java text-block content
+        // 2. Embedded FXML markup: injected XML is not indexed, but Java text-block content
         //    is indexed as IN_PLAIN_TEXT (and Kotlin raw strings as IN_STRINGS), so use the
         //    word index to pre-filter to only the host files containing the property name.
         //    The target may be a member of a non-@ComponentView class (e.g. a view-model)
@@ -193,7 +193,7 @@ public final class Fxml2BindingSegmentSearcher
 
     /**
      * When cursor is on a Java/Kotlin field or method in the host file (e.g.
-     * {@code vmProperty()} in {@code MainView.java}), walks the embedded FXML2 markup
+     * {@code vmProperty()} in {@code MainView.java}), walks the embedded FXML markup
      * associated with the target's class and emits any {@link Fxml2BindingSegmentReference}s
      * that resolve to {@code target}.
      *
@@ -226,7 +226,7 @@ public final class Fxml2BindingSegmentSearcher
      * Handles the case where the host Kotlin/Java file (not the injected XML file) is
      * the scope element.  If {@code target}'s navigation element lives in {@code file},
      * the declaration differs from {@code target} itself (direction-2 guard), and the
-     * file's embedded FXML2 markup has at least one binding segment that resolves to
+     * file's embedded FXML markup has at least one binding segment that resolves to
      * {@code target}, emits a synthetic reference for the declaration's name identifier.
      */
     private static void addDeclarationReferenceForHostFile(
@@ -244,7 +244,7 @@ public final class Fxml2BindingSegmentSearcher
         PsiFile navFile = navEl.getContainingFile();
         if (navFile == null || !navFile.equals(file)) return;
 
-        // Obtain the embedded FXML2 file for the class that owns navEl.
+        // Obtain the embedded FXML file for the class that owns navEl.
         XmlFile xmlFile = getEmbeddedXmlFile(navEl);
         if (xmlFile == null) return;
 
@@ -277,7 +277,7 @@ public final class Fxml2BindingSegmentSearcher
     // -----------------------------------------------------------------------
 
     /**
-     * Returns the injected FXML2 {@link XmlFile} associated with the {@code @ComponentView}
+     * Returns the injected FXML {@link XmlFile} associated with the {@code @ComponentView}
      * annotation of the class that contains {@code navEl}, or {@code null} if there is
      * none.
      *

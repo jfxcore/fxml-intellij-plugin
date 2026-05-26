@@ -7,9 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 /**
- * Tests related to resource-loading attribute values in FXML2 files.
+ * Tests related to resource-loading attribute values in FXML files.
  *
- * <p>The {@code fx:resource} intrinsic is not supported by the fxml2 compiler.
+ * <p>The {@code fx:resource} intrinsic is not supported by the FXML compiler.
  * Resource loading is handled by the {@code ClassPathResource},
  * {@code StaticResource}, and {@code DynamicResource} markup extensions from the
  * {@code org.jfxcore.markup.resource} package.
@@ -108,7 +108,7 @@ class Fxml2ResourceTest extends Fxml2TestBase {
 
     /**
      * {@code {fx:resource /path/to/image.jpg}}: the {@code fx:resource} intrinsic is not
-     * a recognized binding keyword in the fxml2 compiler.  Using it must be flagged as an
+     * a recognized binding keyword in the FXML compiler.  Using it must be flagged as an
      * unknown binding keyword error on the {@code fx:resource} token.
      */
     @Test
