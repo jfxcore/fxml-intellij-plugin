@@ -40,7 +40,7 @@ public final class Fxml2FileType extends XmlLikeFileType {
 
     @Override
     public @NotNull String getDefaultExtension() {
-        // The canonical extension is still "fxml"; the extra "fxml2" entry in plugin.xml
+        // The canonical extension is still "fxml"; the extra "fxmlx" entry in plugin.xml
         // ensures the type can also be selected manually in Settings | File Types.
         return "fxml";
     }
@@ -73,9 +73,9 @@ public final class Fxml2FileType extends XmlLikeFileType {
         // Injected fragment from a @ComponentView annotation: detected by the wrapper root namespace.
         if (file instanceof com.intellij.psi.xml.XmlFile xmlFile
                 && Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile)) return true;
-        // Standalone file: require .fxml / .fxml2 extension + namespace content check.
+        // Standalone file: require .fxml / .fxmlx extension + namespace content check.
         String name = vf.getName();
-        if (!name.endsWith(".fxml") && !name.endsWith(".fxml2")) return false;
+        if (!name.endsWith(".fxml") && !name.endsWith(".fxmlx")) return false;
         return isFxml2(file.getViewProvider().getContents());
     }
 }

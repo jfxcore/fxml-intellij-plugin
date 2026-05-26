@@ -524,7 +524,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      * <p>Returns {@code true} for:
      * <ul>
      *   <li>Embedded FXML (injected language fragments: no real VirtualFile extension)</li>
-     *   <li>Standalone {@code .fxml2} files (not handled by the bundled JavaFX plugin)</li>
+     *   <li>Standalone {@code .fxmlx} files (not handled by the bundled JavaFX plugin)</li>
      * </ul>
      *
      * <p>Returns {@code false} for standalone {@code .fxml} files where the bundled JavaFX

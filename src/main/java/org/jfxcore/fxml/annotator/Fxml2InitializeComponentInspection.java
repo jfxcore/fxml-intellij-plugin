@@ -229,7 +229,7 @@ public final class Fxml2InitializeComponentInspection extends LocalInspectionToo
         GlobalSearchScope scope = GlobalSearchScope.projectScope(project);
         PsiManager psiManager = PsiManager.getInstance(project);
 
-        for (String ext : List.of(simpleName + ".fxml", simpleName + ".fxml2")) {
+        for (String ext : List.of(simpleName + ".fxml", simpleName + ".fxmlx")) {
             for (var vFile : FilenameIndex.getVirtualFilesByName(ext, scope)) {
                 PsiFile psiFile = psiManager.findFile(vFile);
                 if (!(psiFile instanceof XmlFile xmlFile)) continue;

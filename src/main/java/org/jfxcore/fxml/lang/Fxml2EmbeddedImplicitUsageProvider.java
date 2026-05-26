@@ -30,7 +30,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  * {@link com.intellij.psi.search.SearchScope} produced by all registered
  * {@link com.intellij.psi.search.UseScopeEnlarger}s.  For
  * <em>standalone</em> FXML files, {@link Fxml2UseScopeEnlarger} adds
- * {@code .fxml}/{@code .fxml2} files to that scope; the word-index search then
+ * {@code .fxml}/{@code .fxmlx} files to that scope; the word-index search then
  * finds the attribute value and the {@link Fxml2BindingSegmentReference} on it
  * resolves to the Java field/method, making IntelliJ treat it as "used".
  *
