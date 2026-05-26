@@ -54,7 +54,7 @@ public final class Fxml2WordSelectionHandler extends EditorActionHandler {
             myDelegate.execute(editor, caret, dataContext);
         }
 
-        // Then trim fxml2 sigil characters from the beginning of the selection.
+        // Then trim FXML sigil characters from the beginning of the selection.
         Project project = editor.getProject();
         if (project == null) return;
 

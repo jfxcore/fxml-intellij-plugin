@@ -39,7 +39,7 @@ class Fxml2RawTypeTest extends Fxml2TestBase {
      */
     @Test
     void genericClassWithoutTypeArgumentsProducesWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <warning descr="Generic class 'ListView' is used as a raw type; consider adding fx:typeArguments"><ListView/></warning>
@@ -53,7 +53,7 @@ class Fxml2RawTypeTest extends Fxml2TestBase {
      */
     @Test
     void genericClassWithTypeArgumentsProducesNoWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="String"/>
@@ -67,7 +67,7 @@ class Fxml2RawTypeTest extends Fxml2TestBase {
      */
     @Test
     void nonGenericClassProducesNoWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button/>
@@ -84,7 +84,7 @@ class Fxml2RawTypeTest extends Fxml2TestBase {
     @Test
     void rootBorderPaneTagProducesNoWarning() {
         // BorderPane is not generic, so no warning is expected on the root tag either.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="String"/>

@@ -38,9 +38,9 @@ class Fxml2FileNestingProviderTest extends Fxml2TestBase {
 
     @Test
     void nestsJavaCodeBehindOnlyUnderFxml2Documents() {
-        PsiFile fxml2 = getFixture().addFileToProject(
+        PsiFile fxml = getFixture().addFileToProject(
             "test/View.fxml",
-            fxml2("javafx.scene.control.Button", "  <Button text=\"Hello\"/>\n"));
+            fxml("javafx.scene.control.Button", "  <Button text=\"Hello\"/>\n"));
         PsiFile javaCodeBehind = getFixture().addFileToProject(
             "test/View.java",
             "package test; class View {}\n");
@@ -58,11 +58,11 @@ class Fxml2FileNestingProviderTest extends Fxml2TestBase {
 
         List<AbstractTreeNode<?>> result = ReadAction.compute(() -> {
             Project project = getFixture().getProject();
-            PsiDirectory directory = Objects.requireNonNull(fxml2.getContainingDirectory());
+            PsiDirectory directory = Objects.requireNonNull(fxml.getContainingDirectory());
             var provider = new Fxml2FileNestingProvider();
             var parentNode = new PsiDirectoryNode(project, directory, NESTING_ENABLED);
             Collection<AbstractTreeNode<?>> children = List.of(
-                new PsiFileNode(project, fxml2, NESTING_ENABLED),
+                new PsiFileNode(project, fxml, NESTING_ENABLED),
                 new PsiFileNode(project, javaCodeBehind, NESTING_ENABLED),
                 new PsiFileNode(project, plainFxml, NESTING_ENABLED),
                 new PsiFileNode(project, plainJava, NESTING_ENABLED));
@@ -79,20 +79,20 @@ class Fxml2FileNestingProviderTest extends Fxml2TestBase {
 
     @Test
     void leavesProjectViewFlatWhenFileNestingIsDisabled() {
-        PsiFile fxml2 = getFixture().addFileToProject(
+        PsiFile fxml = getFixture().addFileToProject(
                 "disabled/DisabledView.fxml",
-                fxml2("javafx.scene.control.Button", "  <Button/>\n"));
+                fxml("javafx.scene.control.Button", "  <Button/>\n"));
         PsiFile javaCodeBehind = getFixture().addFileToProject(
                 "disabled/DisabledView.java",
                 "package disabled; class DisabledView {}\n");
 
         List<AbstractTreeNode<?>> result = ReadAction.compute(() -> {
             Project project = getFixture().getProject();
-            PsiDirectory directory = Objects.requireNonNull(fxml2.getContainingDirectory());
+            PsiDirectory directory = Objects.requireNonNull(fxml.getContainingDirectory());
             var provider = new Fxml2FileNestingProvider();
             var parentNode = new PsiDirectoryNode(project, directory, NESTING_DISABLED);
             Collection<AbstractTreeNode<?>> children = List.of(
-                new PsiFileNode(project, fxml2, NESTING_DISABLED),
+                new PsiFileNode(project, fxml, NESTING_DISABLED),
                 new PsiFileNode(project, javaCodeBehind, NESTING_DISABLED));
             return new ArrayList<>(provider.modify(parentNode, children, NESTING_DISABLED));
         });

@@ -123,7 +123,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void fxIdValueIsRegisteredAsSymbolDeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -154,7 +154,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void nonFxIdAttributeValueIsNotADeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue textVal = null;
@@ -183,7 +183,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void declarationRangeExcludesQuotes() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -209,7 +209,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void declarationSiteIsHighlightedTogether() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -241,7 +241,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void declarationSymbolIsFieldForHoverDocumentation() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -285,7 +285,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void fxIdSelfReferenceResolvesToNull() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -313,7 +313,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void ctrlClickFxmlBindingUseNavigatesToFxIdDeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -344,7 +344,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void ctrlClickCodeBehindUseNavigatesToFxIdDeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         PsiField generatedField = ReadAction.compute(() -> {
             var facade = com.intellij.psi.JavaPsiFacade.getInstance(getFixture().getProject());
@@ -375,7 +375,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void ctrlClickGeneratedFieldDeclarationNavigatesToFxIdDeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         PsiField generatedField = ReadAction.compute(() -> {
             var facade = com.intellij.psi.JavaPsiFacade.getInstance(getFixture().getProject());
@@ -412,7 +412,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void findUsagesHandlerIncludesGeneratedFieldAsPrimary() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -442,7 +442,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void findUsagesIncludesGeneratedBaseClassField() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -468,7 +468,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void findUsagesFromFxIdContainsAllThreeEntries() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         XmlAttributeValue fxIdVal = findFxIdValueElement();
         assertNotNull(fxIdVal);
@@ -511,7 +511,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void highlightUsagesFromDeclarationContainsBothUseSitesNotDeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         XmlAttributeValue fxIdVal = findFxIdValueElement();
         assertNotNull(fxIdVal, "fx:id value element not found");
@@ -550,7 +550,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void findUsagesDoesNotIncludeDeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -576,7 +576,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void referencesSearchOnGeneratedFieldFindsXmlFxIdValue() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         PsiField generatedField = ReadAction.compute(() -> {
             var facade = com.intellij.psi.JavaPsiFacade.getInstance(getFixture().getProject());
@@ -610,7 +610,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void canFindUsagesAcceptsChildToken() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -641,7 +641,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void canFindUsagesAcceptsRealJavaFieldAndIncludesItsDeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         PsiField realField = ReadAction.compute(() -> {
             var facade = com.intellij.psi.JavaPsiFacade.getInstance(getFixture().getProject());
@@ -684,7 +684,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void bindingSegmentIsReferenceToRealJavaFieldHighlightsFromDeclaration() {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         ReadAction.run(() -> {
             XmlAttributeValue fxIdVal = findFxIdValueElement();
@@ -727,7 +727,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     @Test
     void processElementUsagesIsSafeOffReadAction() throws Exception {
         getFixture().configureByText("TestView.fxml",
-                fxml2(FXML_IMPORTS, FXML_BODY));
+                fxml(FXML_IMPORTS, FXML_BODY));
 
         XmlAttributeValue fxIdVal = ReadAction.compute(this::findFxIdValueElement);
         assertNotNull(fxIdVal);

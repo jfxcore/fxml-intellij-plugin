@@ -55,7 +55,7 @@ import java.util.Map;
 import static com.intellij.patterns.StandardPatterns.string;
 
 /**
- * Provides per-segment {@link Fxml2BindingSegmentReference}s for fxml2 binding
+ * Provides per-segment {@link Fxml2BindingSegmentReference}s for FXML binding
  * expressions in attribute values (e.g. {@code $vm.field},
  * {@code {fx:Observe vm.property}}).
  *
@@ -518,7 +518,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
     // -----------------------------------------------------------------------
 
     /**
-     * Returns {@code true} when the fxml2 plugin must add resource references for the given
+     * Returns {@code true} when the FXML/2 plugin must add resource references for the given
      * file, i.e., the bundled JavaFX plugin's reference contributors do NOT already handle it.
      *
      * <p>Returns {@code true} for:

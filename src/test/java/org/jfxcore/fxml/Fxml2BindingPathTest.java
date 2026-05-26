@@ -74,7 +74,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Package-private (default-access) fields are valid binding path segments per the fxml2
+     * Package-private (default-access) fields are valid binding path segments per the FXML
      * compiler's {@code tryResolveField} logic, which accepts all non-private fields.
      * The generated base class lives in the same package as the code-behind, so package-private
      * fields are always accessible to it.
@@ -95,7 +95,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     ViewModel vm = new ViewModel();
                 }
                 """);
-        getFixture().configureByText("ViewWithPackagePrivateField.fxml", fxml2(
+        getFixture().configureByText("ViewWithPackagePrivateField.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.text}"/>
@@ -123,7 +123,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     protected ViewModel2 vm = new ViewModel2();
                 }
                 """);
-        getFixture().configureByText("ViewWithProtectedField.fxml", fxml2(
+        getFixture().configureByText("ViewWithProtectedField.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.text}"/>
@@ -151,7 +151,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     private ViewModel3 vm = new ViewModel3();
                 }
                 """);
-        getFixture().configureByText("ViewWithPrivateField.fxml", fxml2(
+        getFixture().configureByText("ViewWithPrivateField.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${<error descr="'vm' in test.ViewWithPrivateField cannot be resolved">vm</error>.text}"/>
@@ -163,7 +163,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     @Test
     void fxBindToKnownPropertyResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe message}"/>
@@ -174,7 +174,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     @Test
     void fxEvaluateToKnownPropertyResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Evaluate message}"/>
@@ -185,7 +185,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     @Test
     void dollarBindToKnownPropertyResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$message"/>
@@ -200,7 +200,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     @Test
     void fxBindToNonExistentPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe <error descr="'nonExistent' in test.TestView cannot be resolved">nonExistent</error>}"/>
@@ -211,7 +211,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     @Test
     void dollarBindToNonExistentPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$<error descr="'nonExistent' in test.TestView cannot be resolved">nonExistent</error>"/>
@@ -239,7 +239,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     static final String staticText = "hello";
                 }
                 """);
-        getFixture().configureByText("ViewWithPackagePrivateStaticField.fxml", fxml2(
+        getFixture().configureByText("ViewWithPackagePrivateStaticField.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$staticText"/>
@@ -261,7 +261,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     protected static final String staticText = "hello";
                 }
                 """);
-        getFixture().configureByText("ViewWithProtectedStaticField.fxml", fxml2(
+        getFixture().configureByText("ViewWithProtectedStaticField.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$staticText"/>
@@ -283,7 +283,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     private static final String staticText = "hello";
                 }
                 """);
-        getFixture().configureByText("ViewWithPrivateStaticField.fxml", fxml2(
+        getFixture().configureByText("ViewWithPrivateStaticField.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$<error descr="'staticText' in test.ViewWithPrivateStaticField cannot be resolved">staticText</error>"/>
@@ -299,7 +299,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     /** FQN static field reference produces no error. */
     @Test
     void fqnStaticFieldReferenceProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="$javafx.scene.layout.Region.USE_PREF_SIZE"/>
@@ -311,7 +311,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     /** Each package segment in a FQN static field reference navigates to its {@link PsiPackage}. */
     @Test
     void fqnStaticFieldPackageSegmentsAreNavigable() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="$<caret>javafx.scene.layout.Region.USE_PREF_SIZE"/>
@@ -325,7 +325,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     /** The class segment in a FQN static field reference navigates to the {@link PsiClass}. */
     @Test
     void fqnStaticFieldClassSegmentIsNavigable() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="$javafx.scene.layout.<caret>Region.USE_PREF_SIZE"/>
@@ -340,7 +340,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     /** The field segment in a FQN static field reference navigates to the {@link PsiField}. */
     @Test
     void fqnStaticFieldMemberSegmentIsNavigable() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="$javafx.scene.layout.Region.<caret>USE_PREF_SIZE"/>
@@ -370,7 +370,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                 package test;
                 public class Item implements IItem {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Item\njavafx.scene.control.Label",
                 """
                   <Label text="$Item.<error descr="'LABEL' in test.Item cannot be resolved">LABEL</error>"/>
@@ -396,7 +396,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                 package test;
                 public class DerivedItem extends ItemBase {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.DerivedItem\njavafx.scene.control.Label",
                 """
                   <Label text="$DerivedItem.LABEL"/>
@@ -416,7 +416,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void importedClassStaticGetterResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.TestView\njavafx.scene.control.Button\njavafx.scene.control.Label",
                 """
                   <Label text="$Button.classCssMetaData"/>
@@ -432,7 +432,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void staticGetterChainedMethodAccessResolves() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.TestView\njavafx.scene.control.Button\njavafx.scene.control.Label",
                 """
                   <Label text="$Button.classCssMetaData.toString"/>
@@ -452,7 +452,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void observableSelectionOperatorSegmentRangeIsCorrect() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="$message::<caret>labelText"/>
@@ -516,7 +516,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void addImportIntentionOfferedForUnimportedClassInBindingExpression() {
-        getFixture().configureByText("AddImportBinding.fxml", fxml2(
+        getFixture().configureByText("AddImportBinding.fxml", fxml(
                 "javafx.scene.layout.Region",
                 // Cursor on "KeyEvent": no import for it in the file
                 """
@@ -539,7 +539,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void addImportIntentionNotOfferedWhenClassAlreadyImported() {
-        getFixture().configureByText("AddImportBindingAlready.fxml", fxml2(
+        getFixture().configureByText("AddImportBindingAlready.fxml", fxml(
                 "javafx.scene.layout.Region\njavafx.scene.input.KeyEvent",
                 // KeyEvent IS imported, intention must not appear
                 """
@@ -571,7 +571,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     public static Command getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("AddImportStaticAttr.fxml", fxml2(
+        getFixture().configureByText("AddImportStaticAttr.fxml", fxml(
                 "javafx.scene.control.Button",
                 // Command is NOT imported; cursor on "Command" in the attribute name
                 """
@@ -606,7 +606,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     public static Command2 getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("AddImportStaticAttrAlready.fxml", fxml2(
+        getFixture().configureByText("AddImportStaticAttrAlready.fxml", fxml(
                 "javafx.scene.control.Button\norg.jfxcore.command.Command2", // Command2 IS imported
                 """
                   <Button org.jfxcore.command.Com<caret>mand2.onAction="$model.actionCommand"/>
@@ -631,8 +631,8 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void selfSelectorResolvesToLightFieldWithCorrectType() {
-        // fxml2() wraps body in <BorderPane>, so the VBox is a child and self = VBox
-        getFixture().configureByText("SelfHover.fxml", fxml2(
+        // fxml() wraps body in <BorderPane>, so the VBox is a child and self = VBox
+        getFixture().configureByText("SelfHover.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox minHeight="$se<caret>lf/prefWidth"/>
@@ -661,9 +661,9 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void parentSelectorResolvesToLightFieldWithCorrectType() {
-        // fxml2() wraps body in <BorderPane fx:subclass="test.TestView">; VBox's parent = root tag
+        // fxml() wraps body in <BorderPane fx:subclass="test.TestView">; VBox's parent = root tag
         // For the root tag, the type shown is the fx:subclass code-behind (TestView), not BorderPane.
-        getFixture().configureByText("ParentHover.fxml", fxml2(
+        getFixture().configureByText("ParentHover.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox minHeight="$par<caret>ent/prefWidth"/>
@@ -693,9 +693,9 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void thisSelectorResolvesToLightFieldWithCorrectType() {
-        // fxml2() always uses <BorderPane fx:subclass="test.TestView"> as root.
+        // fxml() always uses <BorderPane fx:subclass="test.TestView"> as root.
         // "this" navigates to the root tag: tooltip shows code-behind class TestView.
-        getFixture().configureByText("ThisHover.fxml", fxml2(
+        getFixture().configureByText("ThisHover.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox minHeight="$thi<caret>s.prefWidth"/>
@@ -742,7 +742,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void elementNotationSourceValueResolvesPathSegment() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -769,7 +769,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void elementNotationSourceAttrNameHasUrlReference() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -801,7 +801,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void elementNotationParentSelectorResolvesToLightField() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -846,7 +846,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     public ViewModel viewModel = new ViewModel();
                 }
                 """);
-        getFixture().configureByText("TestViewWithVm.fxml", fxml2(
+        getFixture().configureByText("TestViewWithVm.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -903,7 +903,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     public void setNumFmt(Format v) { numFmt.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestViewFmt.fxml", fxml2(
+        getFixture().configureByText("TestViewFmt.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{amount; format=num<caret>Fmt}"/>
@@ -945,7 +945,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     public void setConv(StringConverter<Integer> v) { conv.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestViewCvt.fxml", fxml2(
+        getFixture().configureByText("TestViewCvt.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{count; converter=con<caret>v}"/>
@@ -965,7 +965,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void formatParamPathUnresolvedSegmentIsError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 "  <TextField text=\"#{"
                 + error("'doesNotExist' in test.TestView cannot be resolved", "doesNotExist")
@@ -1001,7 +1001,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     public void setNumFmt(Format v) { numFmt.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestViewFmtSearch.fxml", fxml2(
+        getFixture().configureByText("TestViewFmtSearch.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{amount; format=numFmt}"/>
@@ -1051,7 +1051,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesOnPropertyAccessorMethodFindsStandaloneFxmlBinding() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe message}"/>
@@ -1118,7 +1118,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     public BindingPathTestViewModel vm = new BindingPathTestViewModel();
                 }
                 """);
-        getFixture().configureByText("BindingPathTestView.fxml", fxml2(
+        getFixture().configureByText("BindingPathTestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.vmMessage}"/>
@@ -1196,7 +1196,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     init { initializeComponent() }
                 }
                 """);
-        getFixture().configureByText("KtValCodeBehind.fxml", fxml2(
+        getFixture().configureByText("KtValCodeBehind.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.text}"/>
@@ -1283,7 +1283,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      */
     @Test
     void consecutiveDotsInBindingPathDoesNotCrash() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${message..sub}"/>

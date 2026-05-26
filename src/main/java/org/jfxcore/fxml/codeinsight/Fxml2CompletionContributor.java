@@ -233,7 +233,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
 
         // -- Plain literal attribute value: text="f<caret>", editable="f<caret>", etc. --
         // IntelliJ's default XML contributor adds attribute value suggestions derived from
-        // the attribute descriptor's enum values, which are not meaningful for fxml2 and
+        // the attribute descriptor's enum values, which are not meaningful for FXML and
         // produce noise (e.g. "cellFactory", "prefHeight").  Suppress all other contributors
         // and invoke our literal-value completion directly, but only for property attributes
         // with a non-String type (String/FQN attributes still need FqnClassNameCompletionProvider).
@@ -1437,7 +1437,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 }
 
                 // At the first segment level of the root / code-behind context, also
-                // offer elements declared with fx:id anywhere in the file.  The fxml2
+                // offer elements declared with fx:id anywhere in the file.  The FXML
                 // compiler injects a public field for each fx:id into the generated
                 // base class, so these names are valid binding sources.
                 // We offer them here (in addition to the code-behind's instance

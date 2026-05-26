@@ -104,7 +104,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangOnBooleanBindingProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!active}"/>
@@ -119,7 +119,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangOnNumericBindingProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!count}"/>
@@ -133,7 +133,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangInEvaluateSyntaxProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="$!active"/>
@@ -152,7 +152,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangOnNumericBindingProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button visible="${!!count}"/>
@@ -166,7 +166,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangOnBooleanBindingProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button visible="${!!active}"/>
@@ -185,7 +185,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangWithUnresolvablePathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!<error descr="'nonExistent' in test.TestView cannot be resolved">nonExistent</error>}"/>
@@ -204,7 +204,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangOnEvaluateContentBindingProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="$..<error descr="Boolean operator '!' is not applicable to fx:Evaluate bindings">!</error>items"/>
@@ -218,7 +218,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangOnObserveContentProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="${..<error descr="Boolean operator '!' is not applicable to fx:Observe bindings">!</error>items}"/>
@@ -233,7 +233,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangOnSynchronizeContentProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="#{..<error descr="Boolean operator '!' is not applicable to fx:Synchronize bindings">!</error>items}"/>
@@ -280,7 +280,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangOnBooleanNavigatesToIsNot() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!active}"/>
@@ -311,7 +311,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void singleBangOnNumericNavigatesToIsZero() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!count}"/>
@@ -351,7 +351,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangOnNumericNavigatesToIsNotZero() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button visible="${!!count}"/>
@@ -384,7 +384,7 @@ class Fxml2BooleanOperatorTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangOnBooleanHasNoOperatorReference() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button visible="${!!active}"/>

@@ -34,7 +34,7 @@ class Fxml2DefineAndCollectionsTest extends Fxml2TestBase {
      */
     @Test
     void fxDefineSingleStringProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "java.lang.String\njavafx.scene.layout.GridPane",
                 """
                   <GridPane>
@@ -48,7 +48,7 @@ class Fxml2DefineAndCollectionsTest extends Fxml2TestBase {
     /** Compiler: Reference_Value_In_DefineBlock: $str reference to fx:define entry */
     @Test
     void fxDefineReferenceViaBindingProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$str">
@@ -71,7 +71,7 @@ class Fxml2DefineAndCollectionsTest extends Fxml2TestBase {
      */
     @Test
     void arrayListWithTypeArgumentsProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njava.util.ArrayList\njava.lang.String",
                 """
                   <GridPane>
@@ -89,7 +89,7 @@ class Fxml2DefineAndCollectionsTest extends Fxml2TestBase {
     /** Compiler: styleClass comma-separated collection assignment */
     @Test
     void styleClassCollectionAssignmentProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane styleClass="style1, style2, style3"/>
@@ -108,7 +108,7 @@ class Fxml2DefineAndCollectionsTest extends Fxml2TestBase {
      */
     @Test
     void addingIncompatibleItemToTypedListProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njava.util.ArrayList",
                 """
                   <GridPane>
@@ -129,7 +129,7 @@ class Fxml2DefineAndCollectionsTest extends Fxml2TestBase {
      */
     @Test
     void commaSeparatedStringsInTypedDoubleListProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njava.util.ArrayList",
                 """
                   <GridPane>
@@ -156,7 +156,7 @@ class Fxml2DefineAndCollectionsTest extends Fxml2TestBase {
      */
     @Test
     void fxDefineObjectReferencedInStaticPropertyAttributeProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.StackPane\njavafx.scene.layout.BorderPane\njavafx.geometry.Insets\njavafx.scene.control.Button",
                 """
                   <StackPane>
@@ -209,7 +209,7 @@ class Fxml2DefineAndCollectionsTest extends Fxml2TestBase {
                 package test;
                 public class Row {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\ntest.GenericWrapper\ntest.TemplateItem",
                 """
                   <GridPane>

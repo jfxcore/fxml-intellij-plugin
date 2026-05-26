@@ -29,7 +29,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
     /** Duplicate attribute value fires "Duplicate attribute" on both name tokens. */
     @Test
     void duplicateAttributePropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Duplicate attribute prefWidth">prefWidth</error>="10" <error descr="Duplicate attribute prefWidth">prefWidth</error>="20"/>
@@ -40,7 +40,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void duplicateElementPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane>
@@ -54,7 +54,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void duplicateAttributeAndElementPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane prefWidth="10">
@@ -80,7 +80,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
         // VBox not imported; parent BorderPane is imported -> annotator reports error on VBox.
         // Button not imported; parent VBox is unresolved -> annotator stays silent for Button.
         // The inspection must NOT additionally fire "Button is set more than once".
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "",
                 """
                   <<error descr="Cannot resolve symbol 'VBox'">VBox</error>>
@@ -99,7 +99,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void enumAttributeValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane alignment="CENTER"/>
@@ -110,7 +110,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void enumElementValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane>
@@ -123,7 +123,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void chainedPropertyEnumAttributeValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView selectionModel.selectionMode="MULTIPLE"/>
@@ -138,7 +138,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void numericAttributeValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button prefWidth="123.5"/>
@@ -149,7 +149,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void booleanAttributeValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button managed="true" visible="false"/>
@@ -160,7 +160,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void negativeInfinityAttributeValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button prefWidth="-Infinity"/>
@@ -171,7 +171,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void staticFieldValueOnDoublePropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane prefWidth="POSITIVE_INFINITY"/>
@@ -186,7 +186,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void singleValueInsetsAttributeProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane padding="1"/>
@@ -197,7 +197,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void commaSeparatedInsetsAttributeProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane padding="1,2,3,4"/>
@@ -209,7 +209,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
     /** Two-value Insets is invalid. */
     @Test
     void invalidInsetsValueProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane padding=<error descr="'1,2' is not a valid value for padding">"1,2"</error>/>
@@ -224,7 +224,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void namedColorAttributeValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button textFill="red"/>
@@ -235,7 +235,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void webColorAttributeValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button textFill="#12345678"/>
@@ -250,7 +250,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void commaSeparatedStyleClassesProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane styleClass="style1, style2, style3"/>
@@ -265,7 +265,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
 
     @Test
     void staticPropertyColumnIndexProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njavafx.scene.layout.Pane",
                 """
                   <GridPane>
@@ -283,7 +283,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
     /** {@code foo.bar.baz} does not exist on Button and must produce an error. */
     @Test
     void unresolvablePropertyChainProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button <error descr="'foo.bar.baz' in javafx.scene.control.Button cannot be resolved">foo.bar.baz="Hello!"</error>/>
@@ -309,7 +309,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
     /** {@code Button.text="Hello!"} as an attribute (not a static property) is invalid. */
     @Test
     void qualifiedPropertyInAttributeNotationProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button <error descr="'Button.text' in javafx.scene.control.Button cannot be resolved">Button.text="Hello!"</error>/>
@@ -503,7 +503,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public void setAmount(double v) { amount.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.DoubleHolder", """
                   <DoubleHolder amount="3.14"/>
                 """
@@ -524,7 +524,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public void setAmount(double v) { amount.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.DoubleHolder2", """
                   <DoubleHolder2 amount=<error descr="Cannot coerce 'FOO' to double">"FOO"</error>/>
                 """
@@ -545,7 +545,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public void setRatio(float v) { ratio.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.FloatHolder", """
                   <FloatHolder ratio=<error descr="Cannot coerce 'BAD' to float">"BAD"</error>/>
                 """
@@ -566,7 +566,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public void setCount(long v) { count.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.LongHolder", """
                   <LongHolder count=<error descr="Cannot coerce 'BAD' to long">"BAD"</error>/>
                 """
@@ -587,7 +587,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public void setFlag(boolean v) { flag.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.BoolHolder", """
                   <BoolHolder flag=<error descr="Cannot coerce 'BAD' to boolean">"BAD"</error>/>
                 """
@@ -608,7 +608,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public void setFlag(boolean v) { flag.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.BoolHolder2", """
                   <BoolHolder2 flag="true"/>
                 """
@@ -639,7 +639,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public Inner getInner() { return new Inner(); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Outer", """
                   <Outer>
                     <inner.scale><error descr="Cannot coerce 'FOO' to double">FOO</error></inner.scale>
@@ -671,7 +671,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public void setItem(T v) { item.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.GenericControl", """
                   <GenericControl fx:typeArguments="java.lang.Double" item="12.34567"/>
                 """
@@ -698,7 +698,7 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                     public Inner2 getInner2() { return new Inner2(); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Outer2", """
                   <Outer2>
                     <inner2.scale>1.5</inner2.scale>

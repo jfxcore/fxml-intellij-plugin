@@ -28,7 +28,7 @@ class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
 
     @Test
     void exactImportIsIndexed() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 "<Label text=\"Hello\"/>"
         ));
@@ -46,7 +46,7 @@ class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
 
     @Test
     void wildcardImportIsIndexed() {
-        getFixture().configureByText("WildcardView.fxml", fxml2(
+        getFixture().configureByText("WildcardView.fxml", fxml(
                 "javafx.scene.control.*",
                 "<Label/>"
         ));
@@ -64,7 +64,7 @@ class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
 
     @Test
     void multipleImportsAreAllIndexed() {
-        getFixture().configureByText("MultiView.fxml", fxml2(
+        getFixture().configureByText("MultiView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.control.Label",
                 "<Label/>"
         ));
@@ -102,7 +102,7 @@ class Fxml2ClassReferenceIndexTest extends Fxml2TestBase {
 
     @Test
     void classNotImportedInFileIsNotFound() {
-        getFixture().configureByText("OtherView.fxml", fxml2(
+        getFixture().configureByText("OtherView.fxml", fxml(
                 "javafx.scene.control.Button",
                 "<Button/>"
         ));

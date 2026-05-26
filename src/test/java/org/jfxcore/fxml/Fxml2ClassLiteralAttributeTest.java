@@ -67,7 +67,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void classLiteralMatchingTypeArgumentProducesNoError() {
-        getFixture().configureByText("ClassLiteralValid.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralValid.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane fx:typeArguments="String" classLiteral="String"/>
@@ -83,7 +83,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void classLiteralRawComparableOnParameterizedTypeProducesNoError() {
-        getFixture().configureByText("ClassLiteralComparable.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralComparable.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane classLiteral="Comparable"/>
@@ -98,7 +98,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void classLiteralOnWildcardClassPropertyProducesNoError() {
-        getFixture().configureByText("ClassLiteralWildcard.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralWildcard.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane wildcardClassLiteral="Double"/>
@@ -117,7 +117,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void commaSeparatedClassNamesProducesInvalidExpressionError() {
-        getFixture().configureByText("ClassLiteralComma.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralComma.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane fx:typeArguments="String" classLiteral=<error descr="Invalid expression">"String, Double"</error>/>
@@ -132,7 +132,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void parameterizedTypeExpressionProducesInvalidExpressionError() {
-        getFixture().configureByText("ClassLiteralParameterized.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralParameterized.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane fx:typeArguments="String" classLiteral=<error descr="Invalid expression">"Comparable<String>"</error>/>
@@ -148,7 +148,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void incompatibleClassLiteralProducesCoercionError() {
-        getFixture().configureByText("ClassLiteralIncompatible.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralIncompatible.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane fx:typeArguments="String" classLiteral=<error descr="Cannot coerce 'Double' to Class<String>">"Double"</error>/>
@@ -167,7 +167,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void classLiteralNavigatesToClass() {
-        getFixture().configureByText("ClassLiteralNav.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralNav.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane fx:typeArguments="String" classLiteral="<caret>String"/>
@@ -199,7 +199,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void classLiteralCompletionOffersCompatibleImportedClasses() {
-        getFixture().configureByText("ClassLiteralCompletion.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralCompletion.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane fx:typeArguments="String" classLiteral="<caret>"/>
@@ -218,7 +218,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void classLiteralCompletionForWildcardOffersAllImportedClasses() {
-        getFixture().configureByText("ClassLiteralWildcardCompletion.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralWildcardCompletion.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane wildcardClassLiteral="<caret>"/>
@@ -243,7 +243,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void classLiteralCompletionOffersNonImportedAssignableClasses() {
-        getFixture().configureByText("ClassLiteralNonImportedCompletion.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralNonImportedCompletion.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane nodeClassLiteral="Grid<caret>"/>
@@ -272,7 +272,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void classLiteralCompletionFiltersOutIncompatibleNonImportedClasses() {
-        getFixture().configureByText("ClassLiteralIncompatibleCompletion.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralIncompatibleCompletion.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane nodeClassLiteral="Str<caret>"/>
@@ -292,7 +292,7 @@ class Fxml2ClassLiteralAttributeTest extends Fxml2TestBase {
      */
     @Test
     void unresolvedClassNameOffersAddImportQuickfix() {
-        getFixture().configureByText("ClassLiteralAddImport.fxml", fxml2(
+        getFixture().configureByText("ClassLiteralAddImport.fxml", fxml(
                 "test.ClassLiteralPane",
                 """
                   <ClassLiteralPane nodeClassLiteral="Grid<caret>Pane"/>

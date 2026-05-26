@@ -32,7 +32,7 @@ class Fxml2ParserTest extends Fxml2TestBase {
      * The compiler accepts {@code http://javafx.com/javafx/} as a valid namespace URI.
      * The IntelliJ XML validator reports "URI is not registered" for non-standard URIs
      * in a plain XML file, so this test is disabled until the plugin suppresses that
-     * warning for recognized fxml2 namespace URIs.
+     * warning for recognized FXML namespace URIs.
      */
     @Test
     void javafxNamespaceWithTrailingSlashIsValid() {
@@ -123,7 +123,7 @@ class Fxml2ParserTest extends Fxml2TestBase {
     /** Compiler: ProcessingInstructions_Are_Parsed_Correctly (unit test) */
     @Test
     void processingInstructionImportsAreRecognized() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njavafx.scene.control.Label",
                 """
                   <GridPane/>
@@ -140,7 +140,7 @@ class Fxml2ParserTest extends Fxml2TestBase {
     /** Compiler: CDataSection_Is_Not_Processed */
     @Test
     void cdataSectionIsPassedThroughWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label><![CDATA[ < > & ]]></Label>
@@ -152,7 +152,7 @@ class Fxml2ParserTest extends Fxml2TestBase {
     /** Compiler: Unescape_Character_Entity_References */
     @Test
     void characterEntityReferencesAreAccepted() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="&gt;&lt;&amp;&quot;&apos;"/>
@@ -172,7 +172,7 @@ class Fxml2ParserTest extends Fxml2TestBase {
      */
     @Test
     void backslashEscapeBeforeCurlyIsNotTreatedAsBindingExpression() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\{foo}"/>
@@ -188,7 +188,7 @@ class Fxml2ParserTest extends Fxml2TestBase {
      */
     @Test
     void backslashEscapeBeforeDollarIsLiteralString() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\$source"/>
@@ -204,7 +204,7 @@ class Fxml2ParserTest extends Fxml2TestBase {
      */
     @Test
     void backslashEscapeBeforePushNotationIsLiteralString() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\>{source}"/>
@@ -220,7 +220,7 @@ class Fxml2ParserTest extends Fxml2TestBase {
      */
     @Test
     void backslashNotFollowedByBindingStartIsLiteralString() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\bar"/>

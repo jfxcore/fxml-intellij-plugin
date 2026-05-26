@@ -80,7 +80,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void knownStyleClassResolvesToCssSelectorElement() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="myst<caret>yle1"/>
@@ -95,7 +95,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void secondTokenInCommaListResolvesToCssSelectorElement() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="mystyle1, elevat<caret>ed-1"/>
@@ -110,7 +110,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void unknownStyleClassResolvesToNull() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="does-not-<caret>exist"/>
@@ -123,7 +123,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void bindingExpressionIsNotResolved() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="${vm.cssClass}"/>
@@ -147,7 +147,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void accentOnLabelPrefersLabelCompoundSelector() {
         getFixture().addFileToProject("theme.css", CSS_MULTI_COMPOUND);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="acc<caret>ent"/>
@@ -173,7 +173,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     void multipleFilesProduceMultipleResolveResults() {
         getFixture().addFileToProject("style-a.css", ".mystyle1 { -fx-fill: red; }");
         getFixture().addFileToProject("style-b.css", ".mystyle1 { -fx-fill: blue; }");
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="myst<caret>yle1"/>
@@ -197,7 +197,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void hoverHighlightCoversOnlyTheHoveredToken() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="myst<caret>yle1, elevated-1"/>
@@ -221,7 +221,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void hoverHighlightCoversSecondTokenWhenCaretIsOnIt() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="mystyle1, elev<caret>ated-1"/>
@@ -249,7 +249,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     void multiFileNavigationProducesMultipleTargets() {
         getFixture().addFileToProject("style-a.css", ".mystyle1 { -fx-fill: red; }");
         getFixture().addFileToProject("style-b.css", ".mystyle1 { -fx-fill: blue; }");
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="myst<caret>yle1"/>
@@ -273,7 +273,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void unknownStyleClassProducesWarning() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="<warning descr="CSS class 'no-such-class' cannot be resolved">no-such-class</warning>"/>
@@ -285,7 +285,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void knownStyleClassProducesNoWarning() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="mystyle1"/>
@@ -297,7 +297,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void onlyUnknownTokenInListProducesWarning() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="mystyle1, <warning descr="CSS class 'ghost' cannot be resolved">ghost</warning>"/>
@@ -308,7 +308,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
 
     @Test
     void noCssFilesProducesWarningForEveryToken() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="<warning descr="CSS class 'mystyle1' cannot be resolved">mystyle1</warning>"/>
@@ -318,7 +318,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Find Usages from CSS -> fxml2 (reverse direction)
+    // Find Usages from CSS -> FXML (reverse direction)
     // -----------------------------------------------------------------------
 
     /**
@@ -328,7 +328,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void findUsagesFromCssFindsStandaloneFxml2Usage() {
         getFixture().addFileToProject("style.css", CSS);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="myst<caret>yle1"/>
@@ -360,8 +360,8 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     @Test
     void findUsagesFromCssFindsEmbeddedFxml2Usage() {
         getFixture().addFileToProject("style.css", CSS);
-        // Standalone fxml2 resolves the CssSelectorElement via caret resolution
-        getFixture().configureByText("AnchorView.fxml", fxml2(
+        // Standalone FXML resolves the CssSelectorElement via caret resolution
+        getFixture().configureByText("AnchorView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label styleClass="myst<caret>yle1"/>
@@ -374,7 +374,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         });
         assertNotNull(cssSel);
 
-        // Add a class with embedded fxml2 that also uses the same style class
+        // Add a class with embedded FXML that also uses the same style class
         getFixture().addClass("""
                 package test;
                 import org.jfxcore.markup.ComponentView;
@@ -396,7 +396,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
                 r instanceof Fxml2StyleClassReference
                 && ReadAction.compute(() -> r.getElement().getContainingFile().getName()).endsWith(".java"));
         assertTrue(foundEmbedded,
-                "Expected Fxml2StyleClassReference in embedded fxml2 (Java file). Found "
+                "Expected Fxml2StyleClassReference in embedded FXML (Java file). Found "
                 + refs.size() + " refs of types: "
                 + refs.stream().map(r -> r.getClass().getSimpleName()).toList());
     }

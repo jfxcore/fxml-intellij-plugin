@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 
 /**
- * A soft {@link com.intellij.psi.PsiReference} for one segment of an fxml2 binding path
+ * A soft {@link com.intellij.psi.PsiReference} for one segment of an FXML binding path
  * (e.g. {@code viewModel} or {@code someCommand} in {@code $viewModel.someCommand}).
  * Enables Ctrl+click navigation to the property declaration.
  * Kept soft so that unresolved segments do not produce a generic "Cannot resolve" error;

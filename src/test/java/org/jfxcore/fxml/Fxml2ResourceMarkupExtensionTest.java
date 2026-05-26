@@ -96,7 +96,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void classPathResource_urlProperty_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.image.Image\njavafx.scene.image.ImageView",
                 """
                   <ImageView>
@@ -112,7 +112,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void classPathResource_stringProperty_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="@/messages/hello.txt"/>
@@ -127,7 +127,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void classPathResource_incompatibleProperty_error() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label opacity="%s"/>
@@ -143,7 +143,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void classPathResource_longForm_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.ClassPathResource",
                 """
                   <Label text="{ClassPathResource /messages/hello.txt}"/>
@@ -158,7 +158,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void classPathResource_ctrlClickNavigation() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="@/messages/hello.txt"/>
@@ -197,7 +197,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void escapePrefix_atNotation_literalString_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\@/some/path"/>
@@ -216,7 +216,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void staticResource_percentNotation_stringProperty_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="%greeting"/>
@@ -239,7 +239,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
                 public class TestView extends BorderPane {}
                 """);
         // Node.opacity is a double: StaticResource raw form must be accepted for any type.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label opacity="%opacityKey"/>
@@ -254,7 +254,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void staticResource_formatArguments_literalList_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="%greetingWithArgs; formatArguments=Jane, Doe, 1234.5"/>
@@ -270,7 +270,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void staticResource_formatArguments_asTagAttribute_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.StaticResource",
                 """
                   <Label>
@@ -289,7 +289,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void staticResource_ctrlClickNavigation() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="%greeting"/>
@@ -326,7 +326,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void escapePrefix_percentNotation_literalString_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\%greeting"/>
@@ -345,7 +345,7 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void staticResource_rawBraceForm_anyType_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.StaticResource",
                 """
                   <Label opacity="{StaticResource opacityKey}"/>

@@ -205,7 +205,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
                 public class StandaloneDocView extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneDocView.fxmlx", fxml2(
+        getFixture().configureByText("StandaloneDocView.fxmlx", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"%label.text\"/>\n",
                 "test.StandaloneDocView"
@@ -236,7 +236,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
                 public class StandaloneDynDocView extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneDynDocView.fxmlx", fxml2(
+        getFixture().configureByText("StandaloneDynDocView.fxmlx", fxml(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.DynamicResource",
                 "  <Label text=\"{DynamicResource header}\"/>\n",
                 "test.StandaloneDynDocView"

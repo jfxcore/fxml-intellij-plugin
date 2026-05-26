@@ -63,7 +63,7 @@ class Fxml2ResourceTest extends Fxml2TestBase {
      */
     @Test
     void atCompactNotationOnUrlPropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.image.Image\njavafx.scene.image.ImageView",
                 """
                   <ImageView>
@@ -79,7 +79,7 @@ class Fxml2ResourceTest extends Fxml2TestBase {
      */
     @Test
     void atCompactNotationOnStringPropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="@/messages/hello.txt"/>
@@ -93,7 +93,7 @@ class Fxml2ResourceTest extends Fxml2TestBase {
      */
     @Test
     void atCompactNotationWithSpacesInQuotesProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="@'/path with spaces/file.txt'"/>
@@ -113,7 +113,7 @@ class Fxml2ResourceTest extends Fxml2TestBase {
      */
     @Test
     void fxResourceAttributeNotation_isError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.image.Image\njavafx.scene.image.ImageView",
                 """
                   <ImageView>
@@ -130,7 +130,7 @@ class Fxml2ResourceTest extends Fxml2TestBase {
      */
     @Test
     void fxResourceNameProperty_isError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.image.Image\njavafx.scene.image.ImageView",
                 """
                   <ImageView>

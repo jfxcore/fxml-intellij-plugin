@@ -76,7 +76,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void fxContextOnNonRootElementProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unexpected intrinsic: context">fx:context="$foo"</error>/>
@@ -95,7 +95,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void fxConstantWithUnknownFieldProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane>
@@ -113,7 +113,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void fxConstantWithKnownFieldProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TableView",
                 """
                   <TableView>
@@ -137,7 +137,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void defaultPropertyTextContentProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button>Hello</Button>
@@ -177,7 +177,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void fxControllerAttributeIsUnknownIntrinsic() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unknown intrinsic: controller">fx:controller="some.Controller"</error>/>
@@ -197,7 +197,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void fxDefineObjectsAreNotFlaggedAsInvalidChildren() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.geometry.Insets",
                 """
                   <fx:define>
@@ -218,7 +218,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void hashMapInsideFxDefineProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "java.util.HashMap",
                 """
                   <fx:define>
@@ -234,7 +234,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void hashSetInsideFxDefineProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "java.util.HashSet",
                 """
                   <fx:define>
@@ -255,7 +255,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void commaSeparatedCoercionWithBindingExpressionProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njavafx.geometry.Insets",
                 """
                   <GridPane padding=<error descr="A comma-separated argument list cannot contain binding expressions">"$foo,2,3,4"</error>/>
@@ -273,7 +273,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void xmlSpacePreserveProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label xml:space="preserve" text="hello  world"/>
@@ -287,7 +287,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void xmlSpaceDefaultProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label xml:space="default" text="hello"/>
@@ -302,7 +302,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void xmlSpaceInvalidValueProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label xml:space=<error descr="Cannot coerce 'invalid' to xml:space">"invalid"</error> text="hello"/>
@@ -319,7 +319,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
     void xmlSpacePreserveIsNotFlaggedAsUnknownAttribute() {
         // Verify separately that the fx-attribute inspection does not produce an "Unknown intrinsic"
         // error and that the attribute-value inspection does not raise a "cannot resolve" error.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox xml:space="preserve">
@@ -344,7 +344,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void xmlSpace_ctrlClickNavigation_attrName() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label xml:space="preserve" text="hello"/>
@@ -398,7 +398,7 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
      */
     @Test
     void xmlSpace_ctrlClickNavigation_attrValue() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label xml:space="preserve" text="hello"/>

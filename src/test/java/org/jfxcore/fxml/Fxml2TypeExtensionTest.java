@@ -33,7 +33,7 @@ class Fxml2TypeExtensionTest extends Fxml2TestBase {
      */
     @Test
     void fxTypeWithValidClassProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Class java.lang.String}"/>
@@ -48,7 +48,7 @@ class Fxml2TypeExtensionTest extends Fxml2TestBase {
      */
     @Test
     void fxTypeWithImportedSimpleNameProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\njava.lang.String",
                 """
                   <Label text="{fx:Class String}"/>
@@ -62,7 +62,7 @@ class Fxml2TypeExtensionTest extends Fxml2TestBase {
      */
     @Test
     void fxTypeWithUnresolvableClassProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Class <error descr="Cannot resolve symbol 'NonExistentClass'">NonExistentClass</error>}"/>
@@ -77,7 +77,7 @@ class Fxml2TypeExtensionTest extends Fxml2TestBase {
      */
     @Test
     void fxTypeWithExplicitNamePropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Class name=java.lang.String}"/>
@@ -100,7 +100,7 @@ class Fxml2TypeExtensionTest extends Fxml2TestBase {
      */
     @Test
     void fxTypeElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -118,7 +118,7 @@ class Fxml2TypeExtensionTest extends Fxml2TestBase {
      */
     @Test
     void fxTypeElementNotationWithUnresolvableClassProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>

@@ -34,7 +34,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
 
     @Test
     void knownClassTagWithCorrectImportResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button text="OK"/>
@@ -58,7 +58,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
 
     @Test
     void nestedKnownClassTagsResolveWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -74,7 +74,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
 
     @Test
     void propertyElementTagDoesNotProduceError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button>
@@ -96,7 +96,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void dottedPropertyOpeningTagSegmentsHaveIndividualReferenceRanges() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -118,7 +118,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
 
     @Test
     void dottedPropertyClosingTagSegmentsHaveIndividualReferenceRanges() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -144,7 +144,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
 
     @Test
     void unknownClassTagWithoutImportProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "",
                 """
                   <<error descr="Cannot resolve symbol 'ButtonFoo'">ButtonFoo</error>/>
@@ -155,7 +155,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
 
     @Test
     void classTagWithNonExistentImportProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ButtonFoo",
                 """
                   <<error descr="Cannot resolve symbol 'ButtonFoo'">ButtonFoo</error>/>
@@ -168,7 +168,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      *  not spurious errors on its attributes. */
     @Test
     void unresolvedClassTagProducesErrorOnTagNotOnAttributes() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane>
@@ -182,7 +182,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
     /** An unresolvable tag inside a property tag produces exactly one error on the tag. */
     @Test
     void unresolvedClassTagInsidePropertyTagProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.BorderPane",
                 """
                   <BorderPane>
@@ -213,7 +213,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                     public static java.util.List<Object> getBehaviors(Button node) { return null; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 test.StaticPropClass
@@ -248,7 +248,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                 package test;
                 public class MyBehavior {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 test.StaticPropClass2
@@ -278,7 +278,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void staticPropertyAttributeClassSegmentHasCorrectReferenceRange() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -304,7 +304,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void staticPropertyAttributePropSegmentHasCorrectReferenceRange() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -330,7 +330,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void staticPropertyAttributeValueNavigatesToEnumConstant() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -357,7 +357,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void staticPropertyElementValueNavigatesToEnumConstant() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -391,7 +391,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsPackageSegmentNavigates() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.con<caret>trol.ListView"/>
@@ -409,7 +409,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
 
     @Test
     void typeArgumentsClassSegmentNavigates() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.List<caret>View"/>
@@ -439,7 +439,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                     public static class Nested {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="org.example.Outer.Ne<caret>sted"/>
@@ -468,7 +468,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                     public class Item {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="org.example.Container.It<caret>em"/>
@@ -499,7 +499,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                     }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="org.example.Outer.Inner.Le<caret>af"/>
@@ -526,7 +526,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                     }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="org.example.Outer.Inn<caret>er.Leaf"/>
@@ -560,7 +560,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                     public ClassNameHolder(@NamedArg("targetClass") String targetClass) {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.ClassNameHolder",
                 """
                   <ClassNameHolder targetClass="javafx.scene.con<caret>trol.Button"/>
@@ -586,7 +586,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                     public ClassNameHolder(@NamedArg("targetClass") String targetClass) {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.ClassNameHolder",
                 """
                   <ClassNameHolder targetClass="javafx.scene.control.But<caret>ton"/>
@@ -621,7 +621,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                 package org.example;
                 public class MyView {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.ClassNameHolder",
                 """
                   <ClassNameHolder targetClass="org.example.MyV<caret>iew"/>
@@ -652,7 +652,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                     public ClassNameHolder2(@NamedArg("targetClass") String targetClass) {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.ClassNameHolder2",
                 """
                   <ClassNameHolder2 targetClass="some.nonexistent.ClassName"/>
@@ -672,7 +672,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsCommaListFirstTokenClassNavigates() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.But<caret>ton, javafx.scene.control.Label"/>
@@ -694,7 +694,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsCommaListSecondTokenClassNavigates() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.Button, javafx.scene.control.La<caret>bel"/>
@@ -716,7 +716,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsCommaListSecondTokenPackageSegmentNavigates() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.Button, javafx.scene.con<caret>trol.Label"/>
@@ -737,7 +737,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsCommaListWithExtraWhitespaceNavigates() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.Button  ,  javafx.scene.control.La<caret>bel"/>
@@ -759,7 +759,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsCommaListFirstTokenHoverRangeIsTight() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 // caret on "Button": 6 chars
                 """
@@ -786,7 +786,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsCommaListSecondTokenHoverRangeIsTight() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.Button, javafx.scene.control.La<caret>bel"/>
@@ -814,7 +814,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsTrailingWhitespaceTokenDoesNotThrow() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.Button, <caret>"/>
@@ -847,7 +847,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
                             @NamedArg("optional") boolean optional) {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.MultiArgHolder",
                 """
                   <MultiArgHolder required="x" optio<caret>nal="true"/>
@@ -938,7 +938,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void addImportIntentionOfferedForFqnElementTag() {
-        getFixture().configureByText("AddImportTag.fxml", fxml2(
+        getFixture().configureByText("AddImportTag.fxml", fxml(
                 "", // Label is NOT imported
                 """
                   <javafx.scene.control.La<caret>bel text="hello"/>
@@ -963,7 +963,7 @@ class Fxml2TagResolutionTest extends Fxml2TestBase {
      */
     @Test
     void addImportIntentionNotOfferedForFqnElementTagWhenAlreadyImported() {
-        getFixture().configureByText("AddImportTagAlready.fxml", fxml2(
+        getFixture().configureByText("AddImportTagAlready.fxml", fxml(
                 "javafx.scene.control.Label", // Label IS already imported
                 """
                   <javafx.scene.control.La<caret>bel text="hello"/>

@@ -42,7 +42,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void typeArgumentsWithDirectImportFlagsRedundantPrefix() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView\njavafx.scene.control.Button",
                 // The prefix 'javafx.scene.control.' inside the quoted value is greyed out.
                 """
@@ -58,7 +58,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void typeArgumentsWithoutImportProducesNoWarning() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 // Button is NOT imported: qualifier is necessary
                 """
@@ -74,7 +74,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void typeArgumentsWithSimpleNameProducesNoWarning() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView\njavafx.scene.control.Button",
                 """
                   <ListView fx:typeArguments="Button"/>
@@ -89,7 +89,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void typeArgumentsQuickFixRemovesPrefix() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView\njavafx.scene.control.Button",
                 // caret inside the redundant "javafx.scene.control." prefix
                 """
@@ -127,7 +127,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView\ncom.example.OuterViewModel",
                 // "OuterViewModel.Row" is resolvable via the existing import
                 """
@@ -150,7 +150,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView\ncom.example.OuterViewModel2",
                 // caret inside the redundant "com.example." prefix
                 """
@@ -196,7 +196,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
         // test2.MyView is imported: but String-typed values must NOT be flagged.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test2.ClassNameHolder\ntest2.MyView",
                 """
                   <ClassNameHolder targetClass="test2.MyView"/>
@@ -217,7 +217,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void fqnElementTagWithDirectImportFlagsRedundantPrefix() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.BorderPane\njavafx.scene.control.TextField",
                 """
                   <BorderPane>
@@ -234,7 +234,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void fqnElementTagWithoutImportProducesNoWarning() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.BorderPane",
                 // TextField is NOT imported: qualifier is necessary
                 """
@@ -252,7 +252,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void fqnElementTagQuickFixRenamesToSimpleName() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.BorderPane\njavafx.scene.control.TextField",
                 // caret inside the redundant prefix in the opening tag
                 """
@@ -288,7 +288,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
         // TestView extends BorderPane extends Region -> USE_PREF_SIZE is in scope
         // Case 1 fires: entire "javafx.scene.layout.Region." is redundant.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="$<weak_warning descr="Redundant qualifier 'javafx.scene.layout.Region.'">javafx.scene.layout.Region.</weak_warning>USE_PREF_SIZE"/>
@@ -374,7 +374,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
         // Root tag has fx:subclass="test.MyView" which extends BorderPane which extends Region.
         // USE_PREF_SIZE is defined on Region: it's inherited by the code-behind start class.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region\njavafx.scene.control.TextArea",
                 """
                   <TextArea minHeight="$<weak_warning descr="Redundant qualifier 'javafx.scene.layout.Region.'">javafx.scene.layout.Region.</weak_warning>USE_PREF_SIZE"/>
@@ -390,7 +390,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void bindingExpressionFqnFieldInScopeQuickFixRemovesEntireClassPrefix() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region\njavafx.scene.control.TextArea",
                 """
                   <TextArea minHeight="$javafx.scene.layout.Region.<caret>USE_PREF_SIZE"/>
@@ -449,7 +449,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void staticPropertyAttributeFqnWithDirectImportFlagsRedundantPrefix() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.VBox\njavafx.scene.control.TextField",
                 """
                   <VBox>
@@ -467,7 +467,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void staticPropertyAttributeFqnWithoutImportProducesNoWarning() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 // VBox is NOT imported: qualifier is necessary
                 "javafx.scene.control.TextField",
                 """
@@ -485,7 +485,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void staticPropertyAttributeFqnQuickFixShortens() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.VBox\njavafx.scene.control.TextField",
                 // caret inside the redundant "javafx.scene.layout." in the attribute name
                 """
@@ -520,7 +520,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void staticPropertyElementTagFqnWithDirectImportFlagsRedundantPrefix() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.BorderPane\njavafx.scene.layout.VBox\njavafx.scene.control.TextField",
                 """
                   <BorderPane>
@@ -540,7 +540,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void staticPropertyElementTagFqnWithoutImportProducesNoWarning() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 // VBox is NOT imported: qualifier is necessary
                 "javafx.scene.layout.BorderPane\njavafx.scene.control.TextField",
                 """
@@ -574,7 +574,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExt",
                 """
                   <Label text="{<weak_warning descr="Redundant qualifier 'test.'">test.</weak_warning>MyExt}"/>
@@ -599,7 +599,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label", // MyExt2 NOT imported
                 """
                   <Label text="{test.MyExt2}"/>
@@ -623,7 +623,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExt3",
                 """
                   <Label text="{test.<caret>MyExt3}"/>
@@ -663,7 +663,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenExt",
                 // java.lang.String is implicitly accessible: "java.lang." prefix is redundant
                 """
@@ -691,7 +691,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenExt2\njavafx.scene.control.Button",
                 // Button is imported, "javafx.scene.control." prefix is redundant
                 """
@@ -720,7 +720,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
         // Button is NOT imported: qualifier is necessary
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenExt3",
                 """
                   <Label text="{GenExt3<javafx.scene.control.Button> key=x}"/>
@@ -746,7 +746,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenExt4",
                 // java.lang.String: "java.lang." prefix is redundant
                 """
@@ -771,7 +771,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void staticPropertyElementTagFqnQuickFixShortens() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.BorderPane\njavafx.scene.layout.VBox\njavafx.scene.control.TextField",
                 // caret inside the redundant prefix in the opening tag
                 """
@@ -807,7 +807,7 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     @Test
     void redundantQualifierFixesAreBatchApplicable() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView\njavafx.scene.control.Button",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.<caret>Button"/>

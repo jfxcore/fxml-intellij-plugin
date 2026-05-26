@@ -88,7 +88,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public Map<String, Integer> getEntries() { return entries; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.Source1Holder
                 java.util.HashMap
@@ -132,7 +132,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public ObservableList<Source1Token<String>> getItems() { return items; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.Source1Box
                 test.Source1Token
@@ -156,7 +156,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
      */
     @Test
     void source1_rejectedWhenParentIsRaw() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.TableView
                 javafx.scene.control.TableColumn
@@ -206,7 +206,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public Source2ViewModel getVm() { return new Source2ViewModel(); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.ListView
                 test.Source2MyData
@@ -248,7 +248,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public Source2FormViewModel getVm() { return new Source2FormViewModel(); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.ComboBox
                 test.Source2Person
@@ -287,7 +287,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public Source2RawViewModel getVm() { return new Source2RawViewModel(); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView<caret> items="${vm.rawItems}"/>
@@ -342,7 +342,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     init { initializeComponent() }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.ListView
                 test.Source2KtRow
@@ -407,7 +407,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public Source2gViewModel getVm() { return new Source2gViewModel(); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.Source2gContainer
                 test.Source2gRow
@@ -441,7 +441,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public void setKind(Class<T> v) { kind.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.Source2hHolder
                 javafx.scene.control.Button
@@ -473,7 +473,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public void setKind(Class<T> v) { kind.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Source2iHolder",
                 """
                   <Source2iHolder<caret> kind="NoSuchClass"/>
@@ -500,7 +500,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public void setKind(Class<? extends T> v) { kind.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.Source2jHolder
                 javafx.scene.control.Button
@@ -534,7 +534,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public void setSecond(Class<T> v) { second.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.Source2kHolder
                 javafx.scene.control.Button
@@ -565,7 +565,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public void setKind(Class<T> v) { kind.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Source2lHolder",
                 """
                   <Source2lHolder<caret> kind="%Label"/>
@@ -648,7 +648,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                 package test;
                 public class Source4Restricted<T extends String> {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Source4Restricted",
                 """
                   <Source4Restricted<caret>/>
@@ -670,7 +670,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                 package test;
                 public class Source4Loose<T extends Number> {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Source4Loose",
                 """
                   <Source4Loose<caret>/>
@@ -688,7 +688,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                 package test;
                 public class Source4MultiBound<T extends Number & Comparable<T>> {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Source4MultiBound",
                 """
                   <Source4MultiBound<caret>/>
@@ -722,7 +722,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public Map<String, ImportToken> getEntries() { return entries; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.ImportHolder
                 java.util.HashMap
@@ -769,7 +769,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public Map<String, ExistingToken> getEntries() { return entries; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.ExistingHolder
                 test.ExistingToken
@@ -818,7 +818,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public Map<String, test.other.ConflictToken> getEntries() { return entries; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 test.ConflictHolder
                 test.ConflictToken
@@ -855,7 +855,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                 package test;
                 public class Source4Restricted<T extends String> {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.Source4Restricted",
                 """
                   <Source4Restricted<caret>/>
@@ -909,7 +909,7 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
                     public BatchViewModel getVm() { return new BatchViewModel(); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.ListView
                 test.BatchRowA

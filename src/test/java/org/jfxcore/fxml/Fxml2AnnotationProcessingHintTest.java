@@ -77,7 +77,7 @@ class Fxml2AnnotationProcessingHintTest extends Fxml2TestBase {
 
     /**
      * A class without {@code @ComponentView} that extends an unresolved {@code XxxBase}
-     * must NOT produce a hint: the class is not an fxml2 component.
+     * must NOT produce a hint: the class is not an FXML component.
      */
     @Test
     void noHintForUnresolvedBaseClassWithoutAnnotation() {

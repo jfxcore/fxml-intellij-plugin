@@ -11,7 +11,7 @@ import org.jfxcore.fxml.descriptors.Fxml2NamespaceDescriptor;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 
 /**
- * Returns a non-null {@link XmlNSDescriptor} for the two fxml2 namespace URIs
+ * Returns a non-null {@link XmlNSDescriptor} for the two FXML namespace URIs
  * ({@code http://javafx.com/javafx} and {@code http://jfxcore.org/fxml/2.0}).
  *
  * <p>{@link com.intellij.javaee.ExternalResourceManagerExBase#isIgnoredResource} checks
@@ -27,7 +27,7 @@ public final class Fxml2ImplicitNamespaceDescriptorProvider implements ImplicitN
                                                              @NotNull String ns,
                                                              @Nullable PsiFile file) {
         if (!isFxml2Namespace(ns)) return null;
-        // Only activate for fxml2 files; leave plain fxml files to the JavaFX plugin.
+        // Only activate for FXML/2 files; leave classic FXML files to the JavaFX plugin.
         if (file instanceof XmlFile xmlFile && !Fxml2FileType.isFxml2(xmlFile)) {
             return null;
         }
@@ -35,11 +35,11 @@ public final class Fxml2ImplicitNamespaceDescriptorProvider implements ImplicitN
     }
 
     /**
-     * Returns {@code true} for any namespace URI that is a recognized fxml2 variant:
+     * Returns {@code true} for any namespace URI that is a recognized FXML variant:
      * <ul>
      *   <li>{@code http://javafx.com/javafx}         (exact)</li>
-     *   <li>{@code http://javafx.com/javafx/}         (trailing slash)</li>
-     *   <li>{@code http://javafx.com/javafx/21}       (version sub-path)</li>
+     *   <li>{@code http://javafx.com/javafx/}        (trailing slash)</li>
+     *   <li>{@code http://javafx.com/javafx/21}      (version sub-path)</li>
      *   <li>{@code http://jfxcore.org/fxml/2.0}      (exact)</li>
      *   <li>{@code http://jfxcore.org/fxml/2.0/}     (trailing slash)</li>
      * </ul>

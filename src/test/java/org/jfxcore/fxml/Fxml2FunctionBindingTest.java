@@ -76,7 +76,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void staticMethodCallWithStringLiteralProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button text="${String.format('Width: %.0f', self/prefWidth)}"/>
@@ -90,7 +90,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void staticMethodOnCodeBehindClassProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${formatDouble(value)}"/>
@@ -104,7 +104,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void unknownStaticMethodProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${<error descr="'nonExistentMethod' in test.TestView cannot be resolved">nonExistentMethod</error>(value)}"/>
@@ -124,7 +124,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void constructorCallSyntaxProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\njavafx.scene.paint.Color",
                 """
                   <Label textFill="${Color(0.5, 0.5, 0.5, 1.0)}"/>
@@ -144,7 +144,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void numericLiteralArgumentsProduceNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\njavafx.scene.paint.Color",
                 """
                   <Label textFill="${Color(0.1D, 0.2D, 0.3D, 1.0D)}"/>
@@ -159,7 +159,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void plainDoubleLiteralWithoutSuffixProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\njavafx.scene.paint.Color",
                 """
                   <Label textFill="${Color(0.1, 0.2, 0.3, 1.0)}"/>
@@ -179,7 +179,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void booleanLiteralArgumentsProduceNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${String.format('val=%s %s', true, false)}"/>
@@ -195,7 +195,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void nullLiteralArgumentProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${String.format('val=%s', null)}"/>
@@ -210,7 +210,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void mixedLiteralArgumentTypesProduceNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${String.format('%s %.2f %s', true, value, null)}"/>
@@ -229,7 +229,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void bidirectionalFunctionBindingWithInverseMethodProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{formatDouble(value); inverseMethod=parseDouble}"/>
@@ -243,7 +243,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void bidirectionalFunctionBindingWithUnresolvableInverseMethodProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{formatDouble(value); inverseMethod=<error descr="'nonExistentInverse' in test.TestView cannot be resolved">nonExistentInverse</error>}"/>
@@ -259,7 +259,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void bidirectionalFunctionBindingWithoutAnnotationProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{<error descr="'formatDouble' is not annotated with @org.jfxcore.markup.InverseMethod, and no user-defined inverse method was provided">formatDouble</error>(value)}"/>
@@ -310,7 +310,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
                     }
                 }
                 """);
-        getFixture().configureByText("AnnotatedView.fxml", fxml2(
+        getFixture().configureByText("AnnotatedView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{formatDouble(value)}"/>
@@ -330,7 +330,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxTypeAsMethodArgumentProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${String.format('Value: %s', {fx:Class java.lang.String})}"/>
@@ -345,7 +345,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxNullAsMethodArgumentProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${String.valueOf({fx:Null})}"/>
@@ -364,7 +364,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void overloadedMethodResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${String.valueOf(value)}"/>
@@ -381,7 +381,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
     void overloadedCodeBehindMethodResolvesWithoutError() {
         // String.format is overloaded (String.format(String, Object...) and
         // String.format(Locale, String, Object...)): the plugin must accept either.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${String.format('val=%.2f', value)}"/>
@@ -401,7 +401,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateElementNotationWithFunctionCallProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -418,7 +418,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxObserveElementNotationWithFunctionCallProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -435,7 +435,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateElementNotationWithUnknownFunctionCallProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>

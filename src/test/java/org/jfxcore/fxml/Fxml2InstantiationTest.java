@@ -30,7 +30,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
     /** basic instantiation, no error */
     @Test
     void basicInstantiationWithFxIdProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane fx:id="pane0"/>
@@ -42,7 +42,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
     /** id attr alongside fx:id */
     @Test
     void fxIdAlongsideIdAttributeProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane fx:id="pane0" id="foo"/>
@@ -54,7 +54,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
     /** id set twice */
     @Test
     void duplicateIdAttributeOnInstantiatedObjectProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Duplicate attribute id">id</error>="foo" <error descr="Duplicate attribute id">id</error>="bar"/>
@@ -70,7 +70,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
     /** positive case */
     @Test
     void insetsWithAllNamedArgsProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njavafx.geometry.Insets",
                 """
                   <GridPane>
@@ -86,7 +86,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
     /** single-value constructor */
     @Test
     void insetsWithSingleNamedArgProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njavafx.geometry.Insets",
                 """
                   <GridPane>
@@ -100,7 +100,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
     /** {@code <Insets left="1" top="2"/>}: only two of the four required args. */
     @Test
     void insetsWithMissingNamedArgsProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njavafx.geometry.Insets",
                 """
                   <GridPane>
@@ -126,7 +126,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
                     public MultiArgCtorObject(@NamedArg("arg1") GridPane arg1, @NamedArg("arg2") Button arg2) {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.layout.GridPane\nMultiArgCtorObject",
                 """
                   <GridPane>
@@ -159,7 +159,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
                     public VarArgsCtorClass(@NamedArg("nodes") Node... nodes) {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\nVarArgsCtorClass",
                 """
                   <GridPane>
@@ -191,7 +191,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
                     public ArrayCtorClass(@NamedArg("nodes") Node[] nodes) {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\nArrayCtorClass",
                 """
                   <GridPane>
@@ -225,7 +225,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
                     public ArrayCtorClass(@NamedArg("nodes") Node[] nodes) {}
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\nArrayCtorClass",
                 """
                   <GridPane>
@@ -280,7 +280,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
                     @Override public T[] get(MarkupContext context) { return null; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\nArrayCtorClass\nArrayConvExt",
                 """
                   <GridPane>
@@ -336,7 +336,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
 
     @Test
     void namedArgWithDefaultValueCanBeOmitted() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane\njavafx.geometry.Insets",
                 """
                   <GridPane padding="10"/>
@@ -373,7 +373,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
                     public void setExtra(String v) { extra.set(v); }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.NamedArgWithExtras",
                 // 'extra' is a regular property setter: must not disqualify the constructor
                 """
@@ -389,7 +389,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
 
     /**
      * A {@code Button} with a solid-color rounded background and a dashed rounded {@code Border},
-     * expressed entirely in fxml2 element notation via nested {@code @NamedArg} constructors.
+     * expressed entirely in FXML element notation via nested {@code @NamedArg} constructors.
      *
      * <p>Object graph:
      * <ul>

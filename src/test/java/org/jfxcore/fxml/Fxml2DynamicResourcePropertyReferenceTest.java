@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>This verifies that {@code DynamicResource} is supported equally well as the
  * {@code %key} (StaticResource prefix shorthand) syntax in both standalone and embedded FXML.
  * The bundled JavaFX plugin only handles {@code %key} in standalone {@code .fxml} files;
- * for all other forms and file types the fxml2 plugin must provide the references.
+ * for all other forms and file types the FXML/2 plugin must provide the references.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
@@ -291,7 +291,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
      *
      * <p>The bundled JavaFX plugin only handles {@code %key} in {@code .fxml} files;
      * it does NOT handle the long-form {@code {DynamicResource key}}.
-     * The fxml2 plugin must therefore add the {@link PropertyReferenceBase} here.
+     * The FXML/2 plugin must therefore add the {@link PropertyReferenceBase} here.
      */
     @Test
     void dynamicResourceInStandaloneFxmlHasPropertyReference() {
@@ -302,7 +302,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                 public class DynView extends BorderPane {}
                 """);
 
-        getFixture().configureByText("DynView.fxml", fxml2(
+        getFixture().configureByText("DynView.fxml", fxml(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.DynamicResource",
                 "  <Label text=\"{DynamicResource label.text}\"/>\n",
                 "test.DynView"
@@ -345,7 +345,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                 public class DynView2 extends BorderPane {}
                 """);
 
-        getFixture().configureByText("DynView2.fxmlx", fxml2(
+        getFixture().configureByText("DynView2.fxmlx", fxml(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.DynamicResource",
                 "  <Label text=\"{DynamicResource header}\"/>\n",
                 "test.DynView2"
@@ -420,7 +420,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                 public class StaticLongView extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StaticLongView.fxml", fxml2(
+        getFixture().configureByText("StaticLongView.fxml", fxml(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.StaticResource",
                 "  <Label text=\"{StaticResource caption}\"/>\n",
                 "test.StaticLongView"

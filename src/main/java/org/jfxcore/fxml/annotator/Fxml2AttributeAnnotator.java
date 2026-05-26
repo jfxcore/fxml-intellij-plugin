@@ -1382,7 +1382,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 prevType = null;
                 allResolved = false;
             } else {
-                // When the segment was accessed via '::' (observable-selection operator), the fxml2
+                // When the segment was accessed via '::' (observable-selection operator), the FXML
                 // compiler requires the member to be an ObservableValue subtype. If it is not,
                 // the compiler rejects the reference with INVALID_INVARIANT_REFERENCE.
                 if (seg.observableSelector() && !seg.classQualifier()

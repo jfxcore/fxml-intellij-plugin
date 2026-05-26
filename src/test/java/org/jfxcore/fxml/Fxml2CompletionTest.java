@@ -50,7 +50,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsPackageCompletion() {
-        getFixture().configureByText("TypeArgsPackage.fxml", fxml2(
+        getFixture().configureByText("TypeArgsPackage.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.<caret>"/>
@@ -71,7 +71,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgumentsClassCompletion() {
-        getFixture().configureByText("TypeArgsClass.fxml", fxml2(
+        getFixture().configureByText("TypeArgsClass.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="javafx.scene.control.List<caret>"/>
@@ -100,7 +100,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public static class OtherNested {}
                 }
                 """);
-        getFixture().configureByText("TypeArgsNested.fxml", fxml2(
+        getFixture().configureByText("TypeArgsNested.fxml", fxml(
                 "javafx.scene.control.ListView\nmodel.Outer",
                 """
                   <ListView fx:typeArguments="model.Outer.<caret>"/>
@@ -129,7 +129,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 package model;
                 public class MyData {}
                 """);
-        getFixture().configureByText("TypeArgsPartial.fxml", fxml2(
+        getFixture().configureByText("TypeArgsPartial.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="model.MyD<caret>"/>
@@ -171,7 +171,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 public class MyListUI<T> extends ListView<T> {}
                 """);
         // UnimportedItem is NOT imported: typing its prefix should still offer it.
-        getFixture().configureByText("TypeArgsUnimported.fxml", fxml2(
+        getFixture().configureByText("TypeArgsUnimported.fxml", fxml(
                 "sample.app.MyListUI",
                 """
                   <MyListUI fx:typeArguments="Unimported<caret>"/>
@@ -213,7 +213,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 package sample.app;
                 public class Button extends javafx.scene.control.Button {}
                 """);
-        getFixture().configureByText("TypeArgsImported.fxml", fxml2(
+        getFixture().configureByText("TypeArgsImported.fxml", fxml(
                 "javafx.scene.control.ListView\nsample.app.Button",
                 """
                   <ListView fx:typeArguments="Bu<caret>"/>
@@ -242,7 +242,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void typeArgumentsJavaLangClassCompletion() {
-        getFixture().configureByText("TypeArgsJavaLang.fxml", fxml2(
+        getFixture().configureByText("TypeArgsJavaLang.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView fx:typeArguments="Strin<caret>"/>
@@ -282,7 +282,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 package sample.app;
                 public class Row {}
                 """);
-        getFixture().configureByText("TypeArgsMulti.fxml", fxml2(
+        getFixture().configureByText("TypeArgsMulti.fxml", fxml(
                 "javafx.scene.control.ListView\nsample.app.Button\nsample.app.Row",
                 """
                   <ListView fx:typeArguments="Row,Bu<caret>"/>
@@ -319,7 +319,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 package sample.app;
                 public class Row2 {}
                 """);
-        getFixture().configureByText("TypeArgsMultiSpace.fxml", fxml2(
+        getFixture().configureByText("TypeArgsMultiSpace.fxml", fxml(
                 "javafx.scene.control.ListView\nsample.app.Button2\nsample.app.Row2",
                 """
                   <ListView fx:typeArguments="Row2, Bu<caret>"/>
@@ -483,7 +483,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void stringTypedAttributeValueOffersNoFqnCompletion() {
-        getFixture().configureByText("StringAttrNoFqn.fxml", fxml2(
+        getFixture().configureByText("StringAttrNoFqn.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button text="java<caret>"/>
@@ -511,7 +511,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingExpressionStaticFieldCompletionAfterQualifiedClassIsPrompt() {
-        getFixture().configureByText("StaticFieldCompletion.fxml", fxml2(
+        getFixture().configureByText("StaticFieldCompletion.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="{fx:Evaluate javafx.scene.layout.Region.USE_PREF_S<caret>}"/>
@@ -537,7 +537,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingExpressionStaticFieldCompletionAfterQualifiedClassDotIsPrompt() {
-        getFixture().configureByText("StaticFieldCompletionDot.fxml", fxml2(
+        getFixture().configureByText("StaticFieldCompletionDot.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="{fx:Evaluate javafx.scene.layout.Region.<caret>}"/>
@@ -566,7 +566,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingExpressionCompletionWithSuffixAfterCaretDoesNotCorruptDocument() {
-        getFixture().configureByText("MidValueCompletion.fxml", fxml2(
+        getFixture().configureByText("MidValueCompletion.fxml", fxml(
                 "javafx.scene.layout.Region",
                 // Cursor after "KeyEvent": ".KEY_PRESSED" is the existing suffix after the caret
                 """
@@ -595,7 +595,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingExpressionCompletionAfterPackagePrefixOffersClasses() {
-        getFixture().configureByText("PkgPrefixClasses.fxml", fxml2(
+        getFixture().configureByText("PkgPrefixClasses.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="{fx:Evaluate javafx.scene.layout.<caret>}"/>
@@ -626,7 +626,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingExpressionCompletionWithPartialPackageSegmentOffersPackage() {
-        getFixture().configureByText("PartialPkg.fxml", fxml2(
+        getFixture().configureByText("PartialPkg.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="{fx:Evaluate javafx.scene.lay<caret>}"/>
@@ -660,7 +660,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 package test;
                 public class TestViewPkg {}
                 """);
-        getFixture().configureByText("PackagePrefixCB.fxml", fxml2(
+        getFixture().configureByText("PackagePrefixCB.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="{fx:Evaluate javafx.scene.layout.<caret>}"/>
@@ -721,7 +721,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void staticPropertyAttributeNameCompletionOffersMatchingProperty() {
-        getFixture().configureByText("StaticPropAttr.fxml", fxml2(
+        getFixture().configureByText("StaticPropAttr.fxml", fxml(
                 """
                 javafx.scene.control.TextField
                 javafx.scene.layout.VBox
@@ -751,7 +751,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void staticPropertyAttributeNameCompletionAfterDotOffersAllProperties() {
-        getFixture().configureByText("StaticPropAttrDot.fxml", fxml2(
+        getFixture().configureByText("StaticPropAttrDot.fxml", fxml(
                 """
                 javafx.scene.control.TextField
                 javafx.scene.layout.VBox
@@ -786,7 +786,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public static Command3 getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnStaticAttrPkg.fxml", fxml2(
+        getFixture().configureByText("FqnStaticAttrPkg.fxml", fxml(
                 "javafx.scene.control.Button",
                 // typing "org.": should offer sub-packages like "jfxcore"
                 """
@@ -820,7 +820,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public static AbstractCommand getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnStaticAttrAbstract.fxml", fxml2(
+        getFixture().configureByText("FqnStaticAttrAbstract.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button org.jfxcore.command.AbstractComman<caret>=""/>
@@ -857,7 +857,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public static Command4 getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnStaticAttrClass.fxml", fxml2(
+        getFixture().configureByText("FqnStaticAttrClass.fxml", fxml(
                 "javafx.scene.control.Button",
                 // typing "org.jfxcore.command.Comman": should complete to "Command4"
                 """
@@ -896,7 +896,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public static Command5 getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnStaticAttrProp.fxml", fxml2(
+        getFixture().configureByText("FqnStaticAttrProp.fxml", fxml(
                 "javafx.scene.control.Button",
                 // typing "org.jfxcore.command.Command5.": should offer Command5.onAction
                 """
@@ -926,7 +926,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void dottedPropertyTagNameCompletionOffersMatchingProperty() {
-        getFixture().configureByText("PropTagCompletion.fxml", fxml2(
+        getFixture().configureByText("PropTagCompletion.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -953,7 +953,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void dottedPropertyTagNameCompletionAfterDotOffersProperties() {
-        getFixture().configureByText("PropTagCompletionDot.fxml", fxml2(
+        getFixture().configureByText("PropTagCompletionDot.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -980,7 +980,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void xmlTextContentEnumCompletionOffersMatchingConstant() {
-        getFixture().configureByText("TextEnumCompletion.fxml", fxml2(
+        getFixture().configureByText("TextEnumCompletion.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -1045,7 +1045,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     @Override public sample.MySelectionModel<T> getSelectionModel() { return null; }
                 }
                 """);
-        getFixture().configureByText("BackingFieldEnum.fxml", fxml2(
+        getFixture().configureByText("BackingFieldEnum.fxml", fxml(
                 "sample.MyListView",
                 """
                   <MyListView>
@@ -1073,7 +1073,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void xmlTextContentEnumCompletionSimplePropertyTag() {
-        getFixture().configureByText("TextEnumCompletionSimple.fxml", fxml2(
+        getFixture().configureByText("TextEnumCompletionSimple.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -1096,7 +1096,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void xmlTextContentEnumCompletionForStaticPropertyElementTag() {
-        getFixture().configureByText("StaticPropElemEnumCompletion.fxml", fxml2(
+        getFixture().configureByText("StaticPropElemEnumCompletion.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -1128,7 +1128,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void xmlTextContentEnumCompletionForStaticPropertyElementTagAllConstants() {
-        getFixture().configureByText("StaticPropElemEnumCompletionAll.fxml", fxml2(
+        getFixture().configureByText("StaticPropElemEnumCompletionAll.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -1163,7 +1163,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void attributeValueEnumCompletionForDottedPropertyName() {
-        getFixture().configureByText("DottedAttrEnumCompletion.fxml", fxml2(
+        getFixture().configureByText("DottedAttrEnumCompletion.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView selectionModel.selectionMode="MULTIP<caret>"/>
@@ -1193,7 +1193,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void attributeValueStaticFieldCompletionForDoubleProperty() {
-        getFixture().configureByText("DoubleStaticCompletion.fxml", fxml2(
+        getFixture().configureByText("DoubleStaticCompletion.fxml", fxml(
                 "javafx.scene.control.TextArea",
                 """
                   <TextArea minHeight="USE_CO<caret>"/>
@@ -1220,7 +1220,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void attributeValueStaticFieldCompletionForDoublePropertyAllFields() {
-        getFixture().configureByText("DoubleStaticCompletionAll.fxml", fxml2(
+        getFixture().configureByText("DoubleStaticCompletionAll.fxml", fxml(
                 "javafx.scene.control.TextArea",
                 """
                   <TextArea minHeight="<caret>"/>
@@ -1244,7 +1244,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void attributeValueBooleanCompletionDoesNotOfferUnrelatedNames() {
-        getFixture().configureByText("BoolCompletion.fxml", fxml2(
+        getFixture().configureByText("BoolCompletion.fxml", fxml(
                 "javafx.scene.control.TextArea",
                 """
                   <TextArea editable="f<caret>"/>
@@ -1295,7 +1295,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public ViewModel getVm() { return new ViewModel(); }
                 }
                 """);
-        getFixture().configureByText("BindingVmPlain.fxml", fxml2(
+        getFixture().configureByText("BindingVmPlain.fxml", fxml(
                 "javafx.scene.control.Tooltip",
                 """
                   <Tooltip text="${vm.nameToolt<caret>}"/>
@@ -1344,7 +1344,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public void setVm(ViewModelOP v) { vm.set(v); }
                 }
                 """);
-        getFixture().configureByText("BindingVmOP.fxml", fxml2(
+        getFixture().configureByText("BindingVmOP.fxml", fxml(
                 "javafx.scene.control.Tooltip",
                 """
                   <Tooltip text="${vm.nameToolt<caret>}"/>
@@ -1393,7 +1393,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public final ObjectProperty<ViewModelPF> vmProperty() { return vm; }
                 }
                 """);
-        getFixture().configureByText("BindingVmPF.fxml", fxml2(
+        getFixture().configureByText("BindingVmPF.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="{fx:Synchronize vm.mes<caret>}"/>
@@ -1429,7 +1429,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public String getInstanceProp() { return ""; }
                 }
                 """);
-        getFixture().configureByText("BindingStaticField.fxml", fxml2(
+        getFixture().configureByText("BindingStaticField.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${doubleForm<caret>}"/>
@@ -1459,7 +1459,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void fxIntrinsicAttributeNameCompletion() {
-        getFixture().configureByText("FxAttrNames.fxml", fxml2(
+        getFixture().configureByText("FxAttrNames.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:<caret>/>
@@ -1486,7 +1486,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void fxIntrinsicAttributeNamePrefixCompletion() {
-        getFixture().configureByText("FxAttrPrefix.fxml", fxml2(
+        getFixture().configureByText("FxAttrPrefix.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:<caret>/>
@@ -1515,7 +1515,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingContextSelectorCompletion() {
-        getFixture().configureByText("BindingSelectors.fxml", fxml2(
+        getFixture().configureByText("BindingSelectors.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${<caret>}"/>
@@ -1536,7 +1536,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingContextSelectorSelfPrefixCompletion() {
-        getFixture().configureByText("BindingSelf.fxml", fxml2(
+        getFixture().configureByText("BindingSelf.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${se<caret>}"/>
@@ -1575,7 +1575,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public void nonStaticMethod() {}
                 }
                 """);
-        getFixture().configureByText("FactoryCompletion.fxml", fxml2(
+        getFixture().configureByText("FactoryCompletion.fxml", fxml(
                 "test.FactoryBean",
                 """
                   <FactoryBean fx:factory="<caret>"/>
@@ -1608,7 +1608,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingExpressionCompletionIncludesFxIdElements() {
-        getFixture().configureByText("BindingFxIdCompletion.fxml", fxml2(
+        getFixture().configureByText("BindingFxIdCompletion.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.control.Label
@@ -1646,7 +1646,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingExpressionCompletionIncludesAllFxIdElementsWithEmptyPrefix() {
-        getFixture().configureByText("BindingFxIdAll.fxml", fxml2(
+        getFixture().configureByText("BindingFxIdAll.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.control.Label
@@ -1674,7 +1674,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingExpressionFxIdNotOfferedInSelfContext() {
-        getFixture().configureByText("BindingFxIdSelf.fxml", fxml2(
+        getFixture().configureByText("BindingFxIdSelf.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 """,
@@ -1703,7 +1703,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void openBraceCompletionOffersAllIntrinsics() {
-        getFixture().configureByText("OpenBrace.fxml", fxml2(
+        getFixture().configureByText("OpenBrace.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="{<caret>"/>
@@ -1731,7 +1731,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void partialFxPrefixCompletionOffersIntrinsics() {
-        getFixture().configureByText("PartialFxPrefix.fxml", fxml2(
+        getFixture().configureByText("PartialFxPrefix.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="{fx<caret>"/>
@@ -1756,7 +1756,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void fxIntrinsicBindingKeywordCompletion() {
-        getFixture().configureByText("FxIntrinsicKeyword.fxml", fxml2(
+        getFixture().configureByText("FxIntrinsicKeyword.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="{fx:<caret>}"/>
@@ -1787,7 +1787,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void fxPushIntrinsicBindingKeywordCompletion() {
-        getFixture().configureByText("FxPushKeyword.fxml", fxml2(
+        getFixture().configureByText("FxPushKeyword.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="{fx:Pu<caret>}"/>
@@ -1820,7 +1820,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void fxIntrinsicBindingKeywordPrefixCompletion() {
-        getFixture().configureByText("FxIntrinsicKeywordPrefix.fxml", fxml2(
+        getFixture().configureByText("FxIntrinsicKeywordPrefix.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="{fx:Sy<caret>}"/>
@@ -1860,7 +1860,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     @Override public String get() { return null; }
                 }
                 """);
-        getFixture().configureByText("OpenBraceExt.fxml", fxml2(
+        getFixture().configureByText("OpenBraceExt.fxml", fxml(
                 "javafx.scene.control.TextField\next.MyResource",
                 """
                   <TextField text="{<caret>"/>
@@ -1893,7 +1893,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     @Override public String get() { return null; }
                 }
                 """);
-        getFixture().configureByText("OpenBraceExtPrefix.fxml", fxml2(
+        getFixture().configureByText("OpenBraceExtPrefix.fxml", fxml(
                 "javafx.scene.control.TextField\next.MyResource2",
                 """
                   <TextField text="{My<caret>"/>
@@ -1934,7 +1934,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 }
                 """);
         // DynamicResource is intentionally NOT imported in the FXML below
-        getFixture().configureByText("BuiltinExt.fxml", fxml2(
+        getFixture().configureByText("BuiltinExt.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{<caret>"/>
@@ -1985,7 +1985,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public void accept(Property<Object> property, MarkupContext context) {}
                 }
                 """);
-        getFixture().configureByText("MarkupExtParamBindingCompletion.fxml", fxml2(
+        getFixture().configureByText("MarkupExtParamBindingCompletion.fxml", fxml(
                 "javafx.scene.control.Label\ntest.ItemSupplier",
                 """
                   <Label text="{ItemSupplier $ItemType.<caret>}"/>
@@ -2011,7 +2011,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void fxClassModifierValueCompletion() {
-        getFixture().configureByText("ClassModifier.fxml", fxml2(
+        getFixture().configureByText("ClassModifier.fxml", fxml(
                 "javafx.scene.layout.BorderPane",
                 ""  // body, classModifier is on the root tag
         ));
@@ -2121,7 +2121,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     public javafx.collections.ObservableList<String> getItems() { return items.get(); }
                 }
                 """);
-        getFixture().configureByText("BindingObsSel.fxml", fxml2(
+        getFixture().configureByText("BindingObsSel.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${items::siz<caret>}"/>
@@ -2153,7 +2153,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingPathCompletionForAttachedProperty() {
-        getFixture().configureByText("BindingAttachedProp.fxml", fxml2(
+        getFixture().configureByText("BindingAttachedProp.fxml", fxml(
                 """
                 javafx.scene.control.Label
                 javafx.scene.layout.VBox
@@ -2195,7 +2195,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     static final String TEMP_CONST = "temp";
                 }
                 """);
-        getFixture().configureByText("FilterNonPublic.fxml", fxml2(
+        getFixture().configureByText("FilterNonPublic.fxml", fxml(
                 "sample.FilterTest",
                 """
                   <FilterTest text="${sample.FilterTest.<caret>}"/>
@@ -2219,7 +2219,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingPathCompletionStaticFieldsOnlyOnClassQualifier() {
-        getFixture().configureByText("StaticOnClassQualifier.fxml", fxml2(
+        getFixture().configureByText("StaticOnClassQualifier.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region text="${javafx.scene.layout.Region.<caret>}"/>
@@ -2245,7 +2245,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingPathCompletionOffersCompatibleStaticFields() {
-        getFixture().configureByText("CompatibleTypes.fxml", fxml2(
+        getFixture().configureByText("CompatibleTypes.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region prefHeight="${javafx.scene.layout.Region.<caret>}"/>
@@ -2282,7 +2282,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                     static final String PRIVATE_STR = "private";
                 }
                 """);
-        getFixture().configureByText("NonPublicClassQualifier.fxml", fxml2(
+        getFixture().configureByText("NonPublicClassQualifier.fxml", fxml(
                 "sample.NonPublicStatic",
                 """
                   <NonPublicStatic text="${sample.NonPublicStatic.<caret>}"/>
@@ -2307,7 +2307,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingPathCompletionPublicStaticFieldOnInstanceNotOffered() {
-        getFixture().configureByText("InstanceStatic.fxml", fxml2(
+        getFixture().configureByText("InstanceStatic.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region text="${javafx.scene.layout.Region.<caret>}"/>
@@ -2331,7 +2331,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void bindingPathCompletionAttachedPropertyPublicStaticOnly() {
-        getFixture().configureByText("AttachedPropPublic.fxml", fxml2(
+        getFixture().configureByText("AttachedPropPublic.fxml", fxml(
                 """
                 javafx.scene.control.Label
                 javafx.scene.layout.VBox

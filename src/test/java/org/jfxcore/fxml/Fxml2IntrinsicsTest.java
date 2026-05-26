@@ -50,7 +50,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: Unknown_Intrinsic: fx:foo is not a known intrinsic */
     @Test
     void unknownFxAttributeProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unknown intrinsic: foo">fx:foo="foo"</error>/>
@@ -65,7 +65,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxStylesheetAttributeProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unknown intrinsic: Stylesheet">fx:Stylesheet="something"</error>/>
@@ -80,7 +80,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxStylesheetElementProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane>
@@ -94,7 +94,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: Root_Intrinsic_Cannot_Be_Used_On_Child_Element: fx:subclass on non-root */
     @Test
     void fxClassOnNonRootElementProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unexpected intrinsic: subclass">fx:subclass="java.lang.String"</error>/>
@@ -110,7 +110,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: Empty_FxId_Is_Invalid */
     @Test
     void emptyFxIdProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="fx:id cannot be empty">fx:id="  "</error>/>
@@ -122,7 +122,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: Duplicate_FxId_Is_Invalid */
     @Test
     void duplicateFxIdProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane fx:id="pane0">
@@ -136,7 +136,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: FxId_Non_JavaIdentifier_Is_Invalid */
     @Test
     void fxIdWithSpaceProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane fx:id=<error descr="'foo bar' is not a valid ID">"foo bar"</error>/>
@@ -148,7 +148,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** A valid fx:id identifier must not produce any error (positive case). */
     @Test
     void validFxIdProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane fx:id="pane0"/>
@@ -164,7 +164,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: TrueAndFalse_Can_Be_Assigned_To_Property_With_PrimitiveType: visible is boolean */
     @Test
     void fxTrueOnBooleanPrimitivePropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button visible="{fx:True}"/>
@@ -176,7 +176,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: TrueAndFalse_Can_Be_Assigned_To_Property_With_PrimitiveType: disable is boolean */
     @Test
     void fxFalseOnBooleanPrimitivePropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="{fx:False}"/>
@@ -197,7 +197,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.BoolPane",
                 """
                   <BoolPane enabled="{fx:True}"/>
@@ -218,7 +218,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
                 }
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.BoolPane2",
                 """
                   <BoolPane2 enabled="{fx:False}"/>
@@ -230,7 +230,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** fx:True on a String (reference, non-boolean) property must produce an error. */
     @Test
     void fxTrueOnStringPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="fx:True cannot be assigned to a non-boolean property">"{fx:True}"</error>/>
@@ -242,7 +242,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** fx:False on a String (reference, non-boolean) property must produce an error. */
     @Test
     void fxFalseOnStringPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="fx:False cannot be assigned to a non-boolean property">"{fx:False}"</error>/>
@@ -254,7 +254,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** fx:True on a non-boolean primitive (double) property must produce an error. */
     @Test
     void fxTrueOnDoublePrimitivePropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label prefWidth=<error descr="fx:True cannot be assigned to a non-boolean property">"{fx:True}"</error>/>
@@ -270,7 +270,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: Null_Can_Be_Assigned_To_Property_With_ReferenceType */
     @Test
     void fxNullOnStringPropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Null}"/>
@@ -282,7 +282,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: Null_Cannot_Be_Assigned_To_Property_With_PrimitiveType */
     @Test
     void fxNullOnPrimitivePropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label prefWidth=<error descr="fx:Null cannot be assigned to a primitive property">"{fx:Null}"</error>/>
@@ -301,7 +301,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateCompactSyntaxFirstSegmentHighlighted() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button prefHeight="$<error descr="'foo' in test.TestView cannot be resolved">foo</error>.bar"/>
@@ -316,7 +316,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxBindCompactSyntaxFirstSegmentHighlighted() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button prefHeight="${<error descr="'foo' in test.TestView cannot be resolved">foo</error>.bar}"/>
@@ -331,7 +331,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxBindBidirectionalCompactSyntaxFirstSegmentHighlighted() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button prefHeight="#{<error descr="'foo' in test.TestView cannot be resolved">foo</error>.bar}"/>
@@ -360,7 +360,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 import javafx.scene.control.ListView;
                 public class MyList<T> extends ListView<T> {}
                 """);
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "sample.app.MyList",
                 """
                   <MyList fx:typeArguments="sample.app.<error descr="Cannot resolve symbol 'Foo'">Foo</error>"/>
@@ -385,7 +385,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class Item {}
                 """);
-        getFixture().configureByText("TestView2.fxml", fxml2(
+        getFixture().configureByText("TestView2.fxml", fxml(
                 "sample.app.MyList2",
                 """
                   <MyList2 fx:typeArguments="sample.app.Item"/>
@@ -419,7 +419,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class MetaType {}
                 """);
-        getFixture().configureByText("TestView3.fxml", fxml2(
+        getFixture().configureByText("TestView3.fxml", fxml(
                 "sample.app.MyMap",
                 """
                   <MyMap fx:typeArguments="sample.app.KeyType, sample.app.ValueType, sample.app.MetaType"/>
@@ -450,7 +450,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class MetaType2 {}
                 """);
-        getFixture().configureByText("TestView4.fxml", fxml2(
+        getFixture().configureByText("TestView4.fxml", fxml(
                 "sample.app.MyMap2",
                 """
                   <MyMap2 fx:typeArguments="sample.app.KeyType2, sample.app.<error descr="Cannot resolve symbol 'NoSuch'">NoSuch</error>, sample.app.MetaType2"/>
@@ -470,7 +470,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class MyMap3<K, V> {}
                 """);
-        getFixture().configureByText("TestView5.fxml", fxml2(
+        getFixture().configureByText("TestView5.fxml", fxml(
                 "sample.app.MyMap3",
                 """
                   <MyMap3 fx:typeArguments="<error descr="Cannot resolve symbol 'foo'">foo</error>, <error descr="Cannot resolve symbol 'bar'">bar</error>"/>
@@ -494,7 +494,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class TwoParamType<K, V> {}
                 """);
-        getFixture().configureByText("TestViewTwoParamFew.fxml", fxml2(
+        getFixture().configureByText("TestViewTwoParamFew.fxml", fxml(
                 "sample.app.TwoParamType",
                 """
                   <TwoParamType fx:typeArguments=<error descr="sample.app.TwoParamType: required 2 type argument(s), but 1 were provided">"java.lang.String"</error>/>
@@ -514,7 +514,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class TwoParamType2<K, V> {}
                 """);
-        getFixture().configureByText("TestViewTwoParamMany.fxml", fxml2(
+        getFixture().configureByText("TestViewTwoParamMany.fxml", fxml(
                 "sample.app.TwoParamType2",
                 """
                   <TwoParamType2 fx:typeArguments=<error descr="sample.app.TwoParamType2: required 2 type argument(s), but 3 were provided">"java.lang.String, java.lang.Integer, java.lang.Double"</error>/>
@@ -534,7 +534,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class TwoParamType3<K, V> {}
                 """);
-        getFixture().configureByText("TestViewTwoParamOk.fxml", fxml2(
+        getFixture().configureByText("TestViewTwoParamOk.fxml", fxml(
                 "sample.app.TwoParamType3",
                 """
                   <TwoParamType3 fx:typeArguments="java.lang.String, java.lang.Integer"/>
@@ -548,7 +548,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxTypeArgumentsOnNonGenericClassProducesError() {
-        getFixture().configureByText("TestViewNonGeneric.fxml", fxml2(
+        getFixture().configureByText("TestViewNonGeneric.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane fx:typeArguments=<error descr="javafx.scene.layout.GridPane cannot be parameterized">"java.lang.String"</error>/>
@@ -573,7 +573,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndNum<T extends java.lang.Number> {}
                 """);
-        getFixture().configureByText("TestViewBndNum.fxml", fxml2(
+        getFixture().configureByText("TestViewBndNum.fxml", fxml(
                 "sample.app.BndNum",
                 """
                   <BndNum fx:typeArguments="<error descr="Type argument java.lang.String is not within its bound, should extend java.lang.Number">java.lang.String</error>"/>
@@ -593,7 +593,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndNum2<T extends java.lang.Number> {}
                 """);
-        getFixture().configureByText("TestViewBndNum2.fxml", fxml2(
+        getFixture().configureByText("TestViewBndNum2.fxml", fxml(
                 "sample.app.BndNum2",
                 """
                   <BndNum2 fx:typeArguments="java.lang.Integer"/>
@@ -613,7 +613,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndNum3<T extends java.lang.Number> {}
                 """);
-        getFixture().configureByText("TestViewBndNum3.fxml", fxml2(
+        getFixture().configureByText("TestViewBndNum3.fxml", fxml(
                 "sample.app.BndNum3",
                 """
                   <BndNum3 fx:typeArguments="java.lang.Number"/>
@@ -633,7 +633,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndComp<T extends java.lang.Comparable> {}
                 """);
-        getFixture().configureByText("TestViewBndComp.fxml", fxml2(
+        getFixture().configureByText("TestViewBndComp.fxml", fxml(
                 "sample.app.BndComp",
                 """
                   <BndComp fx:typeArguments="<error descr="Type argument java.lang.Object is not within its bound, should extend java.lang.Comparable">java.lang.Object</error>"/>
@@ -653,7 +653,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndComp2<T extends java.lang.Comparable> {}
                 """);
-        getFixture().configureByText("TestViewBndComp2.fxml", fxml2(
+        getFixture().configureByText("TestViewBndComp2.fxml", fxml(
                 "sample.app.BndComp2",
                 """
                   <BndComp2 fx:typeArguments="java.lang.String"/>
@@ -676,7 +676,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 @SuppressWarnings("rawtypes")
                 public class BndDual<T extends java.lang.Number & java.lang.Comparable> {}
                 """);
-        getFixture().configureByText("TestViewBndDual.fxml", fxml2(
+        getFixture().configureByText("TestViewBndDual.fxml", fxml(
                 "sample.app.BndDual",
                 """
                   <BndDual fx:typeArguments="<error descr="Type argument java.lang.String is not within its bound, should extend java.lang.Number">java.lang.String</error>"/>
@@ -698,7 +698,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndPair<K, V extends java.lang.Number> {}
                 """);
-        getFixture().configureByText("TestViewBndPair.fxml", fxml2(
+        getFixture().configureByText("TestViewBndPair.fxml", fxml(
                 "sample.app.BndPair",
                 """
                   <BndPair fx:typeArguments="java.lang.String, <error descr="Type argument java.lang.Object is not within its bound, should extend java.lang.Number">java.lang.Object</error>"/>
@@ -719,7 +719,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndRef<K, V extends K> {}
                 """);
-        getFixture().configureByText("TestViewBndRef.fxml", fxml2(
+        getFixture().configureByText("TestViewBndRef.fxml", fxml(
                 "sample.app.BndRef",
                 """
                   <BndRef fx:typeArguments="java.lang.Number, <error descr="Type argument java.lang.String is not within its bound, should extend java.lang.Number">java.lang.String</error>"/>
@@ -740,7 +740,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndRef2<K, V extends K> {}
                 """);
-        getFixture().configureByText("TestViewBndRef2.fxml", fxml2(
+        getFixture().configureByText("TestViewBndRef2.fxml", fxml(
                 "sample.app.BndRef2",
                 """
                   <BndRef2 fx:typeArguments="java.lang.Number, java.lang.Integer"/>
@@ -761,7 +761,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 package sample.app;
                 public class BndNum4<T extends java.lang.Number> {}
                 """);
-        getFixture().configureByText("TestViewBndNum4.fxml", fxml2(
+        getFixture().configureByText("TestViewBndNum4.fxml", fxml(
                 "sample.app.BndNum4",
                 // The reference contributor marks the last segment "NoSuch" as unresolved;
                 // no additional bound error must appear on the same token.
@@ -779,7 +779,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
     /** Compiler: TypeArguments_And_Constant_Cannot_Be_Used_At_Same_Time */
     @Test
     void fxTypeArgumentsAndFxConstantConflictProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane fx:constant="FOO" <error descr="fx:typeArguments and fx:constant cannot be used at the same time">fx:typeArguments="<error descr="Cannot resolve symbol 'bar'">bar</error>"</error>/>
@@ -809,7 +809,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
         getFixture().enableInspections(new Fxml2UnusedImportsInspection());
         // Row is imported and referenced only via fx:typeArguments: must NOT be "Unused import".
         // checkHighlighting(checkWarnings, checkInfos, checkWeakWarnings)
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "sample.app.MyList\nsample.app.Row",
                 """
                   <MyList fx:typeArguments="Row"/>
@@ -836,7 +836,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 public class MyList3<T> extends ListView<T> {}
                 """);
         // RowItem is NOT imported: "Cannot resolve symbol 'RowItem'" is expected.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "sample.app.MyList3",
                 // Caret on the unresolved name so getAllQuickFixes() picks up its fix.
                 """
@@ -877,7 +877,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 public class MyListA<T> extends ListView<T> {}
                 """);
         // AbstractItem is NOT imported: "Cannot resolve symbol" is expected.
-        getFixture().configureByText("TestViewAbstract.fxml", fxml2(
+        getFixture().configureByText("TestViewAbstract.fxml", fxml(
                 "sample.app.MyListA",
                 """
                   <MyListA fx:typeArguments="Abstract<caret>Item"/>
@@ -912,7 +912,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxIdAlongsideExplicitNodeIdProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="myButton" id="myButton"/>
@@ -965,7 +965,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 public class UsedClass extends Pane {}
                 """);
         getFixture().enableInspections(new Fxml2UnusedImportsInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "sample.app.UsedClass",
                 """
                   <UsedClass/>
@@ -1005,7 +1005,7 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 """);
         getFixture().enableInspections(new Fxml2UnusedImportsInspection());
         // ItemClass is used only as the value of a Class<T> property: must NOT be flagged.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "sample.app.ItemClass\nsample.app.ClassHolder",
                 """
                   <ClassHolder itemClass="ItemClass"/>

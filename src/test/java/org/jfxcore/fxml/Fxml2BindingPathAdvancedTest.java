@@ -68,7 +68,7 @@ class Fxml2BindingPathAdvancedTest extends Fxml2TestBase {
      */
     @Test
     void attachedPropertyInBindingPathResolvesWithoutError() {
-        getFixture().configureByText("AdvancedTestView.fxml", fxml2(
+        getFixture().configureByText("AdvancedTestView.fxml", fxml(
                 """
                 javafx.scene.control.Label
                 javafx.scene.layout.VBox
@@ -88,7 +88,7 @@ class Fxml2BindingPathAdvancedTest extends Fxml2TestBase {
      */
     @Test
     void attachedPropertyWithUnknownPropertyProducesError() {
-        getFixture().configureByText("AdvancedTestView.fxml", fxml2(
+        getFixture().configureByText("AdvancedTestView.fxml", fxml(
                 """
                 javafx.scene.control.Label
                 javafx.scene.layout.VBox
@@ -112,7 +112,7 @@ class Fxml2BindingPathAdvancedTest extends Fxml2TestBase {
      */
     @Test
     void typeWitnessInBindingPathResolvesWithoutError() {
-        getFixture().configureByText("AdvancedTestView.fxml", fxml2(
+        getFixture().configureByText("AdvancedTestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 // &lt;String&gt; is the XML-safe form of <String>; getValue() returns the
                 // raw text, so the resolver sees the literal &lt;String&gt; string.
@@ -129,7 +129,7 @@ class Fxml2BindingPathAdvancedTest extends Fxml2TestBase {
      */
     @Test
     void typeWitnessWithUnknownMethodProducesError() {
-        getFixture().configureByText("AdvancedTestView.fxml", fxml2(
+        getFixture().configureByText("AdvancedTestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${<error descr="'nonExistentGeneric&lt;String&gt;' in test.AdvancedTestView cannot be resolved">nonExistentGeneric&lt;String&gt;</error>}"/>
