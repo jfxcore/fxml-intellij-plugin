@@ -123,7 +123,7 @@ class Fxml2EmbedMarkupIntentionTest extends Fxml2TestBase {
     void notAvailableOnChildElement() {
         addJavaCodeBehind();
         // Caret is inside a child <Label>, not on the root or fx:subclass
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <La<caret>bel text=\"Hello\"/>\n"
         ));
@@ -151,9 +151,9 @@ class Fxml2EmbedMarkupIntentionTest extends Fxml2TestBase {
     void notAvailableOnEmbeddedFragment() {
         // Embedded FXML (injected into @ComponentView) must never show the action
         addJavaCodeBehind();
-        // The fxml2() helper produces a standard standalone file; we test with a
+        // The fxml() helper produces a standard standalone file; we test with a
         // non-embedded file where the caret is NOT on fx:subclass, to ensure no false positive.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"Hel<caret>lo\"/>\n"
         ));

@@ -77,7 +77,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
      */
     @Test
     void plainFieldAsBindingSourceProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$plainField"/>
@@ -92,7 +92,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
      */
     @Test
     void plainFieldInObservableBindingProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="plainField is not a valid binding source, required javafx.beans.value.ObservableValue">"${plainField}"</error>/>
@@ -111,7 +111,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
      */
     @Test
     void javaBeanGetterAsEvaluateBindingSourceProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$beanName"/>
@@ -126,7 +126,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
      */
     @Test
     void javaBeanBooleanGetterAsEvaluateBindingSourceProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="$activated"/>
@@ -141,7 +141,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
      */
     @Test
     void javaBeanGetterInObservableBindingProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="beanName is not a valid binding source, required javafx.beans.value.ObservableValue">"${beanName}"</error>/>
@@ -330,7 +330,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
                 """);
         // DataRow::labelExtractor uses :: on a non-ObservableValue field (Function<DataRow,String>),
         // which the FXML compiler rejects with INVALID_INVARIANT_REFERENCE.
-        getFixture().configureByText("RowView.fxml", fxml2(
+        getFixture().configureByText("RowView.fxml", fxml(
                 """
                 test.DataRow
                 javafx.scene.control.Label
@@ -391,7 +391,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
                 """);
         // CellFactory positional arg uses :: on a non-ObservableValue field (Function<DataRow,String>),
         // which the FXML compiler rejects with INVALID_INVARIANT_REFERENCE.
-        getFixture().configureByText("RowView.fxml", fxml2(
+        getFixture().configureByText("RowView.fxml", fxml(
                 """
                 test.DataRow
                 test.CellFactory
@@ -792,7 +792,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
      */
     @Test
     void convertToEvaluateBindingFixIsBatchApplicable() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${<caret>plainField}"/>

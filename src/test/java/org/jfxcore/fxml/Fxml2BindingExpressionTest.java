@@ -76,7 +76,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void fxEvaluateExplicitSyntaxResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Evaluate message}"/>
@@ -87,7 +87,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void fxObserveExplicitSyntaxResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe message}"/>
@@ -98,7 +98,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void fxSynchronizeExplicitSyntaxResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Synchronize message}"/>
@@ -113,7 +113,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void dollarEvaluateCompactSyntaxResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$message"/>
@@ -124,7 +124,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void dollarBraceBindCompactSyntaxResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${message}"/>
@@ -135,7 +135,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void hashBraceBindBidirectionalCompactSyntaxResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="#{message}"/>
@@ -150,7 +150,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void dollarEvaluateToNonexistentPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$<error descr="'nonExistent' in test.TestView cannot be resolved">nonExistent</error>"/>
@@ -161,7 +161,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void fxObserveToNonexistentPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe <error descr="'nonExistent' in test.TestView cannot be resolved">nonExistent</error>}"/>
@@ -176,7 +176,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void multiSegmentBindingPathResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe message}"/>
@@ -192,7 +192,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     /** {@code $Region.USE_PREF_SIZE} is a valid Evaluate ({@code $}) binding source. */
     @Test
     void dollarEvaluateToStaticConstantProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region maxWidth="$Region.USE_PREF_SIZE"/>
@@ -204,7 +204,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     /** {@code ${Region.USE_PREF_SIZE}} is not observable and must produce an error. */
     @Test
     void dollarBraceToStaticConstantProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region maxWidth=<error descr="Region.USE_PREF_SIZE is not a valid binding source, required javafx.beans.value.ObservableValue">"${Region.USE_PREF_SIZE}"</error>/>
@@ -219,7 +219,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
 
     @Test
     void parentSelectorBindingResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Pane",
                 """
                   <Pane fx:id="outer" prefWidth="123">
@@ -237,7 +237,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
      */
     @Test
     void parentTypeSelectorResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Pane",
                 """
                   <Pane prefWidth="100">
@@ -254,7 +254,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
      */
     @Test
     void parentTypeSelectorWithIndexResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Pane",
                 """
                   <Pane prefWidth="200">
@@ -273,7 +273,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
      */
     @Test
     void parentTypeSelectorWithUnresolvablePathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Pane",
                 """
                   <Pane>
@@ -292,7 +292,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
      *  {@code source} attribute, not as text content. */
     @Test
     void pathExpressionInsideFxEvaluateElementContentProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -312,7 +312,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     /** {@code text="${source=message}"} is a valid explicit source property form. */
     @Test
     void explicitPathPropertyInBindingIntrinsicResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${source=message}"/>
@@ -333,7 +333,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void incompleteStaticFieldPathInFxEvaluateIsAnalyzedPromptly() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minHeight="{fx:Evaluate javafx.scene.layout.Region.<error descr="'USE_PREF_S' in javafx.scene.layout.Region cannot be resolved">USE_PREF_S</error>}"/>
@@ -351,7 +351,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     void bareStaticFieldInheritedFromSuperclassResolves() {
         // TestView extends TestViewBase extends BorderPane extends Region.
         // USE_PREF_SIZE is a static field on Region.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextArea",
                 """
                   <TextArea minHeight="$USE_PREF_SIZE"/>
@@ -361,7 +361,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     }
 
     /**
-     * When the fxml2-compiler-generated base class is missing (project not yet built),
+     * When the compiler-generated base class is missing (project not yet built),
      * the code-behind's supertype chain is broken. A bare static field reference like
      * {@code $USE_PREF_SIZE} should still resolve via the root tag's element type
      * (the compiler always generates {@code class FooBase extends <rootTagType>}).
@@ -397,7 +397,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     }
 
     /**
-     * When the fxml2-compiler-generated base class is missing (project not yet built),
+     * When the compiler-generated base class is missing (project not yet built),
      * instance properties inherited from the root tag type must still resolve.
      * E.g. {@code ${this.height}} on a {@code BorderPane} root should resolve even
      * when {@code MainViewBase} (which would extend {@code BorderPane}) is absent.
@@ -440,7 +440,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void parentSelectorSegmentRangeIsCorrect() {
-        getFixture().configureByText("ParentSelectorRange.fxml", fxml2(
+        getFixture().configureByText("ParentSelectorRange.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 // parent[1] = the outer VBox (root), which has no "selectionModel"
                 """
@@ -487,7 +487,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void parentTypeContextSelectorResolvesProperty() {
-        getFixture().configureByText("ParentTypeSelector.fxml", fxml2(
+        getFixture().configureByText("ParentTypeSelector.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox prefWidth="123">
@@ -505,7 +505,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void parentTypeAndIndexContextSelectorResolvesProperty() {
-        getFixture().configureByText("ParentTypeIndexSelector.fxml", fxml2(
+        getFixture().configureByText("ParentTypeIndexSelector.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox prefWidth="123">
@@ -526,7 +526,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void parentTypeContextSelectorInDollarCompactSyntaxResolvesProperty() {
-        getFixture().configureByText("ParentTypeSelectorDollar.fxml", fxml2(
+        getFixture().configureByText("ParentTypeSelectorDollar.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox prefWidth="123">
@@ -544,7 +544,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
     void parentTypeContextSelectorSegmentRangeIsCorrect() {
-        getFixture().configureByText("ParentTypeSelectorRange.fxml", fxml2(
+        getFixture().configureByText("ParentTypeSelectorRange.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 // parent<VBox> = the outer VBox (root), which has no "selectionModel"
                 """
@@ -603,7 +603,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                     public String getReadOnlyCaption() { return readOnlyCaption.get(); }
                 }
                 """);
-        getFixture().configureByText("ReadOnlyView.fxml", fxml2(
+        getFixture().configureByText("ReadOnlyView.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=" + error(
                         "readOnlyCaption is not a valid bidirectional binding source,"
@@ -620,7 +620,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
      */
     @Test
     void synchronizeToWritablePropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="#{message}"/>
@@ -663,7 +663,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                     public void setVm(ReadOnlyViewModel v) { vm.set(v); }
                 }
                 """);
-        getFixture().configureByText("VmView.fxml", fxml2(
+        getFixture().configureByText("VmView.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=" + error(
                         "vm.readOnlyCaption is not a valid bidirectional binding source,"
@@ -695,7 +695,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                     public String getReadOnlyCaption() { return readOnlyCaption.get(); }
                 }
                 """);
-        getFixture().configureByText("ReadOnlyView2.fxml", fxml2(
+        getFixture().configureByText("ReadOnlyView2.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label>\n"
                 + "    <text>\n"
@@ -720,7 +720,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
      */
     @Test
     void missingClosingBraceInDollarBraceBindingProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="'}' expected">"${message"</error>/>
@@ -735,7 +735,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
      */
     @Test
     void missingClosingBraceInFxEvaluateSyntaxProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="'}' expected">"{fx:Evaluate message"</error>/>

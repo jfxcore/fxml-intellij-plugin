@@ -73,7 +73,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
                 """);
 
         // Command is NOT imported -> one error on the prefix, none on the property.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -97,7 +97,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
      */
     @Test
     void noXmlUnresolvedReferenceInspectionDuplicatesForChainedProperty() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView\njavafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -119,7 +119,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
      */
     @Test
     void unimportedStaticPropertyClassHighlightsOnlyPrefix() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 // GridPane intentionally NOT imported
                 "javafx.scene.control.Button\njavafx.scene.layout.VBox",
                 """
@@ -142,7 +142,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
      */
     @Test
     void noDependentPropertyErrorWhenClassIsUnimported() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -159,7 +159,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
      */
     @Test
     void importedStaticPropertyClassProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.layout.VBox\njavafx.scene.layout.GridPane",
                 """
                   <VBox>
@@ -177,7 +177,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
      */
     @Test
     void unresolvedPropertyOnImportedClassProducesErrorOnProperty() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.layout.VBox\njavafx.scene.layout.GridPane",
                 """
                   <VBox>
@@ -204,7 +204,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
      */
     @Test
     void unimportedClassSegmentHasCorrectReferenceRange() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -245,7 +245,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
                     public static FqnCmd getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnRefClass.fxml", fxml2(
+        getFixture().configureByText("FqnRefClass.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button org.jfxcore.command.Fqn<caret>Cmd.onAction=""/>
@@ -284,7 +284,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
                     public static FqnCmd2 getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnRefProp.fxml", fxml2(
+        getFixture().configureByText("FqnRefProp.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button org.jfxcore.command.FqnCmd2.onAct<caret>ion=""/>
@@ -322,7 +322,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
                     public static FqnCmdNav getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnNavClass.fxml", fxml2(
+        getFixture().configureByText("FqnNavClass.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button org.jfxcore.command.FqnCm<caret>dNav.onAction=""/>
@@ -355,7 +355,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
                     public static FqnCmdNavProp getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnNavProp.fxml", fxml2(
+        getFixture().configureByText("FqnNavProp.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button org.jfxcore.command.FqnCmdNavProp.on<caret>Action=""/>
@@ -388,7 +388,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
                     public static FqnCmdNavPkg getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnNavPkg.fxml", fxml2(
+        getFixture().configureByText("FqnNavPkg.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button org.jfxcore.com<caret>mand.FqnCmdNavPkg.onAction=""/>
@@ -420,7 +420,7 @@ class Fxml2StaticPropertyAttributeTest extends Fxml2TestBase {
                     public static FqnCmd3 getOnAction(EventTarget owner) { return null; }
                 }
                 """);
-        getFixture().configureByText("FqnRefPkg.fxml", fxml2(
+        getFixture().configureByText("FqnRefPkg.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button org.jfxcore.com<caret>mand.FqnCmd3.onAction=""/>

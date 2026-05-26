@@ -29,7 +29,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormEvaluateIsOfferedForDollarNotation() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"$model.statusTex<caret>t\"/>\n"
         ));
@@ -39,7 +39,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormEvaluateConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"$model.statusText<caret>\"/>\n"
         ));
@@ -52,7 +52,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormObserveConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"${model.statusText<caret>}\"/>\n"
         ));
@@ -65,7 +65,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormSynchronizeConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"#{model.statusText<caret>}\"/>\n"
         ));
@@ -78,7 +78,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormEvaluateContentConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 "  <VBox styleClass=\"$..styles<caret>\"/>\n"
         ));
@@ -91,7 +91,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormObserveContentConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 "  <VBox styleClass=\"${..styles<caret>}\"/>\n"
         ));
@@ -104,7 +104,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormSynchronizeContentConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 "  <VBox styleClass=\"#{..styles<caret>}\"/>\n"
         ));
@@ -121,7 +121,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormIsOfferedForLongFormNotation() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"{fx:Evaluate model.statusText<caret>}\"/>\n"
         ));
@@ -131,7 +131,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormEvaluateConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"{fx:Evaluate model.statusText<caret>}\"/>\n"
         ));
@@ -144,7 +144,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormObserveConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"{fx:Observe model.statusText<caret>}\"/>\n"
         ));
@@ -157,7 +157,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormSynchronizeConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"{fx:Synchronize model.statusText<caret>}\"/>\n"
         ));
@@ -170,7 +170,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormEvaluateContentConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 "  <VBox styleClass=\"{fx:Evaluate ..styles<caret>}\"/>\n"
         ));
@@ -183,7 +183,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormObserveContentConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 "  <VBox styleClass=\"{fx:Observe ..styles<caret>}\"/>\n"
         ));
@@ -196,7 +196,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormSynchronizeContentConvertsCorrectly() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 "  <VBox styleClass=\"{fx:Synchronize ..styles<caret>}\"/>\n"
         ));
@@ -213,7 +213,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormNotAvailableOnPlainAttributeValue() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"Hel<caret>lo\"/>\n"
         ));
@@ -224,7 +224,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormNotAvailableOnPlainAttributeValue() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"Hel<caret>lo\"/>\n"
         ));
@@ -235,7 +235,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormNotAvailableOnLongFormValue() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"{fx:Evaluate model.statusText<caret>}\"/>\n"
         ));
@@ -246,7 +246,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
 
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormNotAvailableOnCompactValue() {
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"$model.statusText<caret>\"/>\n"
         ));
@@ -258,7 +258,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormNotAvailableOnTagName() {
         // Caret is on the tag name "Label", not in an attribute value
-        getFixture().configureByText("Test.fxml", fxml2(
+        getFixture().configureByText("Test.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <La<caret>bel text=\"$model.statusText\"/>\n"
         ));
@@ -278,7 +278,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toLongFormFixIsBatchApplicable() {
         getFixture().enableInspections(new Fxml2BindingNotationInspectionToLongForm());
-        getFixture().configureByText("TestBatch.fxml", fxml2(
+        getFixture().configureByText("TestBatch.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"$model.title<caret>\"/>\n"
         ));
@@ -301,7 +301,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void toShortFormFixIsBatchApplicable() {
         getFixture().enableInspections(new Fxml2BindingNotationInspectionToShortForm());
-        getFixture().configureByText("TestBatch2.fxml", fxml2(
+        getFixture().configureByText("TestBatch2.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"{fx:Evaluate model.title<caret>}\"/>\n"
         ));
@@ -324,7 +324,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void inspectionToLongFormFixAllInFile() {
         getFixture().enableInspections(new Fxml2BindingNotationInspectionToLongForm());
-        getFixture().configureByText("InspLong.fxml", fxml2(
+        getFixture().configureByText("InspLong.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$model.title<caret>" tooltip="${model.tip}"/>
@@ -355,7 +355,7 @@ class Fxml2BindingNotationIntentionTest extends Fxml2TestBase {
     @Test @Timeout(value = 15, unit = TimeUnit.SECONDS)
     void inspectionToShortFormFixAllInFile() {
         getFixture().enableInspections(new Fxml2BindingNotationInspectionToShortForm());
-        getFixture().configureByText("InspShort.fxml", fxml2(
+        getFixture().configureByText("InspShort.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Evaluate model.title<caret>}" tooltip="{fx:Observe model.tip}"/>

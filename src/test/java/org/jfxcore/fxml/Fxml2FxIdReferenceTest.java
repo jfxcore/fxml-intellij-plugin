@@ -88,7 +88,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void fxIdDefinitionHasSelfReference() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="my<caret>Btn"/>
@@ -126,7 +126,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void fxIdDefinitionHasNoDirectFieldReference() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="my<caret>Btn"/>
@@ -161,7 +161,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void bindingSegmentIsReferenceToFxIdDefinition() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.control.Label",
                 """
                   <Button fx:id="myBtn"/>
@@ -206,7 +206,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void bindingSegmentNavigatesToFxIdValueElement() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.control.Label",
                 """
                   <Button fx:id="myBtn"/>
@@ -247,7 +247,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void negatedBindingSegmentIsReferenceToFxIdDefinition() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -293,7 +293,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void highlightFromUseSiteMatchesDefinitionAndOtherUses() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -358,7 +358,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesFactoryCanHandleFxIdValue() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="myBtn"/>
@@ -380,7 +380,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesHandlerPrimaryElementsIncludesCodeBehindField() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="myBtn"/>
@@ -415,7 +415,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
     @Test
     void findUsagesHandlerPrimaryElementsOnlyAttrValWhenNoCodeBehind() {
         // Use a different fx:subclass so no code-behind is found via addCodeBehind()
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="myBtn"/>
@@ -448,7 +448,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void referencesSearchOnFieldFindsXmlFxIdValue() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="myBtn"/>
@@ -497,7 +497,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void renameFxIdUpdatesAttributeValue() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="my<caret>Btn"/>
@@ -525,7 +525,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void renameFxIdUpdatesBindingPathUsageInSameFile() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.control.Label",
                 """
                   <Button fx:id="my<caret>Btn"/>
@@ -556,7 +556,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void renameHandlerAvailableOnFxIdPosition() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="my<caret>Btn"/>
@@ -576,7 +576,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void renameHandlerAvailableOnBindingSegmentPosition() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.control.Label",
                 """
                   <Button fx:id="myBtn"/>
@@ -598,7 +598,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void renameFromFxIdPositionUpdatesFxIdAndBindings() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.control.Label",
                 """
                   <Button fx:id="my<caret>Btn"/>
@@ -625,7 +625,7 @@ class Fxml2FxIdReferenceTest extends Fxml2TestBase {
      */
     @Test
     void renameFromBindingSegmentPositionUpdatesFxIdAndSegment() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button\njavafx.scene.control.Label",
                 """
                   <Button fx:id="myBtn"/>

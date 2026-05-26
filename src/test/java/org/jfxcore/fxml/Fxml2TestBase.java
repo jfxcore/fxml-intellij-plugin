@@ -20,7 +20,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 /**
- * Base class for fxml2 plugin JUnit5 tests.
+ * Base class for FXML/2 plugin JUnit5 tests.
  *
  * <p>Uses a lightweight in-memory project with JavaFX 25.0.1 added as a module
  * library via the local Gradle/Maven cache, giving tests access to real JavaFX
@@ -137,17 +137,17 @@ public abstract class Fxml2TestBase {
     }
 
     /**
-     * Builds a minimal fxml2 document.
+     * Builds a minimal FXML/2 document.
      *
      * @param imports newline-separated fully-qualified class names to import
      *                (without the {@code <?import ...?>} wrapper); may be empty
      * @param body    XML content to place inside the root {@code <BorderPane>} tag
      */
-    protected static String fxml2(String imports, String body) {
-        return fxml2(imports, body, "test.TestView");
+    protected static String fxml(String imports, String body) {
+        return fxml(imports, body, "test.TestView");
     }
 
-    protected static String fxml2(String imports, String body, String fxClass) {
+    protected static String fxml(String imports, String body, String fxClass) {
         var sb = new StringBuilder();
         sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         // Always import the root tag class so it never triggers a false-positive error

@@ -28,7 +28,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void fxIdWithFieldAccessProducesNoWarning() {
         getFixture().addFileToProject("test/UsedFieldView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button fx:id="myButton"/>
                         """, "test.UsedFieldView"));
@@ -51,7 +51,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void fxIdInBindingExpressionProducesNoWarning() {
         getFixture().addFileToProject("test/UsedBindingView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button fx:id="btn1"/>
                         <Label text="${btn1.text}"/>
@@ -70,7 +70,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void fxIdInCommandBindingProducesNoWarning() {
         getFixture().addFileToProject("test/UsedCommandView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button fx:id="btn1"/>
                         <Button Command.onAction="$btn1.fire"/>
@@ -90,7 +90,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void onlyUnusedFxIdsProduceWarnings() {
         getFixture().addFileToProject("test/PartialView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button fx:id="usedBtn"/>
                         <Label text="${usedBtn.text}"/>
@@ -115,7 +115,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void unusedFxIdProducesWarning() {
         getFixture().addFileToProject("test/UnusedView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button <warning descr="Unused fx:id">fx:id="unusedBtn"</warning>/>\
                         """, "test.UnusedView"));
@@ -133,7 +133,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void multipleUnusedFxIdsAllProduceWarnings() {
         getFixture().addFileToProject("test/MultiUnusedView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button <warning descr="Unused fx:id">fx:id="btn1"</warning>/>\
                         <Button <warning descr="Unused fx:id">fx:id="btn2"</warning>/>\
@@ -152,7 +152,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void fxIdWithFieldAccessInParentClassProducesNoWarning() {
         getFixture().addFileToProject("test/InheritedView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button fx:id="myButton"/>
                         """, "test.InheritedView"));
@@ -177,7 +177,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void fxIdInNestedBindingProducesNoWarning() {
         getFixture().addFileToProject("test/NestedView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button fx:id="btn1"/>
                         <VBox>
@@ -204,7 +204,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void emptyFxIdProducesNoWarning() {
         getFixture().addFileToProject("test/EmptyFxIdView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button fx:id=""/>
                         """, "test.EmptyFxIdView"));
@@ -222,7 +222,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void fxIdWithoutCodeBehindChecksOnlyBindings() {
         getFixture().addFileToProject("test/NoCodeBehindView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <Button fx:id="btn1"/>
                         <Label text="${btn1.text}"/>
@@ -263,7 +263,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().configureByText("UsedKtView.fxml",
-                fxml2("""
+                fxml("""
                         javafx.scene.control.Button
                         """, """
                         <Button fx:id="btn1"/>
@@ -278,7 +278,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     @Test
     void fxIdFieldAccessProducesNoWarning() {
         getFixture().addFileToProject("test/FieldMatchView.fxml",
-                fxml2("""
+                fxml("""
                 """, """
                         <TextField fx:id="textField"/>
                         """, "test.FieldMatchView"));
@@ -315,7 +315,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().configureByText("UncompiledView.fxml",
-                fxml2("""
+                fxml("""
                         javafx.scene.control.Button
                         """, """
                         <Button fx:id="btn1"/>
@@ -340,7 +340,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
                 }
                 """);
         getFixture().configureByText("UncompiledKtView.fxml",
-                fxml2("""
+                fxml("""
                         javafx.scene.control.Button
                         """, """
                         <Button fx:id="btn1"/>

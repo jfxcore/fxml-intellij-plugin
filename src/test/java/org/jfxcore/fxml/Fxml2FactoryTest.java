@@ -34,7 +34,7 @@ class Fxml2FactoryTest extends Fxml2TestBase {
      */
     @Test
     void validFactoryMethodProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.collections.FXCollections\njavafx.scene.control.ListView",
                 """
                   <FXCollections fx:factory="observableArrayList" fx:id="list1"/>
@@ -50,7 +50,7 @@ class Fxml2FactoryTest extends Fxml2TestBase {
      */
     @Test
     void factoryMethodWithTypeWitnessProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.collections.FXCollections\njavafx.scene.control.ListView\njava.lang.String",
                 """
                   <FXCollections fx:factory="observableArrayList&lt;String&gt;" fx:id="list1">
@@ -69,7 +69,7 @@ class Fxml2FactoryTest extends Fxml2TestBase {
      */
     @Test
     void factoryMethodInsideFxDefineProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.collections.FXCollections\njavafx.scene.control.ListView\njava.lang.String",
                 """
                   <fx:define>
@@ -93,7 +93,7 @@ class Fxml2FactoryTest extends Fxml2TestBase {
      */
     @Test
     void unknownFactoryMethodProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.collections.FXCollections",
                 """
                   <FXCollections fx:factory=<error descr="Cannot resolve factory method 'nonExistentFactory' in javafx.collections.FXCollections">"nonExistentFactory"</error>/>
@@ -108,7 +108,7 @@ class Fxml2FactoryTest extends Fxml2TestBase {
      */
     @Test
     void unknownFactoryMethodOnChildElementDoesNotCrash() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.collections.FXCollections",
                 """
                   <FXCollections fx:factory=<error descr="Cannot resolve factory method 'doesNotExist' in javafx.collections.FXCollections">"doesNotExist"</error>/>

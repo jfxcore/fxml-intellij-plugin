@@ -152,7 +152,7 @@ public final class Fxml2RawTypeInspection extends XmlSuppressableInspectionTool 
                     Fxml2AddImportFix.doInsertImportPsi(project, xmlFile, fqn);
                 }
             }
-            // The fxml2 namespace prefix is determined by the file's own xmlns:fx mapping;
+            // The FXML/2 namespace prefix is determined by the file's own xmlns:fx mapping;
             // setAttribute(local, ns, value) handles the prefix lookup.
             tag.setAttribute("typeArguments", Fxml2ImportResolver.FXML2_NAMESPACE, renderedArgs);
         }

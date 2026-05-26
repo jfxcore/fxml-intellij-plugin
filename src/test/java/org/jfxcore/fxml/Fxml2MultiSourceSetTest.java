@@ -109,7 +109,7 @@ class Fxml2MultiSourceSetTest extends Fxml2TestBase {
                 }
                 """);
 
-        var fxmlFile = (XmlFile) getFixture().addFileToProject("TestView.fxml", fxml2(
+        var fxmlFile = (XmlFile) getFixture().addFileToProject("TestView.fxml", fxml(
                 "test.GenericComponent",
                 """
                   <GenericComponent fx:typeArguments="sample.app.TypeArgTarget"/>
@@ -148,7 +148,7 @@ class Fxml2MultiSourceSetTest extends Fxml2TestBase {
                 }
                 """);
 
-        var fxmlFile = (XmlFile) getFixture().addFileToProject("TestView.fxml", fxml2(
+        var fxmlFile = (XmlFile) getFixture().addFileToProject("TestView.fxml", fxml(
                 "test.GenericComponent\nsample.app.TypeArgTarget",
                 """
                   <GenericComponent fx:typeArguments="TypeArgTarget"/>

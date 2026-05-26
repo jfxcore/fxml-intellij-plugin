@@ -30,7 +30,7 @@ class Fxml2IdentifierNarrowingTest extends Fxml2TestBase {
      */
     @Test
     void shortFormBindingSegmentsHaveDifferentNarrowRanges() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.labelText}"/>
@@ -74,7 +74,7 @@ class Fxml2IdentifierNarrowingTest extends Fxml2TestBase {
      */
     @Test
     void longFormBindingSegmentsHaveDifferentNarrowRanges() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="{fx:Synchronize vm.message}"/>
@@ -113,7 +113,7 @@ class Fxml2IdentifierNarrowingTest extends Fxml2TestBase {
      */
     @Test
     void longFormBindingKeywordAndPathSegmentHaveDifferentNarrowRanges() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="{fx:Synchronize vm.message}"/>
@@ -153,7 +153,7 @@ class Fxml2IdentifierNarrowingTest extends Fxml2TestBase {
      */
     @Test
     void booleanNegationBindingSegmentsHaveDifferentNarrowRanges() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button fx:id="myButton3"/>

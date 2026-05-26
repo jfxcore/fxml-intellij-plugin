@@ -531,7 +531,7 @@ class Fxml2EmbeddedMarkupFormattingTest extends Fxml2TestBase {
      * Verifies that a processing instruction (e.g. {@code <?prefix?>}) that precedes the
      * root element receives the same indentation as the root element after reformatting.
      *
-     * <p>In standalone fxml2, both a document-level PI and the root element are at column 0.
+     * <p>In standalone FXML, both a document-level PI and the root element are at column 0.
      * The embedded equivalent must place both at {@code baseIndent} (annotationColumn +
      * javaIndentSize = 0 + 4 = 4 spaces).
      */

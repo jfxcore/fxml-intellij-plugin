@@ -37,7 +37,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** Compiler: Parse_Simple_Identifier: {fx:Evaluate foo} */
     @Test
     void simpleFxEvaluateIdentifierProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Evaluate message}"/>
@@ -49,7 +49,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** Compiler: Compact_Syntax_Is_Expanded: $foo.bar.baz -> fx:Evaluate */
     @Test
     void dollarCompactEvaluateIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$message"/>
@@ -61,7 +61,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** Compiler: Compact_Syntax_Is_Expanded: ${foo.bar.baz} -> fx:Observe */
     @Test
     void dollarBraceCompactObserveIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${message}"/>
@@ -73,7 +73,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** Compiler: Compact_Syntax_Is_Expanded: #{foo.bar.baz} -> fx:Synchronize */
     @Test
     void hashBraceCompactSynchronizeIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="#{message}"/>
@@ -89,7 +89,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void inlineParserNotAppliedToElementTextContent() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label><prefHeight>{fx:foo bar}</prefHeight></Label>
@@ -105,7 +105,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void backslashEscapedOpenCurlyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\{foo}"/>
@@ -125,7 +125,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void dollarObservableSelectorCompactSyntaxProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$::message"/>
@@ -143,7 +143,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void dollarContentCompactSyntaxProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button styleClass="$..message"/>
@@ -162,7 +162,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void fullyQualifiedNamespacedIdentifierProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="Unexpected token">"{fx:Evaluate.foo.bar}"</error>/>
@@ -178,7 +178,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void unknownNamespaceInInlineExpressionProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="Unknown XML namespace: bar">"{bar:evaluate message}"</error>/>
@@ -193,7 +193,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void typeWitnessOnDollarSyntaxProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="Identifier expected">"${<Foo>bar}"</error>/>
@@ -214,7 +214,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void parentTypeContextSelectorBracedObserveIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -231,7 +231,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void parentTypeContextSelectorDollarCompactIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -248,7 +248,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void parentTypeAndIndexContextSelectorIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox>
@@ -267,7 +267,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void missingCloseAngleBracketInTypeWitnessProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=<error descr="'>' expected">"$message<String"</error>/>
@@ -286,7 +286,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void emptyDollarBraceProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label prefHeight=<error descr="fx:Observe.source must be specified">"${}"</error>/>
@@ -300,7 +300,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void emptyHashBraceProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label prefHeight=<error descr="fx:Synchronize.source must be specified">"#{}"</error>/>
@@ -315,7 +315,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void fxSynchronizeNoPathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label prefHeight=<error descr="fx:Synchronize.source must be specified">"{fx:Synchronize}"</error>/>
@@ -329,7 +329,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
      */
     @Test
     void fxObserveNoPathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label prefHeight=<error descr="fx:Observe.source must be specified">"{fx:Observe}"</error>/>
@@ -345,7 +345,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** Compact {@code >{path}} notation (reverse binding) is syntactically valid. */
     @Test
     void angleBraceCompactPushIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=">{message}"/>
@@ -357,7 +357,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** Compact {@code >{..path}} notation (reverse content binding) is syntactically valid. */
     @Test
     void angleBraceCompactPushContentIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
                   <VBox styleClass=">{..items}"/>
@@ -369,7 +369,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** Long-form {@code {fx:Push source}} notation is syntactically valid. */
     @Test
     void fxPushLongFormIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Push message}"/>
@@ -381,7 +381,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** Long-form {@code {fx:Push source=path}} with explicit {@code source=} keyword is valid. */
     @Test
     void fxPushWithExplicitSourceKeywordIsValid() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Push source=message}"/>
@@ -393,7 +393,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** {@code >{}}: empty braced push compact form has no path. */
     @Test
     void emptyAngleBraceProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label prefHeight=<error descr="fx:Push.source must be specified">">{}"</error>/>
@@ -405,7 +405,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     /** {@code {fx:Push}}: long form with no path argument. */
     @Test
     void fxPushNoPathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label prefHeight=<error descr="fx:Push.source must be specified">"{fx:Push}"</error>/>

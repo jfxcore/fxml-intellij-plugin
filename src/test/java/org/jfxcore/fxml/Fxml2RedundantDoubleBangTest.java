@@ -72,7 +72,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangOnBooleanBindFlagsWeakWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${<weak_warning descr="'!!' is redundant on a Boolean binding">!!</weak_warning>active}"/>
@@ -87,7 +87,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangInEvaluateSyntaxOnBooleanFlagsWeakWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="$<weak_warning descr="'!!' is redundant on a Boolean binding">!!</weak_warning>active"/>
@@ -106,7 +106,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangOnNumericBindingProducesNoWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button visible="${!!count}"/>
@@ -121,7 +121,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangOnObjectBindingProducesNoWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button visible="${!!item}"/>
@@ -136,7 +136,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void singleBangOnBooleanProducesNoWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!active}"/>
@@ -153,7 +153,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void doubleBangWithUnresolvablePathProducesNoWarning() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!!<error descr="'nonExistent' in test.TestView cannot be resolved">nonExistent</error>}"/>
@@ -171,7 +171,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void removeDoubleBangFixIsBatchApplicable() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!!<caret>active}"/>
@@ -194,7 +194,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void quickFixRemovesDoubleBangFromBracesSyntax() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="${!!<caret>active}"/>
@@ -220,7 +220,7 @@ class Fxml2RedundantDoubleBangTest extends Fxml2TestBase {
      */
     @Test
     void quickFixRemovesDoubleBangFromEvaluateSyntax() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button disable="$!!<caret>active"/>

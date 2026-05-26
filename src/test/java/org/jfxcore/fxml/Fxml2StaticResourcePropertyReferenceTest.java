@@ -458,9 +458,9 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
 
     /**
      * A {@code %key} value in a standalone {@code .fxml} FXML file must NOT receive
-     * a second {@link PropertyReferenceBase} from the fxml2 plugin: the bundled JavaFX
+     * a second {@link PropertyReferenceBase} from the FXML/2 plugin: the bundled JavaFX
      * plugin's {@code FxmlResourceReferencesContributor} already handles those files.
-     * The fxml2 plugin must not produce duplicates.
+     * The FXML/2 plugin must not produce duplicates.
      */
     @Test
     void percentKeyInStandaloneFxmlDoesNotProduceDuplicatePropertyReference() {
@@ -473,7 +473,7 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
                 public class StandaloneView extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneView.fxml", fxml2(
+        getFixture().configureByText("StandaloneView.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"%label.text\"/>\n",
                 "test.StandaloneView"
@@ -492,13 +492,13 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
             assertNotNull(attrVal, "Could not find text='%label.text' in StandaloneView.fxml");
 
             // Count PropertyReferenceBase instances on the attribute.
-            // The fxml2 plugin adds zero for standalone .fxml files; the JavaFX plugin may add one.
-            // Either way the total must be <= 1 (no duplicates from the fxml2 plugin).
+            // The FXML/2 plugin adds zero for standalone .fxml files; the JavaFX plugin may add one.
+            // Either way the total must be <= 1 (no duplicates from the FXML/2 plugin).
             long count = java.util.Arrays.stream(attrVal.getReferences())
                     .filter(r -> r instanceof PropertyReferenceBase)
                     .count();
             assertTrue(count <= 1,
-                    "fxml2 plugin must not produce a duplicate PropertyReference for standalone .fxml; "
+                    "FXML/2 plugin must not produce a duplicate PropertyReference for standalone .fxml; "
                     + "found " + count + " PropertyReferenceBase instance(s)");
         });
     }

@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Extracts the binding path string from the various fxml2 binding expression syntaxes
+ * Extracts the binding path string from the various FXML binding expression syntaxes
  * and validates that the expression is syntactically well-formed.
  *
  * <p>Compact notations: {@code $source}, {@code ${source}}, {@code >{source}}, {@code #{source}},

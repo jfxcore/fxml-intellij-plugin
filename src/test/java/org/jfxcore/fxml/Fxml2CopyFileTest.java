@@ -86,7 +86,7 @@ class Fxml2CopyFileTest extends Fxml2TestBase {
         // Create a minimal FXML file in the source root.
         PsiFile original = getFixture().addFileToProject(
                 "test/OriginalView.fxml",
-                fxml2("javafx.scene.control.Button", "  <Button text=\"Hello\"/>\n"));
+                fxml("javafx.scene.control.Button", "  <Button text=\"Hello\"/>\n"));
 
         assertNotNull(original, "original FXML file should exist");
         assertEquals(Fxml2FileType.INSTANCE, original.getVirtualFile().getFileType(),
@@ -135,7 +135,7 @@ class Fxml2CopyFileTest extends Fxml2TestBase {
         // Create a minimal FXML file whose fx:subclass we will inspect after copy.
         PsiFile original = getFixture().addFileToProject(
                 "subtest/OriginalView.fxml",
-                fxml2("javafx.scene.control.Button", "  <Button/>\n", "com.example.OriginalView"));
+                fxml("javafx.scene.control.Button", "  <Button/>\n", "com.example.OriginalView"));
 
         assertNotNull(original);
         assertEquals(Fxml2FileType.INSTANCE, original.getVirtualFile().getFileType());

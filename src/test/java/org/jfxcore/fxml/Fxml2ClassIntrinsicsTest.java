@@ -84,7 +84,7 @@ class Fxml2ClassIntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxClassModifierOnNonRootElementProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unexpected intrinsic: classModifier">fx:classModifier="protected"</error>/>
@@ -134,7 +134,7 @@ class Fxml2ClassIntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxClassParametersOnNonRootElementProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unexpected intrinsic: classParameters">fx:classParameters="String"</error>/>
@@ -167,7 +167,7 @@ class Fxml2ClassIntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxSubclassOnNonRootElementProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unexpected intrinsic: subclass">fx:subclass="test.TestView"</error>/>
@@ -218,7 +218,7 @@ class Fxml2ClassIntrinsicsTest extends Fxml2TestBase {
      */
     @Test
     void fxClassNameOnNonRootElementProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane <error descr="Unexpected intrinsic: className">fx:className="MyBase"</error>/>

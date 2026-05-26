@@ -101,7 +101,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
      */
     @Test
     void setterReferencedViaPropertyAttributeIsRecognizedAsUsed() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.FormattedLabel",
                 "  <FormattedLabel formatter=\"$doubleFormatter\"/>\n",
                 "test.TestView"
@@ -139,7 +139,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesOnSetterFindsPropertyAttributeInFxml2() {
-        getFixture().configureByText("TestView2.fxml", fxml2(
+        getFixture().configureByText("TestView2.fxml", fxml(
                 "test.FormattedLabel",
                 "  <FormattedLabel formatter=\"$doubleFormatter\"/>\n",
                 "test.TestView"
@@ -170,7 +170,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesOnBackingFieldFindsPropertyAttributeInFxml2() {
-        getFixture().configureByText("TestView3.fxml", fxml2(
+        getFixture().configureByText("TestView3.fxml", fxml(
                 "test.FormattedLabel",
                 "  <FormattedLabel formatter=\"$doubleFormatter\"/>\n",
                 "test.TestView"
@@ -197,11 +197,11 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Getter (getFormatter): also accessible via fxml2 plain attribute
+    // Getter (getFormatter): also accessible via FXML plain attribute
     // -----------------------------------------------------------------------
 
     /**
-     * When the {@code formatter} attribute is assigned via a binding that the fxml2
+     * When the {@code formatter} attribute is assigned via a binding that the FXML
      * compiler resolves using the property accessor ({@code formatterProperty()}), that
      * accessor must also be recognized as used.
      *
@@ -218,7 +218,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
                     public ObserveView() { initializeComponent(); }
                 }
                 """);
-        getFixture().configureByText("ObserveView.fxml", fxml2(
+        getFixture().configureByText("ObserveView.fxml", fxml(
                 "test.FormattedLabel",
                 "  <FormattedLabel formatter=\"{fx:Observe doubleFormatterProp}\"/>\n",
                 "test.ObserveView"
@@ -263,7 +263,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
      */
     @Test
     void renamingSetterUpdatesAttributeToPropertyName() {
-        getFixture().configureByText("RenameView.fxml", fxml2(
+        getFixture().configureByText("RenameView.fxml", fxml(
                 "test.FormattedLabel",
                 "  <FormattedLabel formatter=\"$doubleFormatter\"/>\n",
                 "test.TestView"
@@ -330,7 +330,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
      */
     @Test
     void descriptorHandleTargetRenameConvertsAccessorNameToPropertyName() {
-        getFixture().configureByText("HandleTargetView.fxml", fxml2(
+        getFixture().configureByText("HandleTargetView.fxml", fxml(
                 "test.FormattedLabel",
                 "  <FormattedLabel formatter=\"$doubleFormatter\"/>\n",
                 "test.TestView"
@@ -380,7 +380,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
      */
     @Test
     void renameHandlerIdentifiesBackingFieldAsRenameTarget() {
-        getFixture().configureByText("HandlerTargetView.fxml", fxml2(
+        getFixture().configureByText("HandlerTargetView.fxml", fxml(
                 "test.FormattedLabel",
                 "  <FormattedLabel formatter=\"$doubleFormatter\"/>\n",
                 "test.TestView"
@@ -427,7 +427,7 @@ class Fxml2PropertyAttributeUsageTest extends Fxml2TestBase {
      */
     @Test
     void renamingViaBackingFieldUpdatesPropertyAttribute() {
-        getFixture().configureByText("BackingFieldRenView.fxml", fxml2(
+        getFixture().configureByText("BackingFieldRenView.fxml", fxml(
                 "test.FormattedLabel",
                 "  <FormattedLabel formatter=\"$doubleFormatter\"/>\n",
                 "test.TestView"

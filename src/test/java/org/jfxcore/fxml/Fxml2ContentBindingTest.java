@@ -74,7 +74,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void dollarDotDotCompactContentSyntaxProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="$..items"/>
@@ -88,7 +88,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateContentAttributeNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="{fx:Evaluate ..items}"/>
@@ -103,7 +103,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateContentAttributeNotationWithExplicitPathProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="{fx:Evaluate source=..items}"/>
@@ -117,7 +117,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateContentElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -139,7 +139,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void dollarBraceDotDotCompactObserveContentSyntaxProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="${..items}"/>
@@ -153,7 +153,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxObserveContentAttributeNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="{fx:Observe ..items}"/>
@@ -167,7 +167,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxObserveContentElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -189,7 +189,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void angleBraceDotDotCompactPushContentSyntaxProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass=">{..items}"/>
@@ -203,7 +203,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxPushContentAttributeNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="{fx:Push ..items}"/>
@@ -218,7 +218,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxPushContentElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -240,7 +240,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void hashBraceDotDotCompactSynchronizeContentSyntaxProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="#{..items}"/>
@@ -254,7 +254,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxSynchronizeContentAttributeNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="{fx:Synchronize ..items}"/>
@@ -268,7 +268,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxSynchronizeContentElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -290,7 +290,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void dotDotCompactWithUnresolvablePathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView styleClass="$..<error descr="'nonExistent' in test.TestView cannot be resolved">nonExistent</error>"/>
@@ -309,7 +309,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void dotDotCompactContentOnMapPropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$..properties"/>
@@ -324,7 +324,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateContentOnMapPropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Evaluate ..properties}"/>
@@ -339,7 +339,7 @@ class Fxml2ContentBindingTest extends Fxml2TestBase {
      */
     @Test
     void dollarBraceDotDotCompactObserveContentOnMapPropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${..properties}"/>

@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Resolves fxml2 binding path segments against the code-behind class declared via
+ * Resolves FXML binding path segments against the code-behind class declared via
  * {@code fx:subclass} on the root tag.
  *
  * <p>A binding path like {@code viewModel.someCommand} is a dot-separated chain where:

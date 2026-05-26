@@ -72,7 +72,7 @@ class Fxml2BindingElementNotationTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -90,7 +90,7 @@ class Fxml2BindingElementNotationTest extends Fxml2TestBase {
      */
     @Test
     void fxEvaluateElementNotationWithUnresolvablePathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -117,7 +117,7 @@ class Fxml2BindingElementNotationTest extends Fxml2TestBase {
      */
     @Test
     void fxObserveElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -135,7 +135,7 @@ class Fxml2BindingElementNotationTest extends Fxml2TestBase {
      */
     @Test
     void fxObserveElementNotationWithUnresolvablePathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -162,7 +162,7 @@ class Fxml2BindingElementNotationTest extends Fxml2TestBase {
      */
     @Test
     void fxSynchronizeElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -180,7 +180,7 @@ class Fxml2BindingElementNotationTest extends Fxml2TestBase {
      */
     @Test
     void fxSynchronizeElementNotationWithExplicitPathProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -207,7 +207,7 @@ class Fxml2BindingElementNotationTest extends Fxml2TestBase {
      */
     @Test
     void fxPushElementNotationProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>
@@ -225,7 +225,7 @@ class Fxml2BindingElementNotationTest extends Fxml2TestBase {
      */
     @Test
     void fxPushElementNotationWithUnresolvablePathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label>

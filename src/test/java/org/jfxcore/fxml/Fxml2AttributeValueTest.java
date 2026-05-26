@@ -46,7 +46,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void validEnumConstantProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button alignment="CENTER"/>
@@ -57,7 +57,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void invalidEnumConstantProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button alignment=<error descr="Cannot coerce 'INVALID' to Pos">"INVALID"</error>/>
@@ -68,7 +68,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void usePrefSizeOnPrefHeightProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region prefHeight="USE_PREF_SIZE"/>
@@ -79,7 +79,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void usePrefSizeOnMaxHeightAndMaxWidthProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region maxHeight="USE_PREF_SIZE" maxWidth="USE_PREF_SIZE"/>
@@ -90,7 +90,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void useComputedSizeOnMinWidthProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region minWidth="USE_COMPUTED_SIZE"/>
@@ -101,7 +101,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void stringPropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button text="Hello World"/>
@@ -112,7 +112,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void numericLiteralOnDoublePropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.layout.Region",
                 """
                   <Region prefWidth="200" prefHeight="100"/>
@@ -123,7 +123,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void singleStyleClassProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button styleClass="my-style"/>
@@ -134,7 +134,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void multipleStyleClassesProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button styleClass="style1, style2"/>
@@ -145,7 +145,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void validStaticPropertyValueProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -161,7 +161,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void invalidStaticPropertyValueProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -177,7 +177,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void enumInPropertyElementTagResolvesWithoutError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -190,7 +190,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void invalidEnumInPropertyElementTagProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.ListView",
                 """
                   <ListView>
@@ -203,7 +203,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void validEnumInStaticPropertyElementTagProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -221,7 +221,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void invalidEnumInStaticPropertyElementTagProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.VBox
@@ -239,7 +239,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void invalidStringOnDoublePropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextArea",
                 """
                   <TextArea minHeight=<error descr="Cannot coerce 'FOO' to double">"FOO"</error>/>
@@ -250,7 +250,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void numericLiteralOnDoublePropertyProducesNoError2() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextArea",
                 """
                   <TextArea minHeight="42.5"/>
@@ -261,7 +261,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void staticFieldOnDoublePropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextArea",
                 """
                   <TextArea minHeight="USE_PREF_SIZE"/>
@@ -272,7 +272,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void invalidStringOnIntPropertyProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.GridPane
@@ -288,7 +288,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
 
     @Test
     void validIntOnIntPropertyProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 """
                 javafx.scene.control.Button
                 javafx.scene.layout.GridPane
@@ -314,7 +314,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
      */
     @Test
     void invalidLiteralForTypeParameterPropertyWithTypeArguments() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.GenericLabel",
                 """
                   <GenericLabel fx:typeArguments="Double" item=<error descr="Cannot coerce 'foo' to Double">"foo"</error>/>
@@ -328,7 +328,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
      */
     @Test
     void validDoubleForTypeParameterPropertyWithTypeArguments() {
-        getFixture().configureByText("TestView2.fxml", fxml2(
+        getFixture().configureByText("TestView2.fxml", fxml(
                 "test.GenericLabel",
                 """
                   <GenericLabel fx:typeArguments="Double" item="3.14"/>
@@ -343,7 +343,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
      */
     @Test
     void literalForTypeParameterPropertyWithoutTypeArguments() {
-        getFixture().configureByText("TestView3.fxml", fxml2(
+        getFixture().configureByText("TestView3.fxml", fxml(
                 "test.GenericLabel",
                 """
                   <GenericLabel item="anything"/>
@@ -361,7 +361,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
      */
     @Test
     void listValue_objectArrayProperty_noCompilerLibrary_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.ArrayControl",
                 """
                   <ArrayControl items="a, b, c"/>
@@ -375,7 +375,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
      */
     @Test
     void listValue_collectionProperty_noVersionError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button styleClass="style1, style2"/>
@@ -389,7 +389,7 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
      */
     @Test
     void listValue_objectArrayProperty_singleValue_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "test.ArrayControl",
                 """
                   <ArrayControl items="single"/>

@@ -8,7 +8,7 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * A soft {@link com.intellij.psi.PsiReference} placed on the binding-notation prefix
- * of an fxml2 attribute value (e.g. the {@code $} in {@code $vm.foo}, the {@code ${} in
+ * of an FXML attribute value (e.g. the {@code $} in {@code $vm.foo}, the {@code ${} in
  * {@code ${vm.foo}}, the {@code {fx:Observe} in {@code {fx:Observe vm.foo}}).
  *
  * <p>{@link #resolve()} returns a {@link Fxml2NamespaceUrlReference.UrlNavigationTarget}

@@ -194,7 +194,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void validMarkupExtensionInAttributeNotation_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension}"/>
@@ -210,7 +210,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void backslashEscapeProducesLiteralString_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\{UnknownClass}"/>
@@ -226,7 +226,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void unresolvableMarkupExtensionClass_error() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{%s}"/>
@@ -241,7 +241,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void classNotImplementingMarkupExtension_unexpectedMarkupExtensionError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.NotAnExtension",
                 """
                   <Label text="{%s}"/>
@@ -258,7 +258,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     void unknownXmlNamespace_error() {
         // The error spans the entire attribute value including quotes ({errorOffset=0, length=fullValue})
         // so the annotation uses attrRange which includes the surrounding quotes.
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text=%s/>
@@ -276,7 +276,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void propertyConsumerExtensionInAttributeNotation_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension}"/>
@@ -290,7 +290,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void supplierExtensionInAttributeNotation_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.StringSupplier",
                 """
                   <Label text="{StringSupplier}"/>
@@ -316,7 +316,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void propertyConsumerExtensionInElementNotation_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label>
@@ -334,7 +334,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void supplierExtensionInElementNotation_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.StringSupplier",
                 """
                   <Label>
@@ -352,7 +352,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void validMarkupExtensionWithParams_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension param1=42}"/>
@@ -370,7 +370,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void namedArgParam_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension param1=42}"/>
@@ -385,7 +385,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void getterSetterParam_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension param3=5}"/>
@@ -399,7 +399,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void unknownParam_error() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension %s=value}"/>
@@ -413,7 +413,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void multipleValidParams_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension param1=5 param3=10}"/>
@@ -433,7 +433,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void defaultPropertyOmitsPropertyName_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.ResourceExtension",
                 """
                   <Label id="{ResourceExtension /path/to/image.jpg}"/>
@@ -448,7 +448,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void defaultPropertyWithExplicitName_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.ResourceExtension",
                 """
                   <Label id="{ResourceExtension value=/path/to/image.jpg}"/>
@@ -468,7 +468,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     @Test
     void returnTypeCompatibleWithStringProperty_noError() {
         // Label.text is String: ResourceExtension declares @ReturnType({String.class, URL.class})
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.ResourceExtension",
                 """
                   <Label text="{ResourceExtension}"/>
@@ -484,7 +484,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     @Test
     void returnTypeIncompatibleWithPropertyType_error() {
         // Label.disable is boolean: ResourceExtension @ReturnType is {String, URL}: not compatible
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.ResourceExtension",
                 """
                   <Label disable="{%s}"/>
@@ -503,7 +503,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     @Test
     void supplierWithoutReturnType_noRestriction_noError() {
         // StringSupplier has no @ReturnType: no restriction
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.StringSupplier",
                 """
                   <Label text="{StringSupplier}"/>
@@ -529,7 +529,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void dualInterfaceExtensionOnPropertyAttribute_propertyConsumerWins_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.DualExtension",
                 """
                   <Label text="{DualExtension}"/>
@@ -551,7 +551,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void attributeNotationExtensionName_resolvesToClass() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension}"/>
@@ -594,7 +594,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesOfExtensionClass_showsFxmlUseSite() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension}"/>
@@ -641,7 +641,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     @Test
     void importUsedOnlyViaMarkupExtension_literalAngle_notUnused() {
         getFixture().enableInspections(new org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String> key=hello}"/>
@@ -659,7 +659,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     @Test
     void importUsedOnlyViaMarkupExtension_escapedAngle_notUnused() {
         getFixture().enableInspections(new org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection());
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension&lt;String&gt; key=hello}"/>
@@ -675,7 +675,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void genericTypeArgLiteralAngle_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String> key=hello}"/>
@@ -691,7 +691,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void genericTypeArgEscapedAngle_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension&lt;String&gt; key=hello}"/>
@@ -705,7 +705,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void genericTypeArgNoParams_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String>}"/>
@@ -719,7 +719,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void genericTypeArgUnknownParam_error() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String> %s=hello}"/>
@@ -734,7 +734,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void genericTypeArgNavigation_resolvesToClass() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String>}"/>
@@ -774,7 +774,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void classNameRef_findReferenceAt_returnsClassNameRef() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String> key=hello}"/>
@@ -812,7 +812,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void bracketChars_findReferenceAt_notNull() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String> key=hello}"/>
@@ -852,7 +852,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void typeArgNavigation_resolvesToClass() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String> key=hello}"/>
@@ -885,7 +885,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void namedArgParamNameRef_resolvesToConstructorParam() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String> key=hello}"/>
@@ -913,7 +913,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void setterParamNameRef_resolvesToSetterMethod() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.MyExtension",
                 """
                   <Label text="{MyExtension param3=5}"/>
@@ -955,7 +955,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
                     public void setMessage(String v) { message.set(v); }
                 }
                 """);
-        getFixture().configureByText("MarkupBindingTestView.fxml", fxml2(
+        getFixture().configureByText("MarkupBindingTestView.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{GenericExtension<String> key=${message}}"/>
@@ -1024,7 +1024,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
                 }
                 """);
         // ItemType is NOT listed in the imports: only ItemSupplier is imported.
-        getFixture().configureByText("UnresolvedClassInParamBinding.fxml", fxml2(
+        getFixture().configureByText("UnresolvedClassInParamBinding.fxml", fxml(
                 "javafx.scene.control.Label\ntest.ItemSupplier",
                 """
                   <Label text="{ItemSupplier $<caret>ItemType.labelAccessor}"/>
@@ -1067,7 +1067,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
                     public void accept(Property<Object> property, MarkupContext context) {}
                 }
                 """);
-        getFixture().configureByText("StaticFieldOnInterface.fxml", fxml2(
+        getFixture().configureByText("StaticFieldOnInterface.fxml", fxml(
                 "javafx.scene.control.Label\ntest.Item\ntest.ItemSupplier",
                 """
                   <Label text="{ItemSupplier $Item.<error descr="'labelGetter' in test.Item cannot be resolved">labelGetter</error>}"/>
@@ -1088,7 +1088,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void addImportIntentionOfferedForFqnMarkupExtensionClassName() {
-        getFixture().configureByText("AddImportMarkupExt.fxml", fxml2(
+        getFixture().configureByText("AddImportMarkupExt.fxml", fxml(
                 "javafx.scene.control.Label", // GenericExtension is NOT imported
                 """
                   <Label text="{test.Generic<caret>Extension<java.lang.String> key=hello}"/>
@@ -1112,7 +1112,7 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
      */
     @Test
     void addImportIntentionNotOfferedForMarkupExtensionWhenAlreadyImported() {
-        getFixture().configureByText("AddImportMarkupExtAlready.fxml", fxml2(
+        getFixture().configureByText("AddImportMarkupExtAlready.fxml", fxml(
                 "javafx.scene.control.Label\ntest.GenericExtension",
                 """
                   <Label text="{test.Generic<caret>Extension<java.lang.String> key=hello}"/>

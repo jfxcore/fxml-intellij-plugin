@@ -110,7 +110,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                 }
                 """);
         // Standalone FXML file that binds to vm.labelText
-        getFixture().addFileToProject("test/JavaStandaloneView.fxml", fxml2(
+        getFixture().addFileToProject("test/JavaStandaloneView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe vm.labelText}"/>
@@ -119,7 +119,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
         ));
 
         // Trigger highlighting so that reference contributors and file indexing run.
-        getFixture().configureByText("JavaStandaloneView.fxml", fxml2(
+        getFixture().configureByText("JavaStandaloneView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe vm.labelText}"/>
@@ -222,7 +222,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     protected void initializeComponent() {}
                 }
                 """);
-        getFixture().configureByText("JavaFieldView.fxml", fxml2(
+        getFixture().configureByText("JavaFieldView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe vm.labelText}"/>
@@ -298,7 +298,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                 }
                 """);
         // Standalone FXML file that binds to vm.labelText
-        getFixture().configureByText("KtStandaloneView.fxml", fxml2(
+        getFixture().configureByText("KtStandaloneView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe vm.labelText}"/>
@@ -424,7 +424,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public KtValView() { initializeComponent(); }
                 }
                 """);
-        getFixture().configureByText("KtValView.fxml", fxml2(
+        getFixture().configureByText("KtValView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.message}"/>
@@ -541,7 +541,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     init { initializeComponent() }
                 }
                 """);
-        getFixture().configureByText("KtDirectValView.fxml", fxml2(
+        getFixture().configureByText("KtDirectValView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.text}"/>
@@ -626,7 +626,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                 """);
 
         // Configure the FXML file with a binding to vm.label and warm up the reference cache.
-        getFixture().configureByText("KtInvalidNavView.fxml", fxml2(
+        getFixture().configureByText("KtInvalidNavView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe vm.label}"/>
@@ -845,7 +845,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public KtMrsView() { initializeComponent(); }
                 }
                 """);
-        getFixture().configureByText("KtMrsView.fxml", fxml2(
+        getFixture().configureByText("KtMrsView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.message}"/>
@@ -945,7 +945,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public KtPropertyView() { initializeComponent(); }
                 }
                 """);
-        getFixture().configureByText("KtPropertyView.fxml", fxml2(
+        getFixture().configureByText("KtPropertyView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe vm.labelText}"/>
@@ -1014,7 +1014,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public KtSupprView() { initializeComponent(); }
                 }
                 """);
-        getFixture().configureByText("KtSupprView.fxml", fxml2(
+        getFixture().configureByText("KtSupprView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.label}"/>
@@ -1116,7 +1116,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public KtWrongToolView() { initializeComponent(); }
                 }
                 """);
-        getFixture().configureByText("KtWrongToolView.fxml", fxml2(
+        getFixture().configureByText("KtWrongToolView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.label}"/>
@@ -1174,7 +1174,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public KtFunSupprView() { initializeComponent(); }
                 }
                 """);
-        getFixture().configureByText("KtFunSupprView.fxml", fxml2(
+        getFixture().configureByText("KtFunSupprView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="{fx:Observe vm.label}"/>
@@ -1249,7 +1249,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public KtPipelineView() { initializeComponent(); }
                 }
                 """);
-        getFixture().configureByText("KtPipelineView.fxml", fxml2(
+        getFixture().configureByText("KtPipelineView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="${vm.label}"/>
@@ -1350,14 +1350,14 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public void handleActionWithParam(ActionEvent e) {}
                 }
                 """);
-        getFixture().addFileToProject("test/EventHandlerView.fxml", fxml2(
+        getFixture().addFileToProject("test/EventHandlerView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleAction"/>
                 """,
                 "test.EventHandlerView"
         ));
-        getFixture().configureByText("EventHandlerView.fxml", fxml2(
+        getFixture().configureByText("EventHandlerView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleAction"/>
@@ -1408,14 +1408,14 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public void handleClick(ActionEvent e) {}
                 }
                 """);
-        getFixture().addFileToProject("test/EventHandlerViewParam.fxml", fxml2(
+        getFixture().addFileToProject("test/EventHandlerViewParam.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleClick"/>
                 """,
                 "test.EventHandlerViewParam"
         ));
-        getFixture().configureByText("EventHandlerViewParam.fxml", fxml2(
+        getFixture().configureByText("EventHandlerViewParam.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleClick"/>
@@ -1514,14 +1514,14 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public void handleMrsActionWithParam(ActionEvent e) {}
                 }
                 """);
-        getFixture().addFileToProject("test/EventHandlerMrsView.fxml", fxml2(
+        getFixture().addFileToProject("test/EventHandlerMrsView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleMrsAction"/>
                 """,
                 "test.EventHandlerMrsView"
         ));
-        getFixture().configureByText("EventHandlerMrsView.fxml", fxml2(
+        getFixture().configureByText("EventHandlerMrsView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleMrsAction"/>
@@ -1579,7 +1579,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public void unusedHandler() {}
                 }
                 """);
-        getFixture().configureByText("EventHandlerViewUnused.fxml", fxml2(
+        getFixture().configureByText("EventHandlerViewUnused.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="otherHandler"/>

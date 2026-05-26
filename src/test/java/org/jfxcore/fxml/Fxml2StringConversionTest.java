@@ -88,7 +88,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
      */
     @Test
     void synchronizeWithFormatParameterProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{amount; format=format}"/>
@@ -102,7 +102,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
      */
     @Test
     void synchronizeWithUnresolvableFormatPathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{amount; format=<error descr="'nonExistentFormat' in test.TestView cannot be resolved">nonExistentFormat</error>}"/>
@@ -122,7 +122,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
      */
     @Test
     void synchronizeWithConverterParameterProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{amount; converter=converter}"/>
@@ -136,7 +136,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
      */
     @Test
     void synchronizeWithUnresolvableConverterPathProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{amount; converter=<error descr="'nonExistentConverter' in test.TestView cannot be resolved">nonExistentConverter</error>}"/>
@@ -155,7 +155,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
      */
     @Test
     void ctrlClick_onFormatParamName_opensConversionDocs() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{amount; format=format}"/>
@@ -174,7 +174,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
      */
     @Test
     void ctrlClick_onConverterParamName_opensConversionDocs() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.TextField",
                 """
                   <TextField text="#{amount; converter=converter}"/>

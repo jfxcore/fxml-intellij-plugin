@@ -124,7 +124,7 @@ class Fxml2PrefixDeclarationTest extends Fxml2TestBase {
     @Test
     void builtinAtPrefix_classPathResource_noImport_noError() {
         // Note: no import for ClassPathResource: the built-in default applies
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="@icons/app.png"/>
@@ -140,7 +140,7 @@ class Fxml2PrefixDeclarationTest extends Fxml2TestBase {
      */
     @Test
     void builtinPercentPrefix_staticResource_noImport_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="%greeting"/>
@@ -289,7 +289,7 @@ class Fxml2PrefixDeclarationTest extends Fxml2TestBase {
      */
     @Test
     void escapePrefix_literalString_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\%greeting"/>
@@ -304,7 +304,7 @@ class Fxml2PrefixDeclarationTest extends Fxml2TestBase {
      */
     @Test
     void escapeAtPrefix_literalString_noError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="\\@/path/to/resource"/>

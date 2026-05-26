@@ -235,8 +235,8 @@
 
         <!--
             ImplicitNamespaceDescriptorProvider: returns a non-null XmlNSDescriptor for
-            the two fxml2 namespace URIs (http://javafx.com/javafx and
-            http://jfxcore.org/fxml/2.0) in fxml2 files.
+            the two FXML namespace URIs (http://javafx.com/javafx and
+            http://jfxcore.org/fxml/2.0) in FXML/2 files.
             ExternalResourceManagerExBase.isIgnoredResource() calls every registered
             provider; a non-null result causes the URLReference on the xmlns /
             xmlns:fx declarations to resolve successfully, suppressing the
@@ -265,7 +265,7 @@
 
         <!--
             PsiReferenceContributor: registers soft, always-unresolved references for
-            fxml2 binding expressions in attribute values (e.g. $vm.message,
+            FXML binding expressions in attribute values (e.g. $vm.message,
             {fx:Observe vm.message}).  Also provides:
               - PropertyReference for %key (StaticResource) so that Ctrl+click navigates
                 to the resource bundle entry and the property is not marked as unused.

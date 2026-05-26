@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>For standalone {@code .fxml} files, the bundled JavaFX plugin's
  * {@code FxmlReferencesContributor} already provides file references.  The tests for
- * standalone {@code .fxml} therefore verify that the fxml2 plugin does not produce
+ * standalone {@code .fxml} therefore verify that the FXML/2 plugin does not produce
  * <em>duplicate</em> file references.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -240,13 +240,13 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
 
     /**
      * A {@code @path} value in a standalone {@code .fxml} FXML file must NOT receive
-     * extra {@link FileReference}(s) from the fxml2 plugin beyond what the bundled JavaFX
-     * plugin's {@code FxmlReferencesContributor} already provides.  The fxml2 plugin must
+     * extra {@link FileReference}(s) from the FXML/2 plugin beyond what the bundled JavaFX
+     * plugin's {@code FxmlReferencesContributor} already provides.  The FXML/2 plugin must
      * not produce duplicates.
      *
      * <p>Note: The bundled JavaFX plugin may contribute zero or one set of file references
      * to a FXML {@code .fxml} file (it depends on the file-type detection order).  What
-     * this test verifies is that the fxml2 plugin itself adds at most one additional set
+     * this test verifies is that the FXML/2 plugin itself adds at most one additional set
      * (i.e. the total count stays reasonable: not a duplicate explosion).
      */
     @Test
@@ -260,7 +260,7 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                 public class StandaloneView extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneView.fxml", fxml2(
+        getFixture().configureByText("StandaloneView.fxml", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"@/icons/standalone.png\"/>\n",
                 "test.StandaloneView"
@@ -278,10 +278,10 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
             }
             assertNotNull(attrVal, "Could not find text='@/icons/standalone.png' in StandaloneView.fxml");
 
-            // Count FileReference instances coming from the fxml2 plugin on the attribute.
-            // The bundled JavaFX plugin may add its own set; we verify the fxml2 plugin
+            // Count FileReference instances coming from the FXML/2 plugin on the attribute.
+            // The bundled JavaFX plugin may add its own set; we verify the FXML/2 plugin
             // doesn't add an independent second set on top.
-            // Specifically: the fxml2 plugin should contribute 0 FileReferences for .fxml files.
+            // Specifically: the FXML/2 plugin should contribute 0 FileReferences for .fxml files.
             long fxml2PluginFileRefs = Arrays.stream(attrVal.getReferences())
                     .filter(r -> r instanceof FileReference)
                     .count();
@@ -313,7 +313,7 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                 public class StandaloneFxml2View extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneFxml2View.fxmlx", fxml2(
+        getFixture().configureByText("StandaloneFxml2View.fxmlx", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"@/data/logo.png\"/>\n",
                 "test.StandaloneFxml2View"
@@ -358,7 +358,7 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                 public class StandaloneFxml2Labels extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneFxml2Labels.fxmlx", fxml2(
+        getFixture().configureByText("StandaloneFxml2Labels.fxmlx", fxml(
                 "javafx.scene.control.Label",
                 "  <Label text=\"%title\"/>\n",
                 "test.StandaloneFxml2Labels"

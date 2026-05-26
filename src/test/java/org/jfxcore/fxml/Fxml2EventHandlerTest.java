@@ -83,7 +83,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void fieldEventHandlerViaEvaluateReferenceProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="$myActionHandler"/>
@@ -97,7 +97,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void fieldEventHandlerWithUnknownFieldProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="$<error descr="'nonExistentHandler' in test.TestView cannot be resolved">nonExistentHandler</error>"/>
@@ -112,7 +112,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void fieldEventHandlerWithWrongTypeProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="<error descr="Incompatible types: 'String' cannot be assigned to 'EventHandler<ActionEvent>'">$notAHandler</error>"/>
@@ -131,7 +131,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerWithEventParamProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleAction"/>
@@ -146,7 +146,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerWithoutParamProducesNoError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleActionNoParam"/>
@@ -160,7 +160,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerWithUnknownMethodProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="<error descr="'nonExistentMethod' in test.TestView cannot be resolved">nonExistentMethod</error>"/>
@@ -176,7 +176,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerWithIncompatibleParameterTypeProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="<error descr="'mouseHandler' does not match the signature of an event handler for ActionEvent">mouseHandler</error>"/>
@@ -191,7 +191,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerWithNonVoidReturnProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="<error descr="'returnsString' does not match the signature of an event handler for ActionEvent">returnsString</error>"/>
@@ -206,7 +206,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerWithTooManyParamsProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="<error descr="'tooManyParams' does not match the signature of an event handler for ActionEvent">tooManyParams</error>"/>
@@ -250,7 +250,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerNavigatesToMethod() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="<caret>handleAction"/>
@@ -283,7 +283,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerPrefersParameterizedOverload() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="<caret>handleAction"/>
@@ -313,7 +313,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void methodEventHandlerUnresolvedReturnsNullReference() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="<caret>nonExistentMethod"/>
@@ -345,7 +345,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesOnHandlerMethodFindsAttributeInFxml2() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleAction"/>
@@ -385,7 +385,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesOnParameterlessHandlerMethodFindsAttributeInFxml2() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="handleActionNoParam"/>
@@ -419,7 +419,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
      */
     @Test
     void findUsagesDoesNotIncludeMismatchedHandlerMethod() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
                   <Button onAction="mouseHandler"/>
@@ -484,7 +484,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
                     public final Function<Double, String> doubleFormatter = d -> String.format("%.2f", d);
                 }
                 """);
-        getFixture().configureByText("TestView2.fxml", fxml2(
+        getFixture().configureByText("TestView2.fxml", fxml(
                 "test.FormattedLabel", """
                   <FormattedLabel fx:typeArguments="java.lang.Double" formatter="$doubleFormatter"/>
                 """, "test.TestView2"

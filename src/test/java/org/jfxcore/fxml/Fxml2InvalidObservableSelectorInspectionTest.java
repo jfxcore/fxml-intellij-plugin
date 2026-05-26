@@ -71,7 +71,7 @@ class Fxml2InvalidObservableSelectorInspectionTest extends Fxml2TestBase {
      */
     @Test
     void invalidObservableSelectorIsReported() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$labelSupplier::<caret>get"/>
@@ -98,7 +98,7 @@ class Fxml2InvalidObservableSelectorInspectionTest extends Fxml2TestBase {
      */
     @Test
     void validObservableSelectorIsNotReported() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$getThis::<caret>titleProperty"/>
@@ -128,7 +128,7 @@ class Fxml2InvalidObservableSelectorInspectionTest extends Fxml2TestBase {
      */
     @Test
     void batchModeDoesNotRegisterInformationLevelProblem() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$labelSupplier::get"/>
@@ -151,7 +151,7 @@ class Fxml2InvalidObservableSelectorInspectionTest extends Fxml2TestBase {
      */
     @Test
     void replaceSelectorFixIsBatchApplicable() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$labelSupplier::<caret>get"/>
@@ -180,7 +180,7 @@ class Fxml2InvalidObservableSelectorInspectionTest extends Fxml2TestBase {
      */
     @Test
     void quickFixReplacesSelectorWithDot() {
-        getFixture().configureByText("TestView.fxml", fxml2(
+        getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
                   <Label text="$labelSupplier::<caret>get"/>
