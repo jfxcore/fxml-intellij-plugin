@@ -69,7 +69,7 @@
             MultiHostInjector: injects XMLLanguage into the value of a
             @org.jfxcore.markup.ComponentView annotation on a Java type declaration.
             This gives the embedded markup all the same IDE support as a standalone
-            .fxml2 file (diagnostics, navigation, completion, rename, find usages, ...).
+            .fxmlx file (diagnostics, navigation, completion, rename, find usages, ...).
         -->
         <multiHostInjector
                 implementation="org.jfxcore.fxml.lang.Fxml2MarkupAnnotationInjector"/>
@@ -271,7 +271,7 @@
                 to the resource bundle entry and the property is not marked as unused.
               - FileReference(s) for @path (ClassPathResource) so that Ctrl+click
                 navigates to the referenced classpath resource file.
-            Both are added for embedded FXML (@ComponentView) and standalone .fxml2 files;
+            Both are added for embedded FXML (@ComponentView) and standalone .fxmlx files;
             standalone .fxml files are already handled by the bundled JavaFX plugin.
         -->
         <psi.referenceContributor language="XML"
@@ -300,7 +300,7 @@
         <!--
             ReferencesSearch extension: when "Find Usages" is invoked on a CSS class
             selector (either our own CssSelectorElement or the CSS plugin's PSI element
-            for a .css file), searches all standalone FXML files (.fxml / .fxml2) and
+            for a .css file), searches all standalone FXML files (.fxml / .fxmlx) and
             all @ComponentView-annotated classes for styleClass attribute values that
             reference the same CSS class name.
 
@@ -419,7 +419,7 @@
 
         <!--
             UseScopeEnlarger: ensures the search scope for fields/methods in project-source
-            classes includes .fxml and .fxml2 files, so that ReferencesSearch extensions
+            classes includes .fxml and .fxmlx files, so that ReferencesSearch extensions
             (above) receive those files for inspection.
         -->
         <useScopeEnlarger
