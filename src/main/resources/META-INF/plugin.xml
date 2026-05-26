@@ -198,12 +198,6 @@
         <fileTypeOverrider implementation="org.jfxcore.fxml.lang.Fxml2FileTypeOverrider"/>
 
         <!--
-            FileTypeDetector: kept as a secondary guard for cases where the overrider
-            is bypassed (e.g. light virtual files, scratch files).
-        -->
-        <fileTypeDetector implementation="org.jfxcore.fxml.lang.Fxml2FileTypeDetector"/>
-
-        <!--
             XmlElementDescriptorProvider: consulted by XmlTagDelegate.computeElementDescriptor()
             for every XML tag.  Returning Fxml2ClassTagDescriptor here is what makes
             getAttributeDescriptor() get called on it, which drives Ctrl+click navigation
