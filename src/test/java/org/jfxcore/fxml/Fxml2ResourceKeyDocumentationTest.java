@@ -25,9 +25,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Covers:
  * <ul>
  *   <li>{@code %key} in embedded FXML ({@code @ComponentView} text block in a Java file)</li>
- *   <li>{@code %key} in a standalone {@code .fxml2} file</li>
+ *   <li>{@code %key} in a standalone {@code .fxmlx} file</li>
  *   <li>{@code {DynamicResource key}} in embedded FXML</li>
- *   <li>{@code {DynamicResource key}} in a standalone {@code .fxml2} file</li>
+ *   <li>{@code {DynamicResource key}} in a standalone {@code .fxmlx} file</li>
  *   <li>{@code {StaticResource key}} (long form) in embedded FXML</li>
  *   <li>{@code generateDoc()} output includes the property value and file name</li>
  * </ul>
@@ -189,11 +189,11 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Standalone .fxml2 file (%key shorthand)
+    // Standalone .fxmlx file (%key shorthand)
     // -----------------------------------------------------------------------
 
     /**
-     * {@code %label.text} in a standalone {@code .fxml2} file must redirect documentation to
+     * {@code %label.text} in a standalone {@code .fxmlx} file must redirect documentation to
      * the {@link IProperty} for {@code label.text}.
      */
     @Test
@@ -205,7 +205,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
                 public class StandaloneDocView extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneDocView.fxml2", fxml2(
+        getFixture().configureByText("StandaloneDocView.fxmlx", fxml2(
                 "javafx.scene.control.Label",
                 "  <Label text=\"%label.text\"/>\n",
                 "test.StandaloneDocView"
@@ -214,17 +214,17 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
         ReadAction.run(() -> {
             IProperty prop = resolvedPropertyAt(getFixture().getFile(), "label.text");
             assertInstanceOf(IProperty.class, prop,
-                    "Expected IProperty for %label.text in standalone .fxml2; got: " + prop);
+                    "Expected IProperty for %label.text in standalone .fxmlx; got: " + prop);
             assertEquals("label.text", prop.getKey());
         });
     }
 
     // -----------------------------------------------------------------------
-    // Standalone .fxml2 file ({DynamicResource key})
+    // Standalone .fxmlx file ({DynamicResource key})
     // -----------------------------------------------------------------------
 
     /**
-     * {@code {DynamicResource header}} in a standalone {@code .fxml2} file must redirect
+     * {@code {DynamicResource header}} in a standalone {@code .fxmlx} file must redirect
      * documentation to the {@link IProperty} for {@code header}.
      */
     @Test
@@ -236,7 +236,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
                 public class StandaloneDynDocView extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneDynDocView.fxml2", fxml2(
+        getFixture().configureByText("StandaloneDynDocView.fxmlx", fxml2(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.DynamicResource",
                 "  <Label text=\"{DynamicResource header}\"/>\n",
                 "test.StandaloneDynDocView"
@@ -245,7 +245,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
         ReadAction.run(() -> {
             IProperty prop = resolvedPropertyAt(getFixture().getFile(), "header");
             assertInstanceOf(IProperty.class, prop,
-                    "Expected IProperty for {DynamicResource header} in standalone .fxml2; got: " + prop);
+                    "Expected IProperty for {DynamicResource header} in standalone .fxmlx; got: " + prop);
             assertEquals("header", prop.getKey());
         });
     }

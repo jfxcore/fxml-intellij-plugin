@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  *
  * <p>Two sources of FXML import data are indexed:
  * <ol>
- *   <li><b>Standalone FXML files</b> ({@code .fxml} / {@code .fxml2}): any
+ *   <li><b>Standalone FXML files</b> ({@code .fxml} / {@code .fxmlx}): any
  *       {@code <?import fully.qualified.ClassName?>} processing instruction whose
  *       containing file carries the FXML/2 namespace URI
  *       ({@code http://jfxcore.org/fxml/2.0}).</li>
@@ -102,14 +102,14 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
 
     @Override
     public @NotNull FileBasedIndex.InputFilter getInputFilter() {
-        // Accept XML-like files (.fxml / .fxml2) and Java files (@ComponentView embedded markup).
+        // Accept XML-like files (.fxml / .fxmlx) and Java files (@ComponentView embedded markup).
         // Fxml2FileType extends XmlLikeFileType (not XmlFileType), so the check uses
         // XmlLikeFileType to cover both the built-in XmlFileType and our custom Fxml2FileType.
         return file -> {
             FileType ft = file.getFileType();
             if (ft instanceof XmlLikeFileType) {
                 String name = file.getName();
-                return name.endsWith(".fxml") || name.endsWith(".fxml2");
+                return name.endsWith(".fxml") || name.endsWith(".fxmlx");
             }
             return ft instanceof JavaFileType;
         };
@@ -130,7 +130,7 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
     // -----------------------------------------------------------------------
 
     /**
-     * Extracts FXML import targets from a standalone {@code .fxml} or {@code .fxml2} file.
+     * Extracts FXML import targets from a standalone {@code .fxml} or {@code .fxmlx} file.
      *
      * <p>Only files that carry the FXML/2 namespace URI are processed; classic FXML and
      * generic XML files are skipped.

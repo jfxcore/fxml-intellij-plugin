@@ -329,11 +329,11 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // DynamicResource in standalone .fxml2
+    // DynamicResource in standalone .fxmlx
     // -----------------------------------------------------------------------
 
     /**
-     * {@code {DynamicResource greeting}} in a standalone {@code .fxml2} file must
+     * {@code {DynamicResource greeting}} in a standalone {@code .fxmlx} file must
      * expose a {@link PropertyReferenceBase}.
      */
     @Test
@@ -345,7 +345,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                 public class DynView2 extends BorderPane {}
                 """);
 
-        getFixture().configureByText("DynView2.fxml2", fxml2(
+        getFixture().configureByText("DynView2.fxmlx", fxml2(
                 "javafx.scene.control.Label\norg.jfxcore.markup.resource.DynamicResource",
                 "  <Label text=\"{DynamicResource header}\"/>\n",
                 "test.DynView2"
@@ -361,12 +361,12 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                     break;
                 }
             }
-            assertNotNull(attrVal, "Could not find '{DynamicResource header}' in DynView2.fxml2");
+            assertNotNull(attrVal, "Could not find '{DynamicResource header}' in DynView2.fxmlx");
 
             boolean hasPropertyRef = Arrays.stream(attrVal.getReferences())
                     .anyMatch(r -> r instanceof PropertyReferenceBase);
             assertTrue(hasPropertyRef,
-                    "Expected a PropertyReferenceBase for '{DynamicResource header}' in standalone .fxml2; "
+                    "Expected a PropertyReferenceBase for '{DynamicResource header}' in standalone .fxmlx; "
                     + "references: " + Arrays.toString(attrVal.getReferences()));
         });
     }

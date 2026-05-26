@@ -92,7 +92,7 @@ public final class Fxml2WordSelectionHandler extends EditorActionHandler {
 
     /**
      * Returns {@code true} when {@code offset} falls inside an FXML document -
-     * either a standalone {@code .fxml}/{@code .fxml2} file or an embedded FXML
+     * either a standalone {@code .fxml}/{@code .fxmlx} file or an embedded FXML
      * fragment inside a Java/Kotlin {@code @ComponentView} annotation.
      */
     private static boolean isInFxml2Context(@NotNull Editor editor,

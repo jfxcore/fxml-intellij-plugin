@@ -295,13 +295,13 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Tests: standalone .fxml2 files
+    // Tests: standalone .fxmlx files
     // -----------------------------------------------------------------------
 
     /**
-     * {@code @/path} in a standalone {@code .fxml2} file must also expose
+     * {@code @/path} in a standalone {@code .fxmlx} file must also expose
      * {@link FileReference} instances: the bundled JavaFX plugin does not handle
-     * {@code .fxml2} files (it checks for the {@code .fxml} extension only).
+     * {@code .fxmlx} files (it checks for the {@code .fxml} extension only).
      */
     @Test
     void atPathInStandaloneFxml2HasFileReference() {
@@ -313,7 +313,7 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                 public class StandaloneFxml2View extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneFxml2View.fxml2", fxml2(
+        getFixture().configureByText("StandaloneFxml2View.fxmlx", fxml2(
                 "javafx.scene.control.Label",
                 "  <Label text=\"@/data/logo.png\"/>\n",
                 "test.StandaloneFxml2View"
@@ -329,24 +329,24 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                     break;
                 }
             }
-            assertNotNull(attrVal, "Could not find text='@/data/logo.png' in StandaloneFxml2View.fxml2");
+            assertNotNull(attrVal, "Could not find text='@/data/logo.png' in StandaloneFxml2View.fxmlx");
 
             assertTrue(hasFileReference(attrVal.getReferences()),
-                    "Expected FileReference(s) for '@/data/logo.png' in standalone .fxml2; "
+                    "Expected FileReference(s) for '@/data/logo.png' in standalone .fxmlx; "
                     + "references found: " + Arrays.toString(attrVal.getReferences()));
         });
     }
 
     // -----------------------------------------------------------------------
-    // Tests: %key parity (standalone .fxml2 should also have PropertyReference)
+    // Tests: %key parity (standalone .fxmlx should also have PropertyReference)
     // -----------------------------------------------------------------------
 
     /**
-     * {@code %key} in a standalone {@code .fxml2} file must also expose a
+     * {@code %key} in a standalone {@code .fxmlx} file must also expose a
      * {@link com.intellij.lang.properties.references.PropertyReference}: the bundled
      * JavaFX plugin only handles {@code .fxml} files.
      * This test verifies that {@code @} and {@code %} receive equal IDE support
-     * in standalone {@code .fxml2} files.
+     * in standalone {@code .fxmlx} files.
      */
     @Test
     void percentKeyInStandaloneFxml2HasPropertyReference() {
@@ -358,7 +358,7 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                 public class StandaloneFxml2Labels extends BorderPane {}
                 """);
 
-        getFixture().configureByText("StandaloneFxml2Labels.fxml2", fxml2(
+        getFixture().configureByText("StandaloneFxml2Labels.fxmlx", fxml2(
                 "javafx.scene.control.Label",
                 "  <Label text=\"%title\"/>\n",
                 "test.StandaloneFxml2Labels"
@@ -374,12 +374,12 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
                     break;
                 }
             }
-            assertNotNull(attrVal, "Could not find text='%title' in StandaloneFxml2Labels.fxml2");
+            assertNotNull(attrVal, "Could not find text='%title' in StandaloneFxml2Labels.fxmlx");
 
             boolean hasPropertyRef = Arrays.stream(attrVal.getReferences())
                     .anyMatch(r -> r instanceof com.intellij.lang.properties.references.PropertyReferenceBase);
             assertTrue(hasPropertyRef,
-                    "Expected a PropertyReferenceBase for '%title' in standalone .fxml2; "
+                    "Expected a PropertyReferenceBase for '%title' in standalone .fxmlx; "
                     + "references found: " + Arrays.toString(attrVal.getReferences()));
         });
     }

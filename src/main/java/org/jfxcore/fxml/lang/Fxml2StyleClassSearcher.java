@@ -54,7 +54,7 @@ import java.util.regex.Pattern;
  *
  * <p>For each candidate CSS class name, this searcher:
  * <ol>
- *   <li>Iterates all standalone FXML files ({@code .fxml} and {@code .fxml2}) via
+ *   <li>Iterates all standalone FXML files ({@code .fxml} and {@code .fxmlx}) via
  *       {@link FilenameIndex}.</li>
  *   <li>Iterates all embedded FXML fragments in {@code @ComponentView}-annotated
  *       classes via {@link Fxml2EmbeddedUtil#processAnnotatedClasses}.</li>
@@ -81,9 +81,9 @@ public final class Fxml2StyleClassSearcher
 
         Project project = ReadAction.compute(() -> params.getElementToSearch().getProject());
 
-        // Search standalone .fxml and .fxml2 files
+        // Search standalone .fxml and .fxmlx files
         ReadAction.run(() -> {
-            for (String ext : new String[]{"fxml", "fxml2"}) {
+            for (String ext : new String[]{"fxml", "fxmlx"}) {
                 for (VirtualFile vf : FilenameIndex.getAllFilesByExt(project, ext, globalScope)) {
                     PsiFile psiFile = com.intellij.psi.PsiManager.getInstance(project).findFile(vf);
                     if (!(psiFile instanceof XmlFile xmlFile)) continue;

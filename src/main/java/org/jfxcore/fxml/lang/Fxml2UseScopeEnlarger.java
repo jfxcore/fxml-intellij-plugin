@@ -23,7 +23,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  *
  * <p>Without this, "Find Usages" for a code-behind field or a property-setter method
  * searches only Java/Kotlin source files and misses the FXML use site.  By adding a
- * scope that includes all {@code .fxml} and {@code .fxml2} files in the project, IntelliJ
+ * scope that includes all {@code .fxml} and {@code .fxmlx} files in the project, IntelliJ
  * will pass those files to {@link Fxml2FxIdFieldSearcher} and
  * {@link Fxml2PropertyAttributeSearcher}, which then check for matching references.
  */
@@ -121,7 +121,7 @@ public final class Fxml2UseScopeEnlarger extends UseScopeEnlarger {
     }
 
     /**
-     * A {@link GlobalSearchScope} that accepts only {@code .fxml} and {@code .fxml2}
+     * A {@link GlobalSearchScope} that accepts only {@code .fxml} and {@code .fxmlx}
      * virtual files within the delegate scope.
      */
     public static final class Fxml2FilesSearchScope extends DelegatingGlobalSearchScope {
@@ -134,7 +134,7 @@ public final class Fxml2UseScopeEnlarger extends UseScopeEnlarger {
         public boolean contains(@NotNull VirtualFile file) {
             if (!super.contains(file)) return false;
             String name = file.getName();
-            return name.endsWith(".fxml") || name.endsWith(".fxml2");
+            return name.endsWith(".fxml") || name.endsWith(".fxmlx");
         }
     }
 }

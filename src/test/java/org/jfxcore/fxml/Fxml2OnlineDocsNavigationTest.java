@@ -78,7 +78,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onDollarNotation_opensExpressionDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveAttrValuePrefixUrl("text", "$someText");
             assertEquals(EXPRESSION_DOCS, url,
@@ -88,7 +88,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onDollarBraceNotation_opensExpressionDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveAttrValuePrefixUrl("style", "${someStyle}");
             assertEquals(EXPRESSION_DOCS, url,
@@ -98,7 +98,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onHashBraceNotation_opensExpressionDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveAttrValuePrefixUrl("id", "#{someId}");
             assertEquals(EXPRESSION_DOCS, url,
@@ -112,7 +112,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onFxSubclassAttrName_opensSubclassDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveFxAttrNameUrl("fx:subclass");
             assertEquals(REFERENCE_BASE + "subclass.html", url,
@@ -122,7 +122,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onFxIdAttrName_opensIdDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveFxAttrNameUrl("fx:id");
             assertEquals(REFERENCE_BASE + "id.html", url,
@@ -136,7 +136,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onFxDefineTag_opensDefineDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveFxTagUrl("define");
             assertEquals(REFERENCE_BASE + "define.html", url,
@@ -146,7 +146,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onFxNullTag_opensNullDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveFxTagUrl("Null");
             assertEquals(REFERENCE_BASE + "null.html", url,
@@ -156,7 +156,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onFxTrueTag_opensTrueDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveFxTagUrl("True");
             assertEquals(REFERENCE_BASE + "true.html", url,
@@ -166,7 +166,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onFxFalseTag_opensFalseDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             String url = resolveFxTagUrl("False");
             assertEquals(REFERENCE_BASE + "false.html", url,
@@ -180,7 +180,7 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
 
     @Test
     void ctrlClick_onPrefixKeyword_opensPrefixDocs() {
-        getFixture().configureByText("TestView.fxml2", COMMON_FXML);
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
         ReadAction.run(() -> {
             XmlFile xmlFile = (XmlFile) getFixture().getFile();
             XmlProcessingInstruction pi = null;
