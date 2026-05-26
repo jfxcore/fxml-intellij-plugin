@@ -175,7 +175,7 @@
 
         <!--
             File type declaration.
-            Only "fxml2" is registered as a static extension. Plain ".fxml" files are
+            Only ".fxmlx" is registered as a static extension. Plain ".fxml" files are
             handled via FileTypeOverrider (content-based detection), which runs before
             any extension lookup and returns Fxml2FileType for files carrying the JFXcore
             namespace. We intentionally do NOT register "fxml" here: doing so would make
@@ -188,7 +188,7 @@
                 implementationClass="org.jfxcore.fxml.lang.Fxml2FileType"
                 fieldName="INSTANCE"
                 language="XML"
-                extensions="fxml2"/>
+                extensions="fxmlx"/>
 
         <!--
             FileTypeOverrider: runs before any extension-based or content-based lookup.
