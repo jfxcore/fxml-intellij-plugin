@@ -25,7 +25,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  *
  * <h3>Why is this needed?</h3>
  * <p>For standalone FXML files, {@link Fxml2UseScopeEnlarger} adds {@code .fxml}/
- * {@code .fxml2} files to the search scope for {@link com.intellij.psi.PsiField} and
+ * {@code .fxmlx} files to the search scope for {@link com.intellij.psi.PsiField} and
  * {@link com.intellij.psi.PsiMethod} elements.  This allows IntelliJ's unused-declaration
  * analysis (which uses {@link com.intellij.psi.search.searches.ReferencesSearch}) to find
  * binding-segment references in FXML files for <em>Java</em> elements.
