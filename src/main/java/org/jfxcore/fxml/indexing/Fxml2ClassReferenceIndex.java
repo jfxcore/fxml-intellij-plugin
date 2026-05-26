@@ -59,14 +59,17 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
     /** FXML/2 namespace URI used by the file detector. */
     private static final String FXML2_NS = "http://jfxcore.org/fxml/2.0";
 
-    /** FQN of the @ComponentView annotation. */
+    /** Textual marker used to quickly reject Java files that do not reference {@code @ComponentView}. */
     private static final String COMPONENT_VIEW_ANNOTATION = "@ComponentView";
 
     /** Matches {@code <?import target?>} in raw XML / FXML text. */
     private static final Pattern IMPORT_PI_PATTERN =
             Pattern.compile("<\\?import\\s+([^?]+?)\\s*\\?>");
 
-    /** Matches a single-line Java {@code import} statement (non-static, non-star-ignored). */
+    /**
+     * Matches a single-line Java {@code import} statement.  Static imports are excluded;
+     * wildcard imports (e.g. {@code com.foo.*}) are captured verbatim with the trailing star.
+     */
     private static final Pattern JAVA_IMPORT_PATTERN =
             Pattern.compile("^import\\s+((?:[\\w$]+\\.)*[\\w$*]+)\\s*;", Pattern.MULTILINE);
 
@@ -163,9 +166,11 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
      *       {@code @ComponentView} annotation value.</li>
      * </ol>
      *
-     * <p>The Java file must contain a {@code @ComponentView} reference; files that do not
-     * embed FXML are indexed only for their Java imports if they also carry the annotation
-     * identifier in any form (false positives are bounded and acceptable for index purposes).
+     * <p>The textual prefilter accepts any file containing the substring
+     * {@code @ComponentView}.  False positives (for example, the identifier appearing in a
+     * comment or unrelated string literal) cause the file's regular Java imports to be added
+     * to the index even when no markup is actually embedded; this is bounded and acceptable
+     * because the recorded entries are still valid Java imports of the host file.
      */
     private static @NotNull Map<String, Void> indexJavaFile(@NotNull CharSequence content) {
         // Quick rejection: only Java files that might carry @ComponentView.

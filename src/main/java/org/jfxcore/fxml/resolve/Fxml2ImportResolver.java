@@ -306,8 +306,8 @@ public final class Fxml2ImportResolver {
      * order as the fxml-compiler's {@code FxmlParser.parseDocument()}:
      *
      * <ol>
-     *   <li><b>Standalone .fxml files</b>: returns the {@code <?import?>} PIs found in the
-     *       XML prolog.</li>
+     *   <li><b>Standalone FXML/2 files</b> ({@code .fxml} or {@code .fxmlx}): returns the
+     *       {@code <?import?>} PIs found in the XML prolog.</li>
      *   <li><b>Embedded FXML fragments</b> (injected via {@code @ComponentView}):
      *       <ul>
      *         <li>The prolog holds the <em>synthesised</em> Java/Kotlin import PIs added by

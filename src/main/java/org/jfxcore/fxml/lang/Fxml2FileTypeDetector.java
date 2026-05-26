@@ -14,14 +14,11 @@ import java.nio.charset.StandardCharsets;
  * when the file content shows the FXML/2 namespace.
  *
  * <h3>Detection strategy</h3>
- * <p>We scan the first {@value #DESIRED_PREFIX_LENGTH} bytes of the file for both:
- * <ol>
- *   <li>{@code xmlns="http://javafx.com/javafx"}: the standard JavaFX namespace, and</li>
- *   <li>{@code xmlns:fx="http://jfxcore.org/fxml/2.0"}: the FXML/2 namespace.</li>
- * </ol>
- * Only when <em>both</em> strings are present do we return {@link Fxml2FileType#INSTANCE};
- * otherwise {@code null} is returned and the platform continues with the next detector
- * (or falls back to the XML type that the bundled JavaFX plugin registered for {@code .fxml}).
+ * <p>We scan the first {@value #DESIRED_PREFIX_LENGTH} bytes of the file for the FXML/2
+ * namespace URI {@code http://jfxcore.org/fxml/2.0}.  When present we return
+ * {@link Fxml2FileType#INSTANCE}; otherwise {@code null} is returned and the platform continues
+ * with the next detector (or falls back to the XML type that the bundled JavaFX plugin
+ * registered for {@code .fxml}).
  *
  * <h3>Interaction with the bundled JavaFX plugin</h3>
  * <p>The JetBrains JavaFX plugin registers {@code .fxml} as a plain XML file type via a static
