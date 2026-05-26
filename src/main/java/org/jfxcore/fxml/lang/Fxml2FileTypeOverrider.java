@@ -24,13 +24,10 @@ import java.nio.charset.StandardCharsets;
  * can claim JFXcore files regardless of what the bundled plugin registered.
  *
  * <h3>Detection strategy</h3>
- * <p>We read the first {@value #MAX_HEADER_BYTES} bytes of the file and look for:
- * <ol>
- *   <li>{@code xmlns="http://javafx.com/javafx"}</li>
- *   <li>{@code xmlns:fx="http://jfxcore.org/fxml/2.0"}</li>
- * </ol>
- * Both must be present. Plain FXML files (which use {@code xmlns:fx="http://javafx.com/fxml"})
- * are not matched and continue to be handled by the bundled JavaFX plugin.
+ * <p>We read the first {@value #MAX_HEADER_BYTES} bytes of the file and look for the FXML/2
+ * namespace URI {@code http://jfxcore.org/fxml/2.0}, which is the definitive marker of an
+ * FXML/2 document.  Plain FXML files (which use {@code xmlns:fx="http://javafx.com/fxml"})
+ * do not carry this URI and continue to be handled by the bundled JavaFX plugin.
  */
 public final class Fxml2FileTypeOverrider implements FileTypeOverrider {
 

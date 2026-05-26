@@ -35,7 +35,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class Fxml2MarkupExtensionUtil {
 
-    /** Name of the {@code @DefaultProperty} annotation used by JavaFX / JFXcore. */
+    /** FQN of the {@code @DefaultProperty} annotation used by JavaFX / JFXcore. */
     private static final String DEFAULT_PROPERTY_FQN = "javafx.beans.DefaultProperty";
 
     /** The {@code @DefaultProperty} value that identifies the resource-key parameter. */

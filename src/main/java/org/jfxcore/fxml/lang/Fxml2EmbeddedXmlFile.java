@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>The only behavioral difference from a plain {@link XmlFileImpl} is the
  * {@link #findElementAt(int)} override, which applies the same identifier-segment narrowing
- * that {@link Fxml2FileViewProvider} provides for standalone {@code .fxml} files.
+ * that {@link Fxml2FileViewProvider} provides for standalone FXML/2 files.
  *
  * <p>IntelliJ's identifier-under-caret highlighting caches its results using the text-range
  * of the element returned by {@code findElementAt(caretOffset)}.  Without this override the

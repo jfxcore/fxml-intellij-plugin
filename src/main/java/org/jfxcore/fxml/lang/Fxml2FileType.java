@@ -12,8 +12,10 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import javax.swing.Icon;
 
 /**
- * File type for FXML/2 files, specifically those {@code .fxml} files that carry the JFXcore
- * {@code xmlns:fx="http://jfxcore.org/fxml/2.0"} namespace declaration on their root element.
+ * File type for FXML/2 files.  Applies to {@code .fxmlx} files (registered statically as the
+ * canonical extension in {@code plugin.xml}) and to {@code .fxml} files that carry the JFXcore
+ * {@code http://jfxcore.org/fxml/2.0} namespace (content-detected via
+ * {@link Fxml2FileTypeOverrider} so the bundled JavaFX plugin's static XML mapping does not win).
  *
  * <p>By extending {@link XmlLikeFileType} and backing it with {@link XMLLanguage#INSTANCE} the IDE
  * automatically provides all standard XML editor features (syntax highlighting, brace matching,

@@ -10,7 +10,7 @@ import com.intellij.lang.xml.XMLLanguage;
  * register a custom {@link Fxml2EmbeddedXmlParserDefinition} for it.  That parser
  * definition creates {@link Fxml2EmbeddedXmlFile} instances whose
  * {@link Fxml2EmbeddedXmlFile#findElementAt(int)} override applies the same identifier-segment
- * narrowing that {@link Fxml2FileViewProvider} provides for standalone {@code .fxml} files,
+ * narrowing that {@link Fxml2FileViewProvider} provides for standalone FXML/2 files,
  * fixing identifier-under-caret highlighting in embedded FXML.
  *
  * <p>Because this language extends {@link XMLLanguage}, all EP contributions registered for
