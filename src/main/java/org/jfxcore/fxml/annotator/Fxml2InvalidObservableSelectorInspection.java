@@ -45,7 +45,7 @@ import java.util.Map;
  * {@code ObservableValue} subtype, and provides a batch-applicable quick-fix to replace
  * {@code ::} with {@code .}.
  *
- * <p>The fxml2 compiler rejects such references with {@code INVALID_INVARIANT_REFERENCE}.
+ * <p>The FXML compiler rejects such references with {@code INVALID_INVARIANT_REFERENCE}.
  *
  * <p>This inspection complements {@link Fxml2AttributeAnnotator}: the annotator shows an
  * {@code ERROR} underline in real-time, while this inspection exposes the same
@@ -360,7 +360,7 @@ public final class Fxml2InvalidObservableSelectorInspection extends XmlSuppressa
                 || (!resolved.equals(observableClass) && !resolved.isInheritor(observableClass, true));
     }
 
-    // For injected FXML2: redirect the preview-copy to the host Java file so that
+    // For injected FXML: redirect the preview-copy to the host Java file so that
     // QuickFixWrapper routes to our generatePreview override instead of crashing in
     // ProblemDescriptor.getDescriptorForPreview when it can't find the injected XmlAttributeValue
     // in the copy (injected PSI trees have no parent beyond the injected file boundary).

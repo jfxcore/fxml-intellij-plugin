@@ -43,7 +43,7 @@ import java.util.List;
  * <p>Provides helpers that:
  * <ul>
  *   <li>Detect whether a Java or Kotlin import is exclusively referenced inside embedded
- *       FXML2 markup (and therefore could be replaced by a {@code <?import?>} PI).</li>
+ *       FXML markup (and therefore could be replaced by a {@code <?import?>} PI).</li>
  *   <li>Detect whether a {@code <?import?>} PI in embedded markup could be moved to the
  *       host Java or Kotlin file as a code import.</li>
  *   <li>Perform the actual insertion and deletion of import statements in both forms.</li>
@@ -68,7 +68,7 @@ public final class Fxml2ImportPlacementInspectionHelper {
      *       {@code @ComponentView} annotation string values
      *       (determined by a PSI walk that skips the import list and all string literals).</li>
      *   <li>At least one {@code @ComponentView}-annotated class in the file uses the
-     *       imported class inside its embedded FXML2 markup.  When the injected
+     *       imported class inside its embedded FXML markup.  When the injected
      *       {@link XmlFile} is not yet available, a raw-text scan of the annotation
      *       value is used as a fallback to avoid a false negative.</li>
      * </ol>
@@ -395,7 +395,7 @@ public final class Fxml2ImportPlacementInspectionHelper {
     }
 
     /**
-     * Returns {@code true} if the embedded FXML2 file already contains a
+     * Returns {@code true} if the embedded FXML file already contains a
      * {@code <?import?>} PI for the exact fully-qualified name {@code fqn},
      * or if the raw annotation text already contains {@code <?import fqn?>}
      * when the injection is not yet available.
@@ -538,7 +538,7 @@ public final class Fxml2ImportPlacementInspectionHelper {
     // -----------------------------------------------------------------------
 
     /**
-     * Removes {@code pi} ({@code <?import?>}) from embedded FXML2 markup by deleting
+     * Removes {@code pi} ({@code <?import?>}) from embedded FXML markup by deleting
      * the corresponding source range (including the leading indentation and trailing
      * newline) from the host Java or Kotlin document.
      *

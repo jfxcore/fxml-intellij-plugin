@@ -20,7 +20,7 @@ import org.junit.jupiter.api.TestInstance;
  *   <li>{@code reference/classParameters.md}</li>
  *   <li>{@code reference/className.md}</li>
  * </ul>
- * in the fxml2 compiler documentation.
+ * in the FXML compiler documentation.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2ClassIntrinsicsTest extends Fxml2TestBase {

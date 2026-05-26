@@ -13,7 +13,7 @@ import org.junit.jupiter.api.TestInstance;
  * It can be used in attribute notation ({@code {fx:Class MyClass}}), element notation
  * inside a property element, and as an argument to function bindings.
  *
- * <p>Corresponds to {@code reference/class.md} in the fxml2 compiler documentation.
+ * <p>Corresponds to {@code reference/class.md} in the FXML compiler documentation.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2TypeExtensionTest extends Fxml2TestBase {

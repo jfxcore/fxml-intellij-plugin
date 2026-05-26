@@ -8,7 +8,7 @@ import org.junit.jupiter.api.TestInstance;
 /**
  * Tests for {@link Fxml2UnusedFxIdInspection}: reports {@code fx:id} attributes
  * whose auto-generated field is never accessed in the code-behind class
- * and whose value never appears in a binding expression in the FXML2 file.
+ * and whose value never appears in a binding expression in the FXML file.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
@@ -217,7 +217,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
     }
 
     /**
-     * FXML2 file without a code-behind class: only binding-segment references count.
+     * FXML file without a code-behind class: only binding-segment references count.
      */
     @Test
     void fxIdWithoutCodeBehindChecksOnlyBindings() {
@@ -303,7 +303,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
      */
     @Test
     void fxIdNotWarnedWhenGeneratedBaseClassIsUnresolvable() {
-        // UncompiledViewBase is intentionally absent — simulates the fxml2 compiler
+        // UncompiledViewBase is intentionally absent — simulates the FXML compiler
         // annotation processor not having run yet.
         getFixture().addFileToProject("test/UncompiledView.java", """
                 package test;
@@ -329,7 +329,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
      */
     @Test
     void fxIdNotWarnedWhenGeneratedBaseClassIsUnresolvableKotlin() {
-        // UncompiledKtViewBase is intentionally absent — simulates the fxml2 compiler
+        // UncompiledKtViewBase is intentionally absent — simulates the FXML compiler
         // annotation processor not having run yet.
         getFixture().addFileToProject("test/UncompiledKtView.kt", """
                 package test

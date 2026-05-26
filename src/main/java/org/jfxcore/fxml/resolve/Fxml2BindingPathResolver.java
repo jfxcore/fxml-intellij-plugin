@@ -80,7 +80,7 @@ public final class Fxml2BindingPathResolver {
      * @param classQualifier     {@code true} when this segment is a class or package name qualifier,
      *                           not a value-producing member reference
      * @param observableSelector {@code true} when this segment was accessed via the {@code ::}
-     *                           (observable-selection) operator; the fxml2 compiler requires the
+     *                           (observable-selection) operator; the FXML compiler requires the
      *                           member to be an {@code ObservableValue} subtype in that case
      * @param pathOffset         start offset of the segment name within the path string that was
      *                           passed to {@link #resolve(String, PsiClass, GlobalSearchScope)}
@@ -136,7 +136,7 @@ public final class Fxml2BindingPathResolver {
      *       the class of the single child object tag is returned.</li>
      * </ol>
      *
-     * <p>In embedded FXML2 the language injector wraps the user markup in a synthetic
+     * <p>In embedded FXML the language injector wraps the user markup in a synthetic
      * {@code <fxml2:embedded>} root.  {@code fx:context} is placed on the user's root
      * element (first child of the wrapper), so this method reads from the effective
      * user root rather than the raw XML document root.
@@ -191,7 +191,7 @@ public final class Fxml2BindingPathResolver {
     /**
      * Returns the effective user-written root element of {@code file}.
      *
-     * <p>In standalone FXML2 this is simply the XML document root tag.  In embedded FXML2
+     * <p>In standalone FXML this is simply the XML document root tag.  In embedded FXML
      * the language injector wraps the user's markup in a synthetic {@code <fxml2:embedded>}
      * element (carrying {@code fx:subclass} and namespace declarations), so the actual
      * user root is the first child tag of the wrapper.
@@ -223,7 +223,7 @@ public final class Fxml2BindingPathResolver {
      *
      * @param selector    the parsed context selector, or {@code null} for the default (root) context
      * @param contextTag  the tag on which the binding attribute appears
-     * @param xmlFile     the containing FXML 2.0 file
+     * @param xmlFile     the containing FXML file
      * @return the resolved start class, or {@code null} if unresolvable
      */
     public static @Nullable PsiClass resolveStartClass(
@@ -313,7 +313,7 @@ public final class Fxml2BindingPathResolver {
     /**
      * Collects ancestor {@link XmlTag}s that represent JavaFX objects (have a
      * {@link Fxml2ClassTagDescriptor}), skipping property tags like {@code <shape>}.
-     * This mirrors the fxml2 compiler's
+     * This mirrors the FXML compiler's
      * {@code context.getParents().filter(node -> node instanceof ObjectNode)}.
      * The list is ordered from nearest ancestor to farthest.
      */
@@ -367,7 +367,7 @@ public final class Fxml2BindingPathResolver {
     /**
      * Like {@link #resolve(String, PsiClass, GlobalSearchScope, Kind)} but also accepts the
      * containing {@link XmlFile} so that {@code fx:id}-injected fields can be resolved as
-     * path segments (the fxml2 compiler injects a public field for each {@code fx:id}).
+     * path segments (the FXML compiler injects a public field for each {@code fx:id}).
      */
     public static @NotNull List<Segment> resolve(
             @NotNull String path,
@@ -409,7 +409,7 @@ public final class Fxml2BindingPathResolver {
         // even though they contain a '.'.  The parenthesised content is not split.
         //
         // observableSelectee[i] = true when the separator BEFORE segment i is '::'.
-        // This means: the fxml2 compiler requires that member to be an ObservableValue subtype
+        // This means: the FXML compiler requires that member to be an ObservableValue subtype
         // and keeps its raw type (not the contained value type) as the context for the next
         // segment.  Derived from observableSel_raw[i-1] for i > 0, and from leadingObs for i == 0.
         List<String> nameList = new ArrayList<>();
@@ -658,7 +658,7 @@ public final class Fxml2BindingPathResolver {
                 continue;
             }
 
-            // Instance-property fallback: when the fxml2 compiler-generated base class is
+            // Instance-property fallback: when the FXML compiler-generated base class is
             // absent (stale build), the code-behind's supertype chain is broken and
             // resolveInstanceProperty() won't reach the root element type.
             // The compiler always generates "class FooBase extends <rootTagType>", so try
@@ -684,13 +684,13 @@ public final class Fxml2BindingPathResolver {
 
             // --- Inherited static field resolution ---
             //
-            // The fxml2 compiler's Resolver.tryResolveField walks the superclass chain, so
+            // The FXML compiler's Resolver.tryResolveField walks the superclass chain, so
             // a bare name like "USE_PREF_SIZE" resolves when the start class (or any of its
             // ancestors) declares a public static field with that name.
             // PsiClass.findFieldByName(name, true) already walks supertypes.
             PsiField staticField = current.findFieldByName(lookupName, true);
             if (staticField == null && xmlFile != null && current == startClass) {
-                // Fallback: when the fxml2 compiler-generated base class is absent (e.g. the
+                // Fallback: when the FXML compiler-generated base class is absent (e.g. the
                 // project hasn't been built yet), the code-behind's supertype chain is broken
                 // and findFieldByName() won't reach the root element type.
                 // The compiler always generates "class FooBase extends <rootTagType>", so the
@@ -784,7 +784,7 @@ public final class Fxml2BindingPathResolver {
 
     /**
      * Finds a field by name by walking the superclass chain only, not interfaces.
-     * This mirrors the fxml2 compiler's {@code Resolver.tryResolveField}, which resolves
+     * This mirrors the FXML compiler's {@code Resolver.tryResolveField}, which resolves
      * fields through {@code superClass()} but never traverses implemented interfaces.
      * Java does not expose static interface members through implementing class names, so
      * a reference like {@code $Impl.FIELD} must fail when {@code FIELD} is declared only
@@ -805,7 +805,7 @@ public final class Fxml2BindingPathResolver {
      * whose name starts with {@code get} or {@code is} (followed by uppercase)
      * and returns a non-void type.
      *
-     * <p>This mirrors the fxml2 compiler's recognition of static getters as property
+     * <p>This mirrors the FXML compiler's recognition of static getters as property
      * accessors, e.g. {@code Button.getClassCssMetaData()} for the property
      * {@code classCssMetaData}.
      *

@@ -12,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Updates the {@code fx:subclass} attribute of a newly copied FXML2 file so that
+ * Updates the {@code fx:subclass} attribute of a newly copied FXML file so that
  * it reflects the new file name instead of the original one.
  *
  * <p>Example: copying {@code MainView.fxml} (which declares
@@ -32,7 +32,7 @@ public final class Fxml2UpdateAddedFileProcessor extends UpdateAddedFileProcesso
         if (!element.getName().endsWith(".fxml")) return false;
         // The PSI file's getFileType() might still be XmlFileType at this point (before
         // the VFS file-type cache is refreshed), so we also accept plain XmlFile and
-        // verify the FXML2 namespace by inspecting the root tag.
+        // verify the FXML/2 namespace by inspecting the root tag.
         if (!(element instanceof XmlFile xmlFile)) return false;
         XmlTag root = xmlFile.getRootTag();
         if (root == null) return false;

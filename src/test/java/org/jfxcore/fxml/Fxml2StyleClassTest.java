@@ -323,7 +323,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
 
     /**
      * Find Usages on a {@link CssSelectorElement} must find the matching
-     * {@code styleClass} attribute value in a standalone FXML2 file.
+     * {@code styleClass} attribute value in a standalone FXML file.
      */
     @Test
     void findUsagesFromCssFindsStandaloneFxml2Usage() {
@@ -355,7 +355,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
 
     /**
      * Find Usages on a {@link CssSelectorElement} must find the matching
-     * {@code styleClass} attribute value in embedded FXML2 (&#64;ComponentView annotation).
+     * {@code styleClass} attribute value in embedded FXML (&#64;ComponentView annotation).
      */
     @Test
     void findUsagesFromCssFindsEmbeddedFxml2Usage() {

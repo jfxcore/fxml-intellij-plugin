@@ -6,7 +6,7 @@ import org.jfxcore.markup.ComponentView;
 
 @ComponentView("""
     <AnchorPane prefHeight="200.0" prefWidth="300.0">
-        <Label text="Hello FXML2"/>
+        <Label text="Hello FXML/2"/>
     </AnchorPane>
     """)
 public class MyView extends MyViewBase {

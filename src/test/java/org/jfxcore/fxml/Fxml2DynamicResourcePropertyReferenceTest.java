@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  *
  * <p>This verifies that {@code DynamicResource} is supported equally well as the
- * {@code %key} (StaticResource prefix shorthand) syntax in both standalone and embedded FXML2.
+ * {@code %key} (StaticResource prefix shorthand) syntax in both standalone and embedded FXML.
  * The bundled JavaFX plugin only handles {@code %key} in standalone {@code .fxml} files;
  * for all other forms and file types the fxml2 plugin must provide the references.
  */
@@ -50,7 +50,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
 
     @BeforeAll
     void addCommonMocks() {
-        // @ComponentView annotation for embedded FXML2 tests
+        // @ComponentView annotation for embedded FXML tests
         getFixture().addClass("""
                 package org.jfxcore.markup;
                 import java.lang.annotation.*;
@@ -92,7 +92,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
     // Helpers
     // -----------------------------------------------------------------------
 
-    /** Builds a Java file with an embedded FXML2 {@code @ComponentView}. */
+    /** Builds a Java file with an embedded FXML {@code @ComponentView}. */
     private static String javaWithMarkup(String cls, String markupBody) {
         return "package test;\n"
                 + "import org.jfxcore.markup.ComponentView;\n"
@@ -135,11 +135,11 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // DynamicResource in embedded FXML2
+    // DynamicResource in embedded FXML
     // -----------------------------------------------------------------------
 
     /**
-     * {@code {DynamicResource greeting}} in an embedded FXML2 Java file must expose at least
+     * {@code {DynamicResource greeting}} in an embedded FXML Java file must expose at least
      * one {@link PropertyReferenceBase}: enabling Ctrl+click navigation to the resource bundle.
      */
     @Test
@@ -158,7 +158,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
             boolean hasPropertyRef = Arrays.stream(attrVal.getReferences())
                     .anyMatch(r -> r instanceof PropertyReferenceBase);
             assertTrue(hasPropertyRef,
-                    "Expected a PropertyReferenceBase for '{DynamicResource greeting}' in embedded FXML2; "
+                    "Expected a PropertyReferenceBase for '{DynamicResource greeting}' in embedded FXML; "
                     + "references found: " + Arrays.toString(attrVal.getReferences()));
         });
     }
@@ -187,7 +187,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                         "PropertyReference for 'welcome' must resolve to the IProperty in labels.properties");
                 return;
             }
-            fail("No PropertyReferenceBase resolved for '{DynamicResource welcome}' in embedded FXML2");
+            fail("No PropertyReferenceBase resolved for '{DynamicResource welcome}' in embedded FXML");
         });
     }
 
@@ -223,7 +223,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                         "PropertyReference range must end after 'title' in: " + attrText);
                 return;
             }
-            fail("No PropertyReferenceBase found for '{DynamicResource title}' in embedded FXML2");
+            fail("No PropertyReferenceBase found for '{DynamicResource title}' in embedded FXML");
         });
     }
 
@@ -277,16 +277,16 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                         "PropertyReference canonical text must be the full 'button.text' key");
                 return;
             }
-            fail("No PropertyReferenceBase found for '{DynamicResource button.text}' in embedded FXML2");
+            fail("No PropertyReferenceBase found for '{DynamicResource button.text}' in embedded FXML");
         });
     }
 
     // -----------------------------------------------------------------------
-    // DynamicResource in standalone .fxml FXML2
+    // DynamicResource in standalone FXML
     // -----------------------------------------------------------------------
 
     /**
-     * {@code {DynamicResource greeting}} in a standalone {@code .fxml} FXML2 file must
+     * {@code {DynamicResource greeting}} in a standalone {@code .fxml} FXML file must
      * expose a {@link PropertyReferenceBase}.
      *
      * <p>The bundled JavaFX plugin only handles {@code %key} in {@code .fxml} files;
@@ -376,7 +376,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * {@code {StaticResource greeting}} (long form) in embedded FXML2 must also expose a
+     * {@code {StaticResource greeting}} (long form) in embedded FXML must also expose a
      * {@link PropertyReferenceBase}: the same as the {@code %greeting} shorthand.
      *
      * <p>This verifies symmetry between the short form and the long form of
@@ -398,14 +398,14 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
             boolean hasPropertyRef = Arrays.stream(attrVal.getReferences())
                     .anyMatch(r -> r instanceof PropertyReferenceBase);
             assertTrue(hasPropertyRef,
-                    "Expected a PropertyReferenceBase for '{StaticResource name}' in embedded FXML2 "
+                    "Expected a PropertyReferenceBase for '{StaticResource name}' in embedded FXML "
                     + "(long form parity with %name shorthand); "
                     + "references: " + Arrays.toString(attrVal.getReferences()));
         });
     }
 
     /**
-     * {@code {StaticResource greeting}} (long form) in a standalone {@code .fxml} FXML2 file
+     * {@code {StaticResource greeting}} (long form) in a standalone {@code .fxml} FXML file
      * must expose a {@link PropertyReferenceBase}.
      *
      * <p>The bundled JavaFX plugin handles {@code %greeting} via
@@ -452,10 +452,10 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * {@code {DynamicResource find.this}} in an embedded FXML2 Java file must appear in the
+     * {@code {DynamicResource find.this}} in an embedded FXML Java file must appear in the
      * results of {@link ReferencesSearch#search(PsiElement, SearchScope)} on the matching
      * {@link IProperty}: so that "Find Usages" on the property key in the
-     * {@code .properties} file navigates to the embedded FXML2 use site.
+     * {@code .properties} file navigates to the embedded FXML use site.
      */
     @Test
     void dynamicResourceInEmbeddedFxmlIsFoundByReferencesSearch() {
@@ -492,13 +492,13 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                 return val.startsWith("{DynamicResource");
             });
             assertTrue(foundInEmbeddedFxml,
-                    "ReferencesSearch must find the '{DynamicResource find.this}' reference in embedded FXML2; "
+                    "ReferencesSearch must find the '{DynamicResource find.this}' reference in embedded FXML; "
                     + "found references: " + refs);
         });
     }
 
     /**
-     * A property that is referenced only via {@code {DynamicResource key}} in embedded FXML2
+     * A property that is referenced only via {@code {DynamicResource key}} in embedded FXML
      * must be reported as <em>used</em> by {@link UnusedPropertyInspection#isPropertyUsed} -
      * i.e. the {@code "UnusedProperty"} inspection must not flag it as unused.
      */
@@ -534,7 +534,7 @@ class Fxml2DynamicResourcePropertyReferenceTest extends Fxml2TestBase {
                     UnusedPropertyInspection.isPropertyUsed(
                             (com.intellij.lang.properties.psi.Property) prop, helper, true),
                     "UnusedPropertyInspection must not flag 'live.key' as unused - "
-                    + "it is referenced via {DynamicResource live.key} in embedded FXML2");
+                    + "it is referenced via {DynamicResource live.key} in embedded FXML");
         });
     }
 }

@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for {@link Fxml2AnnotationProcessingHintInspection}: the inspection that adds
- * an actionable hint when the fxml compiler's annotation processor has not yet generated
+ * an actionable hint when the FXML compiler's annotation processor has not yet generated
  * the {@code {ClassName}Base} base class.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

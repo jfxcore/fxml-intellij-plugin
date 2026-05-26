@@ -9,23 +9,23 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Set;
 
 /**
- * Suppresses XML intention actions that are not applicable to FXML2 files:
+ * Suppresses XML intention actions that are not applicable to FXML files:
  * <ul>
  *   <li>"Convert text to CDATA" ({@code TextToCDataIntention}): CDATA sections are not
- *       used in FXML2 markup.</li>
- *   <li>"Insert namespace prefix" ({@code AddSchemaPrefixIntention}): FXML2 files use a
- *       fixed namespace structure managed by the fxml2 compiler; schema-prefix editing
+ *       used in FXML markup.</li>
+ *   <li>"Insert namespace prefix" ({@code AddSchemaPrefixIntention}): FXML files use a
+ *       fixed namespace structure managed by the FXML compiler; schema-prefix editing
  *       does not apply.</li>
  * </ul>
  *
- * <p>For <em>embedded</em> FXML2 (injected from a {@code @ComponentView} annotation), the
+ * <p>For <em>embedded</em> FXML (injected from a {@code @ComponentView} annotation), the
  * following additional intentions are suppressed:
  * <ul>
  *   <li>{@code CreateCodeBehindIntention}: the annotated class is already the code-behind.</li>
  * </ul>
  *
  * <p>{@code AddImportForClassReferenceIntention} is <em>not</em> suppressed for embedded
- * FXML2: it adds a Java {@code import} to the host file instead of an XML {@code <?import?>}
+ * FXML: it adds a Java {@code import} to the host file instead of an XML {@code <?import?>}
  * processing instruction.
  */
 public final class Fxml2IntentionActionFilter implements IntentionActionFilter {
@@ -35,7 +35,7 @@ public final class Fxml2IntentionActionFilter implements IntentionActionFilter {
             "com.intellij.codeInsight.daemon.impl.analysis.AddSchemaPrefixIntention"
     );
 
-    /** Intentions suppressed only in embedded (injected) FXML2, not in standalone files. */
+    /** Intentions suppressed only in embedded (injected) FXML, not in standalone files. */
     private static final Set<String> EMBEDDED_SUPPRESSED_CLASS_NAMES = Set.of(
             "org.jfxcore.fxml.actions.CreateCodeBehindIntention"
     );
@@ -45,9 +45,9 @@ public final class Fxml2IntentionActionFilter implements IntentionActionFilter {
         if (psiFile == null) return true;
         if (!Fxml2FileType.isFxml2(psiFile)) return true;
         String className = unwrap(intentionAction).getClass().getName();
-        // Suppress actions that never apply to any FXML2 file.
+        // Suppress actions that never apply to any FXML file.
         if (SUPPRESSED_CLASS_NAMES.contains(className)) return false;
-        // For embedded FXML2, suppress additional non-applicable intentions.
+        // For embedded FXML, suppress additional non-applicable intentions.
         return !Fxml2EmbeddedUtil.isEmbeddedFxml2(psiFile)
                 || !EMBEDDED_SUPPRESSED_CLASS_NAMES.contains(className);
     }

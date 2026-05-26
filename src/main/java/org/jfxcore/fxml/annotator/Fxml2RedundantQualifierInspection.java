@@ -602,7 +602,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
     private record RedundantPrefix(@NotNull String prefix, int prefixLength) {}
 
     /**
-     * When the fix is offered inside an embedded FXML2 fragment (injected language), returning
+     * When the fix is offered inside an embedded FXML fragment (injected language), returning
      * the host PSI element (text-block / string literal) from {@code getElementToMakeWritable}
      * causes the preview system to base the copy on the host Java file rather than on the
      * injected XML file.  That makes {@code originalFile != psiFile} true inside
@@ -638,7 +638,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
         @Override public @NotNull String getName() { return "Remove redundant qualifier"; }
         @Override public @NotNull String getFamilyName() { return "Remove redundant qualifier"; }
 
-        // For injected FXML2: redirect the preview-copy to the host Java file so that
+        // For injected FXML: redirect the preview-copy to the host Java file so that
         // QuickFixWrapper routes to our generatePreview override instead of crashing in
         // ProblemDescriptor.getDescriptorForPreview when it can't find the injected XmlTag
         // in the copy (injected PSI trees have no parent beyond the injected file boundary).
@@ -664,7 +664,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
             if (prefixEnd > currentValue.length()) return;
             if (!currentValue.startsWith(prefix, startInValue)) return;
 
-            // For embedded FXML2, schedule host-editor caret restoration to the position
+            // For embedded FXML, schedule host-editor caret restoration to the position
             // immediately after the removed prefix (= start of the retained class/member name).
             PsiFile containingFile = attrVal.getContainingFile();
             InjectedLanguageManager ilm = InjectedLanguageManager.getInstance(project);
@@ -718,7 +718,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
         @Override public @NotNull String getFamilyName() { return "Remove redundant qualifier"; }
 
         // Injected XML elements cannot be found in a file copy; suppress the preview to
-        // avoid an exception when the fix is offered inside an embedded FXML2 fragment.
+        // avoid an exception when the fix is offered inside an embedded FXML fragment.
         @Override
         public @NotNull PsiElement getElementToMakeWritable(@NotNull PsiFile file) {
             return writableElementFor(file);
@@ -742,7 +742,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
             if (attr == null) return;
             if (!fqnAttrName.equals(attr.getName())) return;
 
-            // For embedded FXML2, schedule host-editor caret restoration to the start of the
+            // For embedded FXML, schedule host-editor caret restoration to the start of the
             // attribute name (where the short name begins after the FQN prefix is removed).
             PsiFile containingFile = attr.getContainingFile();
             InjectedLanguageManager ilm = InjectedLanguageManager.getInstance(project);
@@ -794,7 +794,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
         @Override public @NotNull String getFamilyName() { return "Remove redundant qualifier"; }
 
         // Injected XML elements cannot be found in a file copy; suppress the preview to
-        // avoid an exception when the fix is offered inside an embedded FXML2 fragment.
+        // avoid an exception when the fix is offered inside an embedded FXML fragment.
         @Override
         public @NotNull PsiElement getElementToMakeWritable(@NotNull PsiFile file) {
             return writableElementFor(file);
@@ -812,7 +812,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
             if (!(elem instanceof XmlTag tag)) return;
             if (!fqnLocalName.equals(tag.getLocalName())) return;
 
-            // For embedded FXML2, schedule host-editor caret restoration to the start of the
+            // For embedded FXML, schedule host-editor caret restoration to the start of the
             // short tag name.  The tag name begins one character after '<', so the injected
             // offset is tag.getTextRange().getStartOffset() + 1.  After the FQN prefix is
             // removed the short name occupies that same host position.

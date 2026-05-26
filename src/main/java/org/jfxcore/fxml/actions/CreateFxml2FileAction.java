@@ -32,9 +32,9 @@ import java.util.Arrays;
 import java.util.Map;
 
 /**
- * "New -> FXML 2.0 File" action.
+ * "New -> FXML/2 File" action.
  *
- * <p>Creates a new {@code .fxml} file pre-populated with the FXML 2.0 namespaces
+ * <p>Creates a new {@code .fxml} file pre-populated with the FXML/2 namespaces
  * ({@code xmlns:fx="http://jfxcore.org/fxml/2.0"}) and an {@code fx:subclass} attribute
  * derived from the target directory's package and the chosen filename.
  *
@@ -47,7 +47,7 @@ public final class CreateFxml2FileAction extends CreateFileFromTemplateAction im
     private static final String JAVAFX_APPLICATION = "javafx.application.Application";
 
     public CreateFxml2FileAction() {
-        super("FXML 2.0 File", "Creates a new FXML 2.0 file", AllIcons.FileTypes.Xml);
+        super("FXML/2 File", "Creates a new FXML/2 file", AllIcons.FileTypes.Xml);
     }
 
     // -------------------------------------------------------------------------
@@ -59,13 +59,13 @@ public final class CreateFxml2FileAction extends CreateFileFromTemplateAction im
                                @NotNull PsiDirectory directory,
                                @NotNull CreateFileFromTemplateDialog.Builder builder) {
         FileTemplate template = FileTemplateManager.getInstance(project).getInternalTemplate(TEMPLATE_NAME);
-        builder.setTitle("New FXML 2.0 File")
-               .addKind("FXML 2.0 file", AllIcons.FileTypes.Xml, template.getName());
+        builder.setTitle("New FXML/2 File")
+               .addKind("FXML/2 file", AllIcons.FileTypes.Xml, template.getName());
     }
 
     @Override
     protected String getActionName(PsiDirectory directory, @NotNull String newName, String templateName) {
-        return "Create FXML2 File " + newName;
+        return "Create FXML/2 File " + newName;
     }
 
     // -------------------------------------------------------------------------

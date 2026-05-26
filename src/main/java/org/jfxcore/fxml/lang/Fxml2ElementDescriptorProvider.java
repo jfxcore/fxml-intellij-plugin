@@ -18,9 +18,9 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2TagResolver;
 
 /**
- * Provides {@link XmlElementDescriptor} instances for every tag in an FXML2 file.
+ * Provides {@link XmlElementDescriptor} instances for every tag in an FXML file.
  *
- * <p>Resolution priority (mirrors the fxml2 compiler's ObjectToPropertyTransform):
+ * <p>Resolution priority (mirrors the FXML compiler's ObjectToPropertyTransform):
  * <ol>
  *   <li>fx:-namespace intrinsics -> permissive {@link Fxml2ClassTagDescriptor}.</li>
  *   <li>Tag name resolves to a Java class via imports -> {@link Fxml2ClassTagDescriptor}.</li>
@@ -35,9 +35,9 @@ public final class Fxml2ElementDescriptorProvider implements XmlElementDescripto
     /**
      * Per-tag cache for the resolved {@link XmlElementDescriptor}.
      * Invalidated when Java-language PSI changes (class additions, renames, member changes)
-     * or when the containing FXML2 file itself changes (import declarations, structural edits).
+     * or when the containing FXML file itself changes (import declarations, structural edits).
      * This avoids unnecessary re-resolution when unrelated files such as CSS, resource bundles,
-     * or other FXML2 files are edited.
+     * or other FXML files are edited.
      */
     private static final Key<CachedValue<XmlElementDescriptor>> DESCRIPTOR_CACHE =
             Key.create("fxml2.descriptor");
@@ -51,7 +51,7 @@ public final class Fxml2ElementDescriptorProvider implements XmlElementDescripto
     }
 
     /**
-     * Returns the appropriate descriptor for {@code tag} inside an FXML2 file.
+     * Returns the appropriate descriptor for {@code tag} inside an FXML file.
      * This is the single authoritative implementation; both {@link #getDescriptor(XmlTag)} and
      * {@link Fxml2ClassTagDescriptor#getElementDescriptor(XmlTag, XmlTag)} delegate here.
      * Results are cached per {@link XmlTag} and invalidated on any PSI modification.
@@ -77,7 +77,7 @@ public final class Fxml2ElementDescriptorProvider implements XmlElementDescripto
             @NotNull XmlTag tag, @NotNull XmlFile xmlFile) {
         String localName = tag.getLocalName();
 
-        // The synthetic wrapper root added for @ComponentView embedded FXML2; let the XML layer
+        // The synthetic wrapper root added for @ComponentView embedded FXML; let the XML layer
         // treat it as an unknown element without interference from our descriptor logic.
         if (Fxml2EmbeddedUtil.isWrapperRoot(tag)) {
             return null;

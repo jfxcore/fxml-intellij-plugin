@@ -15,7 +15,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
 
 /**
  * Describes an XML child-tag that represents a property in "short element notation" per the
- * <a href="https://jfxcore.github.io/fxml-compiler/property-notation.html">FXML 2.0 spec</a>.
+ * <a href="https://jfxcore.github.io/fxml-compiler/property-notation.html">FXML/2 spec</a>.
  *
  * <p>Examples:
  * <pre>{@code

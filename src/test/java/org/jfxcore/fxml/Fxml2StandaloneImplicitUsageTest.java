@@ -36,12 +36,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for {@link Fxml2StandaloneImplicitUsageProvider}: the provider that suppresses
  * false-positive "Field/Method/Function 'X' is never used" warnings for fields and
  * property-accessor methods (including Kotlin functions) that are referenced in
- * <em>standalone</em> FXML2 files via binding expressions.
+ * <em>standalone</em> FXML files via binding expressions.
  *
  * <h3>Scenario</h3>
  * <p>A view class (Java or Kotlin) has a {@code vm} field of a ViewModel type.
  * The ViewModel exposes a JavaFX property via {@code labelTextProperty()}.
- * A standalone FXML2 file binds to this property as {@code {fx:Observe vm.labelText}}.
+ * A standalone FXML file binds to this property as {@code {fx:Observe vm.labelText}}.
  *
  * <p>Without the provider, Kotlin's unused-declaration inspection would report
  * {@code fun labelTextProperty()} as "Function is never used" because Kotlin queries
@@ -50,12 +50,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * handles {@link PsiField} and {@link PsiMethod}.
  *
  * <p>With the provider, both Java and Kotlin property accessor methods are recognized as
- * implicitly used when referenced in standalone FXML2 files.
+ * implicitly used when referenced in standalone FXML files.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
-    /** Base class normally produced by the fxml2 compiler; needed so TestView extends it. */
+    /** Base class normally produced by the FXML compiler; needed so TestView extends it. */
     @BeforeAll
     void addCommonClasses() {
         getFixture().addClass("""
@@ -68,13 +68,13 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Java property-accessor method referenced in standalone FXML2 file
+    // Java property-accessor method referenced in standalone FXML file
     // -----------------------------------------------------------------------
 
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must report a Java
      * {@code xProperty()} method as implicitly used when the method is referenced
-     * in a standalone FXML2 file via a binding expression (e.g.
+     * in a standalone FXML file via a binding expression (e.g.
      * {@code {fx:Observe vm.labelText}}).
      *
      * <p>Verifies: Java {@link PsiMethod} -> {@code true}.
@@ -109,7 +109,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     protected void initializeComponent() {}
                 }
                 """);
-        // Standalone FXML2 file that binds to vm.labelText
+        // Standalone FXML file that binds to vm.labelText
         getFixture().addFileToProject("test/JavaStandaloneView.fxml", fxml2(
                 "javafx.scene.control.Label",
                 """
@@ -143,16 +143,16 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(labelTextProperty),
                     "isImplicitUsage must return true for a Java xProperty() method "
-                    + "referenced in a standalone FXML2 binding expression");
+                    + "referenced in a standalone FXML binding expression");
             assertTrue(provider.isImplicitRead(labelTextProperty),
                     "isImplicitRead must return true for a Java xProperty() method "
-                    + "referenced in a standalone FXML2 binding expression");
+                    + "referenced in a standalone FXML binding expression");
         });
     }
 
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must NOT report a Java method as
-     * implicitly used when that method is NOT referenced in any standalone FXML2 file.
+     * implicitly used when that method is NOT referenced in any standalone FXML file.
      */
     @Test
     void javaMethodNotReferencedInFxmlIsNotReportedAsUsed() {
@@ -182,20 +182,20 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertFalse(provider.isImplicitUsage(hiddenProperty),
                     "isImplicitUsage must return false for a Java method NOT referenced "
-                    + "in any standalone FXML2 file");
+                    + "in any standalone FXML file");
             assertFalse(provider.isImplicitRead(hiddenProperty),
                     "isImplicitRead must return false for a Java method NOT referenced "
-                    + "in any standalone FXML2 file");
+                    + "in any standalone FXML file");
         });
     }
 
     // -----------------------------------------------------------------------
-    // Java field referenced in standalone FXML2 file
+    // Java field referenced in standalone FXML file
     // -----------------------------------------------------------------------
 
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must report a Java field as
-     * implicitly used when the field is referenced in a standalone FXML2 binding
+     * implicitly used when the field is referenced in a standalone FXML binding
      * expression (e.g. {@code {fx:Observe vm.labelText}}).
      *
      * <p>Verifies: Java {@link PsiField} -> {@code true}.
@@ -245,28 +245,28 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(field),
                     "isImplicitUsage must return true for a Java field referenced "
-                    + "in a standalone FXML2 binding expression");
+                    + "in a standalone FXML binding expression");
             assertTrue(provider.isImplicitRead(field),
                     "isImplicitRead must return true for a Java field referenced "
-                    + "in a standalone FXML2 binding expression");
+                    + "in a standalone FXML binding expression");
         });
     }
 
     // -----------------------------------------------------------------------
-    // Kotlin property function referenced in standalone FXML2 file
+    // Kotlin property function referenced in standalone FXML file
     // -----------------------------------------------------------------------
 
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must report a Kotlin function with the
      * {@code xProperty()} naming pattern as implicitly used when the function is referenced
-     * in a standalone FXML2 file via a binding expression (e.g.
+     * in a standalone FXML file via a binding expression (e.g.
      * {@code {fx:Observe vm.labelText}}).
      *
      * <p>A Kotlin {@code xProperty()} function bound via {@code {fx:Observe vm.x}} in a
      * standalone {@code .fxml} file must be reported as implicitly used.
      * Kotlin's unused-declaration inspection queries {@code useScope}
      * via the {@code KtNamedFunction} (not the {@code KtLightMethod} wrapper), so
-     * {@link org.jfxcore.fxml.lang.Fxml2UseScopeEnlarger} must add FXML2 files to the
+     * {@link org.jfxcore.fxml.lang.Fxml2UseScopeEnlarger} must add FXML files to the
      * scope for {@code KtNamedFunction} elements as well.
      *
      * <p>Verifies: Kotlin {@code KtNamedFunction} (obtained via
@@ -297,7 +297,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     public KtStandaloneView() { initializeComponent(); }
                 }
                 """);
-        // Standalone FXML2 file that binds to vm.labelText
+        // Standalone FXML file that binds to vm.labelText
         getFixture().configureByText("KtStandaloneView.fxml", fxml2(
                 "javafx.scene.control.Label",
                 """
@@ -336,16 +336,16 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
             // The KtNamedFunction is what Kotlin's inspection passes to isImplicitUsage.
             assertTrue(provider.isImplicitUsage(ktFun),
                     "isImplicitUsage must return true for a Kotlin fun xProperty() "
-                    + "referenced as 'x' in a standalone FXML2 binding expression");
+                    + "referenced as 'x' in a standalone FXML binding expression");
             assertTrue(provider.isImplicitRead(ktFun),
                     "isImplicitRead must return true for a Kotlin fun xProperty() "
-                    + "referenced as 'x' in a standalone FXML2 binding expression");
+                    + "referenced as 'x' in a standalone FXML binding expression");
         });
     }
 
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must NOT report a Kotlin function as
-     * implicitly used when that function is NOT referenced in any standalone FXML2 file.
+     * implicitly used when that function is NOT referenced in any standalone FXML file.
      */
     @Test
     void kotlinFunctionNotReferencedInFxmlIsNotReportedAsUsed() {
@@ -377,21 +377,21 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertFalse(provider.isImplicitUsage(ktFun),
                     "isImplicitUsage must return false for a Kotlin function NOT referenced "
-                    + "in any standalone FXML2 file");
+                    + "in any standalone FXML file");
             assertFalse(provider.isImplicitRead(ktFun),
                     "isImplicitRead must return false for a Kotlin function NOT referenced "
-                    + "in any standalone FXML2 file");
+                    + "in any standalone FXML file");
         });
     }
 
     // -----------------------------------------------------------------------
-    // Kotlin val property (no @JvmField) referenced in standalone FXML2 file
+    // Kotlin val property (no @JvmField) referenced in standalone FXML file
     // -----------------------------------------------------------------------
 
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must report a regular Kotlin {@code val}
      * property (without {@code @JvmField}) as implicitly used when the property is referenced
-     * in a standalone FXML2 file via a binding expression (e.g.
+     * in a standalone FXML file via a binding expression (e.g.
      * {@code {fx:Observe vm.message}}).
      *
      * <p>For a Kotlin {@code val} property without {@code @JvmField}, the Kotlin compiler
@@ -455,17 +455,17 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(ktProp),
                     "isImplicitUsage must return true for a Kotlin val property "
-                    + "referenced in a standalone FXML2 binding expression");
+                    + "referenced in a standalone FXML binding expression");
             assertTrue(provider.isImplicitRead(ktProp),
                     "isImplicitRead must return true for a Kotlin val property "
-                    + "referenced in a standalone FXML2 binding expression");
+                    + "referenced in a standalone FXML binding expression");
         });
     }
 
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must NOT report a Kotlin {@code val}
      * property as implicitly used when that property is NOT referenced in any standalone
-     * FXML2 file.
+     * FXML file.
      */
     @Test
     void kotlinValPropertyNotReferencedInFxmlIsNotReportedAsUsed() {
@@ -496,22 +496,22 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertFalse(provider.isImplicitUsage(ktProp),
                     "isImplicitUsage must return false for a Kotlin val property NOT "
-                    + "referenced in any standalone FXML2 file");
+                    + "referenced in any standalone FXML file");
             assertFalse(provider.isImplicitRead(ktProp),
                     "isImplicitRead must return false for a Kotlin val property NOT "
-                    + "referenced in any standalone FXML2 file");
+                    + "referenced in any standalone FXML file");
         });
     }
 
     /**
      * When a Kotlin code-behind class directly declares {@code val vm: ObjectProperty<Vm>}
      * (without a companion {@code vmProperty()} function), the {@code "vm"} binding-path
-     * segment in the standalone FXML2 file must resolve and the property must be recognized
+     * segment in the standalone FXML file must resolve and the property must be recognized
      * as implicitly used.
      *
      * <p>This covers the scenario where the code-behind class itself has a Kotlin
      * {@code val} property as a direct member (not inside a separate ViewModel class).
-     * The fxml2 compiler accepts this because it generates a public getter
+     * The FXML compiler accepts this because it generates a public getter
      * {@code getVm()} from the {@code val} declaration. The plugin must do the same.
      *
      * <p>Verifies: {@code KtProperty vm} directly on the code-behind class ->
@@ -574,10 +574,10 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(ktProp),
                     "isImplicitUsage must return true for a Kotlin val property "
-                    + "declared directly on the code-behind class and referenced in FXML2");
+                    + "declared directly on the code-behind class and referenced in FXML");
             assertTrue(provider.isImplicitRead(ktProp),
                     "isImplicitRead must return true for a Kotlin val property "
-                    + "declared directly on the code-behind class and referenced in FXML2");
+                    + "declared directly on the code-behind class and referenced in FXML");
         });
     }
 
@@ -589,11 +589,11 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must not throw
      * {@link PsiInvalidElementAccessException} when a cached binding-segment reference
-     * in a standalone FXML2 file resolves to a {@code KtLightMethod} or
+     * in a standalone FXML file resolves to a {@code KtLightMethod} or
      * {@code KtLightField} whose underlying Kotlin source element has been invalidated.
      *
      * <p>This scenario arises when a Kotlin source file is edited while IntelliJ's
-     * highlighting pass is scanning FXML2 files for implicit usages.  The FXML2 file's
+     * highlighting pass is scanning FXML files for implicit usages.  The FXML file's
      * {@link com.intellij.psi.PsiReference} cache retains the old
      * {@link Fxml2BindingSegmentReference} whose {@code myDeclaration} still points to
      * a now-invalid {@code KtLightMethod}.  Calling {@code getNavigationElement()} on
@@ -715,7 +715,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
     /**
      * {@link Fxml2UseScopeEnlarger} must return a non-null additional scope for a Kotlin
      * {@code val} property ({@code KtProperty}), so that IntelliJ's word-index-based
-     * "cheap enough to search" pre-check includes FXML2 files when determining whether
+     * "cheap enough to search" pre-check includes FXML files when determining whether
      * a Kotlin property has any textual occurrences.
      *
      * <p>Without this, the K2 Kotlin unused-declaration inspection calls
@@ -753,7 +753,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
             SearchScope scope = enlarger.getAdditionalUseScope(ktProp);
             assertNotNull(scope,
                     "UseScopeEnlarger must return a non-null scope for a public Kotlin val property "
-                    + "so that FXML2 files are included in the word-index search");
+                    + "so that FXML files are included in the word-index search");
         });
     }
 
@@ -794,7 +794,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
             SearchScope scope = enlarger.getAdditionalUseScope(ktFun);
             assertNotNull(scope,
                     "UseScopeEnlarger must return a non-null scope for a public Kotlin xProperty() "
-                    + "function so that FXML2 files are included in the word-index search");
+                    + "function so that FXML files are included in the word-index search");
         });
     }
 
@@ -806,7 +806,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
      * {@link MethodReferencesSearch} on a Kotlin-generated getter method (e.g.
      * {@code getSayHelloCommand()} for {@code val sayHelloCommand}) must find the
      * {@link Fxml2BindingSegmentReference} for the corresponding binding-path segment
-     * in a standalone FXML2 file.
+     * in a standalone FXML file.
      *
      * <p>This is the code path exercised by the K2 Kotlin unused-declaration inspection:
      * it calls {@code declaration.toLightMethods()} to get the getter, then calls
@@ -876,7 +876,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertFalse(found.isEmpty(),
                     "MethodReferencesSearch.search(getter) must find the Fxml2BindingSegmentReference "
-                    + "for 'message' in the standalone FXML2 file; found none. "
+                    + "for 'message' in the standalone FXML file; found none. "
                     + "This is the code path used by the K2 Kotlin unused-declaration inspection "
                     + "to determine whether a val property has usages.");
 
@@ -920,7 +920,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2StandaloneImplicitUsageProvider} must report a Kotlin property as
-     * implicitly used when the property is referenced in a standalone FXML2 binding
+     * implicitly used when the property is referenced in a standalone FXML binding
      * expression.
      *
      * <p>Verifies: Kotlin {@code KtProperty} (via navigation element of field or getter) ->
@@ -974,10 +974,10 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertTrue(provider.isImplicitUsage(field),
                     "isImplicitUsage must return true for a Kotlin @JvmField property "
-                    + "referenced in a standalone FXML2 binding expression");
+                    + "referenced in a standalone FXML binding expression");
             assertTrue(provider.isImplicitRead(field),
                     "isImplicitRead must return true for a Kotlin @JvmField property "
-                    + "referenced in a standalone FXML2 binding expression");
+                    + "referenced in a standalone FXML binding expression");
         });
     }
 
@@ -987,7 +987,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2KotlinUnusedSymbolSuppressor} must return {@code true} for a
-     * {@code KtProperty} that IS referenced in a standalone FXML2 binding expression,
+     * {@code KtProperty} that IS referenced in a standalone FXML binding expression,
      * so that K2's {@code KotlinUnusedHighlightingProcessor} suppresses the
      * "Property is never used" warning at its early {@code inspectionResultSuppressed}
      * check (before the unreliable {@code hasNonTrivialUsages} path).
@@ -1040,7 +1040,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertTrue(suppressor.isSuppressedFor(ktProp, "unused"),
                     "isSuppressedFor must return true for a KtProperty referenced in a "
-                    + "standalone FXML2 binding expression, so that the Kotlin unused-symbol "
+                    + "standalone FXML binding expression, so that the Kotlin unused-symbol "
                     + "inspection is suppressed at the early inspectionResultSuppressed check. "
                     + "The toolId is 'unused' because the K1 and K2 UnusedSymbolInspection "
                     + "registrations declare suppressId=\"unused\": the suppressor must match "
@@ -1050,7 +1050,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2KotlinUnusedSymbolSuppressor} must return {@code false} for a
-     * {@code KtProperty} that is NOT referenced in any standalone FXML2 file.
+     * {@code KtProperty} that is NOT referenced in any standalone FXML file.
      *
      * <p>Verifies: {@code isSuppressedFor(KtProperty, "unused")} -> {@code false}
      * when there is no FXML binding to the property.
@@ -1084,7 +1084,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertFalse(suppressor.isSuppressedFor(ktProp, "unused"),
                     "isSuppressedFor must return false for a KtProperty NOT referenced in "
-                    + "any standalone FXML2 file: the suppressor must not suppress genuinely "
+                    + "any standalone FXML file: the suppressor must not suppress genuinely "
                     + "unused properties");
         });
     }
@@ -1092,7 +1092,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
     /**
      * {@link Fxml2KotlinUnusedSymbolSuppressor} must return {@code false} when the
      * {@code toolId} is not {@code "unused"}, regardless of whether the element
-     * is referenced in FXML2.
+     * is referenced in FXML.
      *
      * <p>Verifies: {@code isSuppressedFor(KtProperty, "SomeOtherInspection")} -> {@code false}.
      */
@@ -1218,7 +1218,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
      * so the suppressor must match that exact string.  A previous version of the suppressor
      * checked for {@code "UnusedSymbol"} (the inspection's short name) and was therefore
      * never invoked, leaving false-positive "Property is never used" warnings on Kotlin
-     * properties referenced from standalone FXML2 binding expressions.
+     * properties referenced from standalone FXML binding expressions.
      *
      * <p>This test goes through the public IntelliJ API surface
      * (LangInspectionSuppressor
@@ -1314,18 +1314,18 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     com.intellij.codeInspection.SuppressionUtil.inspectionResultSuppressed(
                             ktProp, stubInspection),
                     "SuppressionUtil.inspectionResultSuppressed must return true for a "
-                    + "KtProperty referenced in standalone FXML2, when the inspection's "
+                    + "KtProperty referenced in standalone FXML, when the inspection's "
                     + "suppressId is \"unused\" (matching the production K1/K2 registration).");
         });
     }
 
     // -----------------------------------------------------------------------
-    // Event-handler method references in standalone FXML2
+    // Event-handler method references in standalone FXML
     // -----------------------------------------------------------------------
 
     /**
      * A plain Java event-handler method (e.g. {@code public void handleAction()}) referenced
-     * by name in a standalone FXML2 attribute value (e.g. {@code <Button onAction="handleAction"/>})
+     * by name in a standalone FXML attribute value (e.g. {@code <Button onAction="handleAction"/>})
      * must NOT be reported as implicitly used.
      *
      * <p>Such methods have an actual {@link com.intellij.psi.PsiReference} provided by
@@ -1394,7 +1394,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
      *
      * <p>The {@link Fxml2UseScopeEnlarger} must enlarge the use scope for 1-param methods
      * so that {@link MethodReferencesSearch} (via {@code Fxml2EventHandlerMethodSearcher})
-     * can find the FXML2 reference and suppress the "unused" warning correctly.
+     * can find the FXML reference and suppress the "unused" warning correctly.
      */
     @Test
     void javaEventHandlerMethodWithParamReferencedInStandaloneFxmlIsNotImplicitlyUsed() {
@@ -1442,14 +1442,14 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2UseScopeEnlarger} must enlarge the use scope for a Java method with a
-     * single non-setter parameter so that {@code MethodReferencesSearch} can scan FXML2
+     * single non-setter parameter so that {@code MethodReferencesSearch} can scan FXML
      * files for event-handler references.
      *
      * <p>Without this enlargement, the IntelliJ "unused declaration" analysis would call
      * {@code isCheapEnoughToSearch(name, scope)} with a scope that excludes FXML files.
      * If the method name has zero occurrences in that narrow scope,
      * {@link com.intellij.codeInsight.daemon.impl.UnusedSymbolUtil#processUsages} exits
-     * early and never invokes {@code MethodReferencesSearch}, so the FXML2 reference goes
+     * early and never invokes {@code MethodReferencesSearch}, so the FXML reference goes
      * undetected and an "unused" warning appears.
      */
     @Test
@@ -1476,22 +1476,22 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
             SearchScope scope = enlarger.getAdditionalUseScope(methods[0]);
             assertNotNull(scope,
                     "UseScopeEnlarger must return a non-null scope for a public 1-param "
-                    + "non-setter Java method so that FXML2 files are included in the word-index "
+                    + "non-setter Java method so that FXML files are included in the word-index "
                     + "search used by the unused-declaration analysis");
         });
     }
 
     /**
      * {@link MethodReferencesSearch} with {@code strict=true} and the method's actual use
-     * scope (as returned by {@link PsiSearchHelper#getUseScope}) must find the FXML2
+     * scope (as returned by {@link PsiSearchHelper#getUseScope}) must find the FXML
      * event-handler attribute reference.
      *
      * <p>This test mirrors the exact call path used by IntelliJ's "unused declaration"
      * analysis: {@code UnusedSymbolUtil.processUsages} calls
      * {@code MethodReferencesSearch.search(method, useScope, true)} where {@code useScope}
      * is {@code PsiSearchHelper.getUseScope(method)}.  If this search does not find the
-     * FXML2 attribute, the analysis concludes "no usages" and emits the
-     * "Method 'X' is never used" warning, even though the method IS referenced from FXML2.
+     * FXML attribute, the analysis concludes "no usages" and emits the
+     * "Method 'X' is never used" warning, even though the method IS referenced from FXML.
      *
      * <p>For the search to succeed:
      * <ol>
@@ -1557,7 +1557,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
 
             assertFalse(found.isEmpty(),
                     "MethodReferencesSearch with strict=true and the method's use scope must " +
-                    "find the FXML2 event-handler reference. This is the path taken by the " +
+                    "find the FXML event-handler reference. This is the path taken by the " +
                     "'unused declaration' analysis to determine whether to show the " +
                     "'Method is never used' warning. If this fails, the warning cannot be " +
                     "suppressed via MethodReferencesSearch alone.");
@@ -1565,7 +1565,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
     }
 
     /**
-     * A plain Java method that is NOT referenced as an event handler in any FXML2 file
+     * A plain Java method that is NOT referenced as an event handler in any FXML file
      * must NOT be reported as implicitly used.
      */
     @Test
@@ -1600,7 +1600,7 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
             var provider = new Fxml2StandaloneImplicitUsageProvider();
             assertFalse(provider.isImplicitUsage(methods[0]),
                     "isImplicitUsage must return false for a method not referenced "
-                    + "as event handler in any FXML2 file");
+                    + "as event handler in any FXML file");
         });
     }
 }

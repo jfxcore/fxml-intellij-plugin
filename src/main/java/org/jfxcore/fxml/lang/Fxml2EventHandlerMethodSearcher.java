@@ -31,13 +31,13 @@ import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 import java.util.List;
 
 /**
- * {@link MethodReferencesSearch} extension that surfaces FXML2 event-handler attribute
+ * {@link MethodReferencesSearch} extension that surfaces FXML event-handler attribute
  * values as usages of the referenced code-behind method.
  *
- * <p>When a property type is {@code EventHandler<T>}, the fxml2 compiler treats a plain
+ * <p>When a property type is {@code EventHandler<T>}, the FXML compiler treats a plain
  * method name in the attribute value (e.g. {@code onAction="handleClick"}) as a reference
  * to the named method on the code-behind class.  This searcher ensures that "Find Usages"
- * on the Java method also shows the FXML2 attribute as a use site.
+ * on the Java method also shows the FXML attribute as a use site.
  *
  * <p>Complements {@link Fxml2ReferenceContributor}'s {@code EventHandlerMethodReferenceProvider},
  * which provides the reference for Ctrl+click navigation.  The searcher is needed for the
@@ -61,7 +61,7 @@ public final class Fxml2EventHandlerMethodSearcher
 
         Project project = ReadAction.compute(target::getProject);
 
-        // Standalone FXML2 files: pre-filter via the word index, then walk each candidate.
+        // Standalone FXML files: pre-filter via the word index, then walk each candidate.
         // XML attribute values are indexed as IN_PLAIN_TEXT, so processAllFilesWithWordInText
         // finds files where the method name appears verbatim as content text.
         boolean[] shouldContinue = {true};
@@ -83,7 +83,7 @@ public final class Fxml2EventHandlerMethodSearcher
 
         if (!shouldContinue[0]) return false;
 
-        // Embedded FXML2 markup: injected XML is not indexed, but the host file's text
+        // Embedded FXML markup: injected XML is not indexed, but the host file's text
         // (Java text-block or Kotlin raw string) is indexed as plain text.
         ReadAction.run(() ->
             Fxml2EmbeddedUtil.processAnnotatedClassesContainingWord(

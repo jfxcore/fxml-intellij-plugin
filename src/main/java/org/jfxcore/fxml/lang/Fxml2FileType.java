@@ -12,7 +12,7 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import javax.swing.Icon;
 
 /**
- * File type for FXML 2.0 files, specifically those {@code .fxml} files that carry the JFXcore
+ * File type for FXML/2 files, specifically those {@code .fxml} files that carry the JFXcore
  * {@code xmlns:fx="http://jfxcore.org/fxml/2.0"} namespace declaration on their root element.
  *
  * <p>By extending {@link XmlLikeFileType} and backing it with {@link XMLLanguage#INSTANCE} the IDE
@@ -30,12 +30,12 @@ public final class Fxml2FileType extends XmlLikeFileType {
 
     @Override
     public @NotNull String getName() {
-        return "FXML 2.0";
+        return "FXML/2";
     }
 
     @Override
     public @NotNull String getDescription() {
-        return "FXML 2.0 file (JFXcore)";
+        return "FXML/2 file";
     }
 
     @Override
@@ -47,13 +47,12 @@ public final class Fxml2FileType extends XmlLikeFileType {
 
     @Override
     public @NotNull Icon getIcon() {
-        // Use the standard XML file icon until a dedicated FXML 2.0 icon is available.
         return AllIcons.FileTypes.Xml;
     }
 
     /**
-     * Returns {@code true} when {@code text} contains the JFXcore FXML 2.0 namespace URI,
-     * which is the definitive marker of an FXML 2.0 document.
+     * Returns {@code true} when {@code text} contains the FXML/2 namespace URI,
+     * which is the definitive marker of an FXML/2 document.
      * Used by both the file-type detector/overrider (byte content) and the PSI-level check.
      */
     public static boolean isFxml2(@NotNull CharSequence text) {
@@ -61,7 +60,7 @@ public final class Fxml2FileType extends XmlLikeFileType {
     }
 
     /**
-     * Returns {@code true} when {@code file} is an FXML 2.0 document.
+     * Returns {@code true} when {@code file} is an FXML/2 document.
      *
      * <p>{@code PsiFile.getFileType()} always returns the underlying language's file type
      * ({@code XmlFileType}) regardless of any {@link com.intellij.openapi.fileTypes.impl.FileTypeOverrider}.

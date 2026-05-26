@@ -24,9 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests for event-handler syntax in FXML2.
+ * Tests for event-handler syntax in FXML.
  *
- * <p>FXML2 supports two forms of event handler assignment on code-behind classes:
+ * <p>FXML/2 supports two forms of event handler assignment on code-behind classes:
  * <ol>
  *   <li><b>Field handlers</b>: {@code onAction="$myHandler"}: a {@code $}-prefixed reference
  *       to an {@code EventHandler}-typed field on the code-behind class.</li>
@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       value is a method reference, not a literal string.</li>
  * </ol>
  *
- * <p>Corresponds to {@code event-handlers.md} in the fxml2 compiler documentation.
+ * <p>Corresponds to {@code event-handlers.md} in the FXML compiler documentation.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2EventHandlerTest extends Fxml2TestBase {
@@ -340,7 +340,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * "Find Usages" on a code-behind event-handler method must discover the FXML2
+     * "Find Usages" on a code-behind event-handler method must discover the FXML
      * attribute value that references it by name.
      */
     @Test
@@ -375,12 +375,12 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
                     handlerMethod, GlobalSearchScope.allScope(project), true).findAll();
 
             assertFalse(refs.isEmpty(),
-                    "MethodReferencesSearch must find handleAction usage in FXML2 attribute");
+                    "MethodReferencesSearch must find handleAction usage in FXML attribute");
         });
     }
 
     /**
-     * "Find Usages" on a zero-parameter handler method must discover the FXML2
+     * "Find Usages" on a zero-parameter handler method must discover the FXML
      * attribute value referencing it.
      */
     @Test
@@ -406,7 +406,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
                     methods[0], GlobalSearchScope.allScope(project), true).findAll();
 
             assertFalse(refs.isEmpty(),
-                    "MethodReferencesSearch must find handleActionNoParam usage in FXML2 attribute");
+                    "MethodReferencesSearch must find handleActionNoParam usage in FXML attribute");
         });
     }
 
@@ -442,7 +442,7 @@ class Fxml2EventHandlerTest extends Fxml2TestBase {
             // No usage should be found: mouseHandler has an incompatible signature for onAction
             assertTrue(refs.isEmpty() || refs.stream().noneMatch(r ->
                     r.getElement().getContainingFile().getName().endsWith(".fxml")),
-                    "mouseHandler must not be found as an event-handler usage in FXML2");
+                    "mouseHandler must not be found as an event-handler usage in FXML");
         });
     }
 

@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 /**
- * Tests that correspond to the fxml2 compiler's FxmlParserTest (both unit and
+ * Tests that correspond to the FXML compiler's FxmlParserTest (both unit and
  * integration variants).
  *
  * <p>Source compiler tests:

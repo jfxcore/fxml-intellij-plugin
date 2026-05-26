@@ -24,19 +24,19 @@ import java.util.regex.Pattern;
 
 /**
  * {@link ReferencesSearch} extension that finds {@link Fxml2StyleClassReference}s in
- * FXML2 files (both standalone and embedded) that reference a CSS class selector.
+ * FXML files (both standalone and embedded) that reference a CSS class selector.
  *
  * <h3>Why is this needed?</h3>
  * <p>When "Find Usages" (Alt+F7) is invoked on a CSS class selector (e.g. {@code .my-style1}
  * in a {@code .css} file), IntelliJ's standard reference search does not discover usages
- * in FXML2 files because:
+ * in FXML files because:
  * <ul>
- *   <li>The FXML2 plugin represents CSS class selectors as {@link CssSelectorElement}
+ *   <li>The FXML plugin represents CSS class selectors as {@link CssSelectorElement}
  *       (a {@code FakePsiElement}), which is not identity-equal to the CSS plugin's PSI
  *       element for the same selector.</li>
  *   <li>CSS class names with hyphens (e.g. {@code my-style1}) are not indexed as a single
  *       word in IntelliJ's word index, so {@code CachesBasedRefSearcher} cannot find them.</li>
- *   <li>Embedded FXML2 markup inside {@code @ComponentView} text-block literals is never
+ *   <li>Embedded FXML markup inside {@code @ComponentView} text-block literals is never
  *       indexed in the word index at all.</li>
  * </ul>
  *
@@ -54,9 +54,9 @@ import java.util.regex.Pattern;
  *
  * <p>For each candidate CSS class name, this searcher:
  * <ol>
- *   <li>Iterates all standalone FXML2 files ({@code .fxml} and {@code .fxml2}) via
+ *   <li>Iterates all standalone FXML files ({@code .fxml} and {@code .fxml2}) via
  *       {@link FilenameIndex}.</li>
- *   <li>Iterates all embedded FXML2 fragments in {@code @ComponentView}-annotated
+ *   <li>Iterates all embedded FXML fragments in {@code @ComponentView}-annotated
  *       classes via {@link Fxml2EmbeddedUtil#processAnnotatedClasses}.</li>
  *   <li>For each file, visits {@code styleClass} attributes and returns the
  *       {@link Fxml2StyleClassReference} tokens whose class name matches.</li>
@@ -93,7 +93,7 @@ public final class Fxml2StyleClassSearcher
             }
         });
 
-        // Search embedded FXML2 markup in @ComponentView-annotated classes.
+        // Search embedded FXML markup in @ComponentView-annotated classes.
         // Java text-block content is indexed as IN_PLAIN_TEXT; Kotlin raw strings as IN_STRINGS.
         // For hyphenated class names (e.g. "my-style1") the word tokenizer splits at hyphens,
         // so we use the first segment as the pre-filter word to narrow candidate files,

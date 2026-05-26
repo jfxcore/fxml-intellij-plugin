@@ -73,7 +73,7 @@ import static com.intellij.patterns.XmlPatterns.xmlAttributeValue;
 import static com.intellij.patterns.XmlPatterns.xmlTag;
 
 /**
- * Provides autocomplete for FXML 2.0 files:
+ * Provides autocomplete for FXML files:
  * <ol>
  *   <li><b>Tag names</b>: imported classes (and classes resolvable from the project via auto-import)</li>
  *   <li><b>Attribute literal values</b>: enum constants and public static fields on the property type</li>
@@ -211,9 +211,9 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             }
         }
 
-        // -- Plain attribute name in embedded FXML2 ----------------------------------------
+        // -- Plain attribute name in embedded FXML ----------------------------------------
         // XmlAttributeInsertHandler.handleInsert() inspects file.getContext().getText() to
-        // choose between ' and " as the attribute-value delimiter.  For embedded FXML2 the
+        // choose between ' and " as the attribute-value delimiter.  For embedded FXML the
         // context element is the host Java PsiLiteralExpression (a text block) whose text
         // starts with '"""' (i.e. the first char is '"'), so the handler incorrectly uses
         // single quotes ('=\'\'') instead of double quotes ('=""').
@@ -604,7 +604,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             // 1. Complete from existing imports
             for (String importFqn : Fxml2ImportResolver.parseImports(xmlFile)) {
                 if (importFqn.endsWith(".*")) {
-                    // Wildcard import (common in embedded FXML2 synthesised from Java imports):
+                    // Wildcard import (common in embedded FXML synthesised from Java imports):
                     // expand to all classes in the package so they appear in completion.
                     String pkgName = importFqn.substring(0, importFqn.length() - 2);
                     PsiPackage pkg = JavaPsiFacade.getInstance(xmlFile.getProject())
@@ -1393,7 +1393,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 }
             } else if (startClass == null) {
                 // No resolvable start class, but at the first-segment root-context level
-                // we can still offer fx:id-declared elements, since the fxml2 compiler will
+                // we can still offer fx:id-declared elements, since the FXML compiler will
                 // inject them into the base class once the project is built.
                 if (selector == null || selector.isThis()) {
                     CompletionResultSet fxIdPrefixResult = result.withPrefixMatcher(
@@ -1448,7 +1448,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                     addFxIdCompletions(xmlFile, partialName, prefixResult);
                 }
 
-                // Root-tag class fallback: when the fxml2 compiler-generated base class is absent
+                // Root-tag class fallback: when the FXML compiler-generated base class is absent
                 // (stale build), the code-behind's supertype chain does not include the root-element
                 // type. The compiler always generates "class FooBase extends <rootTagType>", making
                 // the root-tag class an effective supertype of the code-behind. Mirror this here so
@@ -1489,10 +1489,10 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
          *
          * <p>The lookup string is the fx:id value (e.g. {@code "myButton3"}), the type
          * text is the element's tag class name (e.g. {@code "Button"}), and the icon is
-         * the field icon, matching how the fxml2 compiler exposes these as injected
+         * the field icon, matching how the FXML compiler exposes these as injected
          * fields in the generated base class.
          *
-         * @param xmlFile     the FXML2 file to scan
+         * @param xmlFile     the FXML file to scan
          * @param partialName the partial name typed so far; only names starting with this
          *                    prefix are offered (empty string means all)
          * @param result      the completion result set to add items to
@@ -1762,7 +1762,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
          * Offers public static no-arg methods on {@code tagClass} (and its supertypes)
          * as completion candidates for the {@code fx:factory} attribute value.
          *
-         * <p>The fxml2 compiler uses the factory method to obtain the instance instead of
+         * <p>The FXML compiler uses the factory method to obtain the instance instead of
          * calling a constructor, so the method must return an instance of (or assignable to)
          * the declaring class. We simply offer all public static no-arg methods and let the
          * developer pick the right one.
@@ -1915,11 +1915,11 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2 attribute-name insert handler
+    // Embedded FXML attribute-name insert handler
     // -----------------------------------------------------------------------
 
     /**
-     * Attribute-name insert handler for embedded FXML2.
+     * Attribute-name insert handler for embedded FXML.
      *
      * <p>Overrides {@code XmlAttributeInsertHandler} in embedded contexts to handle two
      * embedded-specific requirements:
@@ -1927,7 +1927,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
      * <ol>
      *   <li><b>Wrong quote character</b>: {@code XmlAttributeInsertHandler} checks whether
      *       {@code file.getContext().getText()} starts with {@code '"'} and, if so, uses
-     *       single quotes ({@code =''}).  For embedded FXML2 the context element is the host
+     *       single quotes ({@code =''}).  For embedded FXML the context element is the host
      *       Java {@code PsiLiteralExpression} (a text block, {@code """..."""}), which also
      *       starts with {@code '"'}, so the handler incorrectly uses single quotes.
      *       This handler always uses double quotes ({@code =""}).</li>
@@ -1952,7 +1952,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             final CharSequence chars = document.getCharsSequence();
 
             // Respect the "Insert quotes for attribute value" preference, but always use
-            // double quotes (not single quotes) for embedded FXML2.
+            // double quotes (not single quotes) for embedded FXML.
             final boolean insertQuotes =
                     WebEditorOptions.getInstance().isInsertQuotesForAttributeValue();
 

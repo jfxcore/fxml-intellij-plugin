@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A soft, always-unresolved {@link PsiReference} covering an entire FXML 2.0 binding
+ * A soft, always-unresolved {@link PsiReference} covering an entire FXML binding
  * expression in an XML attribute value (e.g. {@code $vm.message},
  * {@code {fx:Observe vm.message}}).
  *
@@ -40,7 +40,7 @@ public final class Fxml2ExpressionReference extends PsiReferenceBase<XmlAttribut
         return new TextRange(0, text.length());
     }
 
-    /** Always returns {@code null}: the expression is handled by the fxml2 compiler, not the IDE. */
+    /** Always returns {@code null}: the expression is handled by the FXML compiler, not the IDE. */
     @Override
     public @Nullable PsiElement resolve() {
         return null;

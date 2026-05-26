@@ -14,19 +14,19 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import java.util.Set;
 
 /**
- * Shared utility for import-related checks used across standalone and embedded FXML2.
+ * Shared utility for import-related checks used across standalone and embedded FXML.
  *
  * <p>This logic is shared between:
  * <ul>
  *   <li>{@link Fxml2JavaUnusedImportHighlightFilter}: suppresses Java "Unused import"
- *       highlights for imports that are referenced inside FXML2 embedded markup.</li>
+ *       highlights for imports that are referenced inside FXML embedded markup.</li>
  *   <li>{@link Fxml2KotlinUnusedImportSuppressor}: suppresses Kotlin "UnusedImport"
  *       inspection results for the same reason.</li>
  *   <li>{@link org.jfxcore.fxml.codeinsight.Fxml2EmbeddedJavaImportOptimizer} and
  *       {@link org.jfxcore.fxml.codeinsight.Fxml2EmbeddedKotlinImportOptimizer}:
  *       prevent the built-in optimizers from removing such imports.</li>
  *   <li>{@link org.jfxcore.fxml.codeinsight.Fxml2ImportOptimizer}: removes unused
- *       {@code <?import?>} processing instructions from standalone FXML2 files.</li>
+ *       {@code <?import?>} processing instructions from standalone FXML files.</li>
  * </ul>
  */
 public final class Fxml2ImportUtil {
@@ -34,7 +34,7 @@ public final class Fxml2ImportUtil {
     private Fxml2ImportUtil() {} // static utility only
 
     /**
-     * Returns {@code true} if the given Java import statement is referenced by the FXML2
+     * Returns {@code true} if the given Java import statement is referenced by the FXML
      * markup of any {@code @ComponentView}-annotated class in {@code javaFile}.
      *
      * <p>Skips static imports. Returns {@code false} if the import has no qualified name.
@@ -60,7 +60,7 @@ public final class Fxml2ImportUtil {
 
     /**
      * Returns {@code true} if the import described by {@code fqStr} and {@code isAllUnder}
-     * covers at least one class name that is referenced inside the given embedded FXML2 markup
+     * covers at least one class name that is referenced inside the given embedded FXML markup
      * XML file.
      *
      * <p>Specifically:
@@ -80,7 +80,7 @@ public final class Fxml2ImportUtil {
      *                   (wildcard import)
      * @param isAllUnder {@code true} for wildcard imports ({@code pkg.*}),
      *                   {@code false} for specific imports ({@code pkg.ClassName})
-     * @param xmlFile    the injected FXML2 XML file obtained from a {@code @ComponentView}
+     * @param xmlFile    the injected FXML file obtained from a {@code @ComponentView}
      *                   annotation value
      * @return {@code true} when the import is needed to resolve a name used in the markup
      */

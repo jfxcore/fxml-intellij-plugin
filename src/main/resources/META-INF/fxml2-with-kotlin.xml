@@ -19,7 +19,7 @@
         <!--
             InspectionSuppressor: suppresses the Kotlin "UnusedImport" inspection
             (KotlinUnusedImportInspection, suppressId="UnusedImport") for KtImportDirective
-            elements whose import target is needed by embedded FXML2 markup in the same file.
+            elements whose import target is needed by embedded FXML markup in the same file.
             This prevents Kotlin imports like "import javafx.scene.control.*" from being
             greyed out when they are only referenced inside a @Markup annotation string.
         -->
@@ -28,7 +28,7 @@
 
         <!--
             InspectionSuppressor: suppresses false-positive "Property 'X' is never used"
-            warnings for KtProperty elements that are referenced in standalone FXML2 files
+            warnings for KtProperty elements that are referenced in standalone FXML files
             as binding-path segments (e.g. {fx:Observe vm.prop}).
 
             Background: Kotlin's K2 unused-symbol inspection (KotlinUnusedHighlightingProcessor)
@@ -37,12 +37,12 @@
             isJavaEntryPoint.isEntryPoint(lightMethod)), which our Fxml2StandaloneImplicitUsageProvider
             handles correctly.  For KtProperty, isEntryPoint() returns early via annotation
             checks only: ImplicitUsageProvider is never consulted.  K2 then relies on
-            hasNonTrivialUsages() / MethodReferencesSearch, which can miss FXML2 references
+            hasNonTrivialUsages() / MethodReferencesSearch, which can miss FXML references
             due to cancellation or timing races in the concurrent highlighting pass.
 
             This suppressor hooks into SuppressionUtil.inspectionResultSuppressed() (called
             at the top of handleDeclaration, before getPsiToReportProblem) and returns true
-            when the KtProperty's name appears in a standalone FXML2 binding expression that
+            when the KtProperty's name appears in a standalone FXML binding expression that
             resolves back to the property.  This provides a reliable, fast path that does not
             depend on MethodReferencesSearch completing successfully.
 
@@ -59,14 +59,14 @@
             this optimizer (instead of the built-in Kotlin optimizer) for files that carry
             @ComponentView.  The optimizer itself delegates to the built-in Kotlin optimizer
             so that genuinely unused imports are still removed, and then restores any imports
-            that are needed by the embedded FXML2 markup.
+            that are needed by the embedded FXML markup.
         -->
         <lang.importOptimizer language="kotlin"
                 implementationClass="org.jfxcore.fxml.codeinsight.Fxml2EmbeddedKotlinImportOptimizer"
                 order="first"/>
 
         <!--
-            RefactoringHelper: restores Kotlin imports needed by embedded FXML2 markup that
+            RefactoringHelper: restores Kotlin imports needed by embedded FXML markup that
             are deleted by Kotlin's KotlinOptimizeImportsRefactoringHelper during refactoring
             operations (rename, move, etc.).
 
@@ -89,7 +89,7 @@
                 order="last"/>
 
         <!--
-            Intention action: "Optimize imports (FXML2)" for Kotlin files.
+            Intention action: "Optimize imports (FXML/2)" for Kotlin files.
             Companion to the Java registration in plugin.xml.  Available when the caret
             is inside the import section of a Kotlin file that has at least one
             @ComponentView-annotated class.  Uses Fxml2EmbeddedKotlinImportOptimizer

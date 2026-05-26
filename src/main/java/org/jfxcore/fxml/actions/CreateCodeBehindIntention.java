@@ -28,7 +28,7 @@ import javax.swing.Icon;
 import java.util.Properties;
 
 /**
- * Intention action that creates a code-behind class for an FXML 2.0 file.
+ * Intention action that creates a code-behind class for an FXML file.
  *
  * <p>Given {@code fx:subclass="com.example.MyView"}, this creates either
  * {@code MyView.java} or {@code MyView.kt} (detected from path) in the same
@@ -55,7 +55,7 @@ public final class CreateCodeBehindIntention implements IntentionAction, Priorit
 
     @Override
     public @NotNull String getFamilyName() {
-        return "Create FXML 2.0 code-behind class";
+        return "Create code-behind class";
     }
 
     // -------------------------------------------------------------------------
@@ -63,7 +63,7 @@ public final class CreateCodeBehindIntention implements IntentionAction, Priorit
     // -------------------------------------------------------------------------
 
     /**
-     * Uses only cheap checks: FXML 2.0 file type, caret position, and a VFS sibling-file
+     * Uses only cheap checks: FXML file type, caret position, and a VFS sibling-file
      * existence check. No {@code JavaPsiFacade.findClass()} here: that would block the
      * EDT and cause the "Searching for Context Actions" spinner to hang indefinitely.
      */
@@ -71,7 +71,7 @@ public final class CreateCodeBehindIntention implements IntentionAction, Priorit
     public boolean isAvailable(@NotNull Project project, Editor editor, PsiFile file) {
         if (!(file instanceof XmlFile xmlFile)) return false;
         if (!Fxml2FileType.isFxml2(xmlFile)) return false;
-        // Embedded FXML 2.0: the annotated class is already the code-behind, suppress.
+        // Embedded FXML: the annotated class is already the code-behind, suppress.
         if (Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile)) return false;
         String fxClass = getFxClass(editor, file);
         if (StringUtil.isEmptyOrSpaces(fxClass)) return false;

@@ -23,7 +23,7 @@ public final class Fxml2XmlUtil {
 
     /**
      * Returns {@code true} when {@code attrName} is a namespace declaration ({@code xmlns},
-     * {@code xmlns:*}), an intrinsic FXML 2.0 attribute ({@code fx:*}), or an XML reserved
+     * {@code xmlns:*}), an intrinsic FXML/2 attribute ({@code fx:*}), or an XML reserved
      * attribute ({@code xml:*}, e.g. {@code xml:space}).  Such attributes are not property
      * attributes and should be skipped by value-resolution and inspection logic.
      */

@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Describes an FXML 2.0 XML element that maps to a Java class.
+ * Describes an FXML XML element that maps to a Java class.
  * {@link #getDeclaration()} returns the {@link PsiClass} so IntelliJ uses it
  * for Ctrl+click (Go to Declaration) navigation.
  */

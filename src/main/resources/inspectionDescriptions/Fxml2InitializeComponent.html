@@ -1,12 +1,12 @@
 <html lang="en">
 <body>
-Reports constructors in FXML 2.0 code-behind classes that do not call
+Reports constructors in FXML code-behind classes that do not call
 <code>initializeComponent()</code>.
 <p>
-A class is a <em>code-behind class</em> when an FXML 2.0 file exists in the project
+A class is a <em>code-behind class</em> when an FXML file exists in the project
 with <code>fx:subclass</code> pointing to that class. The compiler-generated base class
 provides <code>initializeComponent()</code>, which must be called in the constructor
-to instantiate the scene graph declared in the FXML 2.0 file.
+to instantiate the scene graph declared in the FXML file.
 <p><b>Example</b> (problematic):</p>
 <pre><code>public class MyControl extends MyControlBase {
     public MyControl() {

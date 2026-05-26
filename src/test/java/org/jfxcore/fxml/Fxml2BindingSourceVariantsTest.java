@@ -298,7 +298,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
 
     /**
      * When {@code ::} (observable-selection operator) is applied to a member that does not
-     * return an {@code ObservableValue}, the fxml2 compiler rejects the reference with
+     * return an {@code ObservableValue}, the FXML compiler rejects the reference with
      * {@code INVALID_INVARIANT_REFERENCE}. The plugin must report the same error, pointing
      * only at the member-name segment (not the preceding {@code ::}).
      *
@@ -329,7 +329,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
                 }
                 """);
         // DataRow::labelExtractor uses :: on a non-ObservableValue field (Function<DataRow,String>),
-        // which the fxml2 compiler rejects with INVALID_INVARIANT_REFERENCE.
+        // which the FXML compiler rejects with INVALID_INVARIANT_REFERENCE.
         getFixture().configureByText("RowView.fxml", fxml2(
                 """
                 test.DataRow
@@ -348,7 +348,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
     /**
      * When a binding path using {@code ::} on a non-observable member appears as a positional
      * argument inside a markup extension (e.g. {@code {MyExtension $DataClass::nonObservable}}),
-     * the IDE must report the same error as the fxml2 compiler: the member cannot be referenced
+     * the IDE must report the same error as the FXML compiler: the member cannot be referenced
      * via the observable-selection operator.
      */
     @Test
@@ -390,7 +390,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
                 }
                 """);
         // CellFactory positional arg uses :: on a non-ObservableValue field (Function<DataRow,String>),
-        // which the fxml2 compiler rejects with INVALID_INVARIANT_REFERENCE.
+        // which the FXML compiler rejects with INVALID_INVARIANT_REFERENCE.
         getFixture().configureByText("RowView.fxml", fxml2(
                 """
                 test.DataRow
@@ -415,7 +415,7 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
 
     /**
      * A path whose intermediate segment is an {@code ObservableList} (not an
-     * {@code ObservableValue}) is now accepted by the fxml2 compiler as a valid
+     * {@code ObservableValue}) is now accepted by the FXML compiler as a valid
      * observe-binding source: the collection provides content-based invalidation.
      *
      * <p>Example: {@code ${items.size}} where {@code items} is a plain

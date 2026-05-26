@@ -19,26 +19,26 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 /**
  * Suppresses false-positive "Field/Method/Function 'X' is never used" warnings for
  * fields, property-accessor methods, and Kotlin functions/properties that are referenced
- * in <em>standalone</em> FXML2 files via binding expressions (e.g.
+ * in <em>standalone</em> FXML files via binding expressions (e.g.
  * {@code {fx:Observe vm.labelText}}) or property-attribute values (e.g.
  * {@code formatter="$doubleFormatter"}).
  *
  * <h3>Why is this needed?</h3>
- * <p>For standalone FXML2 files, {@link Fxml2UseScopeEnlarger} adds {@code .fxml}/
+ * <p>For standalone FXML files, {@link Fxml2UseScopeEnlarger} adds {@code .fxml}/
  * {@code .fxml2} files to the search scope for {@link com.intellij.psi.PsiField} and
  * {@link com.intellij.psi.PsiMethod} elements.  This allows IntelliJ's unused-declaration
  * analysis (which uses {@link com.intellij.psi.search.searches.ReferencesSearch}) to find
- * binding-segment references in FXML2 files for <em>Java</em> elements.
+ * binding-segment references in FXML files for <em>Java</em> elements.
  *
  * <p>However, for <em>Kotlin</em> elements (e.g. a {@code KtNamedFunction} for
  * {@code fun labelTextProperty()}, or a {@code KtProperty} for {@code val message}),
  * Kotlin's unused-declaration inspection queries the element's {@code useScope} using the
  * Kotlin PSI element directly, not its Java {@code KtLightMethod} wrapper.  Since
  * {@link Fxml2UseScopeEnlarger} does not enlarge the scope for plain Kotlin functions
- * (only for property-accessor-named ones), FXML2 files are never added to the scope for
+ * (only for property-accessor-named ones), FXML files are never added to the scope for
  * such Kotlin elements, and the search finds nothing.
  *
- * <p>This provider bridges that gap by searching standalone FXML2 files directly via the
+ * <p>This provider bridges that gap by searching standalone FXML files directly via the
  * word index and checking whether any {@link Fxml2BindingSegmentReference} resolves to the
  * element (or its Kotlin light-class equivalent).
  *
@@ -60,7 +60,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
  * changes how unused-declaration analysis interacts with use-scope enlargers.
  *
  * <p>Complements {@link Fxml2EmbeddedImplicitUsageProvider}, which covers references in
- * <em>embedded</em> FXML2 markup (inside {@code @ComponentView} annotations).  Standalone
+ * <em>embedded</em> FXML markup (inside {@code @ComponentView} annotations).  Standalone
  * and embedded markup are distinct: standalone files are indexed by the word index and the
  * injected fragments are not, so the two providers are both necessary.
  */
@@ -87,7 +87,7 @@ public final class Fxml2StandaloneImplicitUsageProvider implements ImplicitUsage
 
     /**
      * Returns {@code true} when {@code element} is a Java/Kotlin field or method/function
-     * and at least one standalone FXML2 file in the project contains either:
+     * and at least one standalone FXML file in the project contains either:
      * <ul>
      *   <li>a {@link Fxml2BindingSegmentReference} that resolves to this element (e.g.
      *       {@code {fx:Observe vm.labelText}} -> {@code labelTextProperty()}),</li>
@@ -98,7 +98,7 @@ public final class Fxml2StandaloneImplicitUsageProvider implements ImplicitUsage
      *       property; Java methods are excluded — see class javadoc).</li>
      * </ul>
      *
-     * <p>Uses the word index to locate candidate FXML2 files efficiently; only files that
+     * <p>Uses the word index to locate candidate FXML files efficiently; only files that
      * contain the property/method name as a word are visited.
      */
     static boolean isReferencedInStandaloneFxml(@NotNull PsiElement element) {

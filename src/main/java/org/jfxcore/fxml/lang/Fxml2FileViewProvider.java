@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Custom {@link SingleRootFileViewProvider} for FXML 2.0 files.
+ * Custom {@link SingleRootFileViewProvider} for FXML files.
  *
  * <p>IntelliJ's identifier-under-caret highlighting caches its result using a set of
  * <em>target ranges</em>.  One of those ranges comes from

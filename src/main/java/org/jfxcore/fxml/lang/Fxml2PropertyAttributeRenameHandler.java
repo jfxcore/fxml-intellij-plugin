@@ -22,7 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.descriptors.Fxml2PropertyAttributeDescriptor;
 
 /**
- * Rename handler for property attribute names in standalone and embedded FXML2 files.
+ * Rename handler for property attribute names in standalone and embedded FXML files.
  *
  * <p>When Shift+F6 is pressed with the caret on an XML attribute name that maps to a
  * JavaFX/JavaBeans property (e.g. {@code formatter} in
@@ -80,11 +80,11 @@ public final class Fxml2PropertyAttributeRenameHandler implements RenameHandler 
 
     /**
      * Returns the property-attribute {@link XmlAttribute} at the caret position, or
-     * {@code null} if the caret is not on a property attribute name in an FXML2 file.
+     * {@code null} if the caret is not on a property attribute name in an FXML file.
      *
      * <p>Returns {@code null} when:
      * <ul>
-     *   <li>The file is not an FXML2 file.</li>
+     *   <li>The file is not an FXML file.</li>
      *   <li>The caret is on the attribute value rather than the name.</li>
      *   <li>The attribute has a namespace prefix (e.g. {@code fx:id}).</li>
      *   <li>The attribute name contains a dot (static property, e.g.

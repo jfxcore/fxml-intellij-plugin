@@ -18,12 +18,12 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Base class for the "Optimize Imports (FXML2)" intention action.
+ * Base class for the "Optimize Imports (FXML/2)" intention action.
  *
  * <p>IntelliJ's built-in "Optimize imports" action bypasses the
  * {@code lang.importOptimizer} extension point, calling the built-in Java/Kotlin
  * optimizer directly.  For files with {@code @ComponentView} annotations this removes
- * imports that are only referenced in embedded FXML2 markup.
+ * imports that are only referenced in embedded FXML markup.
  *
  * <p>This action uses {@link LanguageImportStatements#forFile} so that
  * {@code Fxml2EmbeddedJavaImportOptimizer} / {@code Fxml2EmbeddedKotlinImportOptimizer}
@@ -38,7 +38,7 @@ public abstract class Fxml2OptimizeImportsAction implements IntentionAction, Low
 
     @Override
     public @NotNull String getText() {
-        return "Optimize Imports (FXML2)";
+        return "Optimize Imports (FXML/2)";
     }
 
     @Override

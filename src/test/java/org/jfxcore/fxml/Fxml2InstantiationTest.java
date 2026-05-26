@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 /**
- * Tests for object instantiation validation in FXML2 files.
+ * Tests for object instantiation validation in FXML files.
  *
  * <p>Covers:
  * <ul>
@@ -401,7 +401,7 @@ class Fxml2InstantiationTest extends Fxml2TestBase {
      *       where {@code stroke} is a {@code Color} via {@code fx:value}, {@code style} is the
      *       {@code BorderStrokeStyle.DASHED} static constant (inline {@code BorderStrokeStyle}
      *       construction is not possible because its {@code dashArray: List<Double>} parameter
-     *       is an unsupported collection-type {@code @NamedArg} in the fxml2 compiler),
+     *       is an unsupported collection-type {@code @NamedArg} in the FXML compiler),
      *       {@code radii} coerced from a string, and {@code widths} via
      *       {@code BorderWidths(width)}.</li>
      * </ul>

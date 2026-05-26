@@ -15,7 +15,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 
 /**
  * {@link MethodReferencesSearch} extension that finds {@link Fxml2BindingSegmentReference}s
- * in FXML2 files that resolve to a given Java property accessor method.
+ * in FXML files that resolve to a given Java property accessor method.
  *
  * <p>IntelliJ routes "Find Usages" on a {@link com.intellij.psi.PsiMethod} through
  * {@link MethodReferencesSearch}, not through the generic {@link

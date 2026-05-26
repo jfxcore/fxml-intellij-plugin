@@ -83,7 +83,7 @@ public final class Fxml2ReformatSnapshotTracker implements CodeStyleManager.List
             // Java/Kotlin host file: capture snapshot directly.
             captureSnapshot(file);
         } else {
-            // Check if it's an injected FXML2 fragment.  When the user presses
+            // Check if it's an injected FXML fragment.  When the user presses
             // Ctrl+Alt+L while the caret is *inside* an injected FXML fragment,
             // IntelliJ uses setInjectedContext(true) and the action receives the
             // injected XmlFile rather than the Java/Kotlin host.  In that case we
@@ -96,7 +96,7 @@ public final class Fxml2ReformatSnapshotTracker implements CodeStyleManager.List
     @Override
     public void afterReformatText(@NotNull PsiFile file) {
         // Clear the snapshot when the reformat of the *host* Java/Kotlin file or the
-        // injected FXML2 fragment completes.
+        // injected FXML fragment completes.
         // We deliberately do NOT clear it for the temporary XML files created inside
         // formatXmlContent, so the snapshot is still available for the outer processText.
         if (isApplicable(file)) {
@@ -151,7 +151,7 @@ public final class Fxml2ReformatSnapshotTracker implements CodeStyleManager.List
     }
 
     /**
-     * When formatting is invoked while the caret is inside an injected FXML2 fragment,
+     * When formatting is invoked while the caret is inside an injected FXML fragment,
      * {@link com.intellij.codeInsight.actions.ReformatCodeAction} (which has
      * {@code setInjectedContext(true)}) receives the <em>injected</em> XML file rather
      * than the Java/Kotlin host.  {@code beforeReformatText} is therefore fired with the
@@ -175,7 +175,7 @@ public final class Fxml2ReformatSnapshotTracker implements CodeStyleManager.List
     }
 
     /**
-     * Clears the snapshot when an injected FXML2 fragment's formatting cycle completes.
+     * Clears the snapshot when an injected FXML fragment's formatting cycle completes.
      * Must be called from {@link #afterReformatText} only for non-Java/Kotlin files.
      */
     private static void tryRemoveForInjected(@NotNull PsiFile file) {

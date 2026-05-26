@@ -15,9 +15,9 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2WellKnownClasses;
 
 /**
- * Shared utilities for event-handler method references in FXML2.
+ * Shared utilities for event-handler method references in FXML.
  *
- * <p>When a property type is {@code EventHandler<T>}, the fxml2 compiler accepts a
+ * <p>When a property type is {@code EventHandler<T>}, the FXML compiler accepts a
  * plain method name as the attribute value and wires it as a method reference on the
  * code-behind class.  This utility centralizes:
  * <ul>
@@ -49,7 +49,7 @@ public final class Fxml2EventHandlerUtil {
      * parameterized form of it (e.g. {@code EventHandler<ActionEvent>}).
      *
      * <p>Uses erasure-based assignability so that subtypes of {@code EventHandler} are
-     * also accepted, matching the fxml2 compiler's {@code subtypeOf(EventHandlerDecl())}
+     * also accepted, matching the FXML compiler's {@code subtypeOf(EventHandlerDecl())}
      * check in {@code PropertyAssignmentTransform}.
      */
     public static boolean isEventHandlerType(@Nullable PsiType type, @NotNull Project project) {
@@ -97,7 +97,7 @@ public final class Fxml2EventHandlerUtil {
      * <p>When {@code eventType} is {@code null} (raw {@code EventHandler} without a type
      * argument), any {@code void} method with 0 or 1 parameters is considered compatible.
      *
-     * <p>Mirrors the fxml2 compiler's {@code EventHandlerGenerator.findMethod()} logic.
+     * <p>Mirrors the FXML compiler's {@code EventHandlerGenerator.findMethod()} logic.
      */
     public static boolean isCompatibleHandlerMethod(@NotNull PsiMethod method,
                                                     @Nullable PsiClass eventType) {
@@ -117,7 +117,7 @@ public final class Fxml2EventHandlerUtil {
      * Finds the best-matching event-handler method on {@code codeBehind} for the given
      * {@code methodName} and {@code eventType}.
      *
-     * <p>Selection mirrors the fxml2 compiler's preference: when both a zero-parameter
+     * <p>Selection mirrors the FXML compiler's preference: when both a zero-parameter
      * and a one-parameter overload are compatible, the one-parameter overload is preferred
      * (matching {@code EventHandlerGenerator.findMethod()}).
      *

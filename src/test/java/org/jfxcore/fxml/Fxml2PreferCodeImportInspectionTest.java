@@ -55,7 +55,7 @@ class Fxml2PreferCodeImportInspectionTest extends Fxml2TestBase {
     // Inspection fires: markup <?import?> with no corresponding code import
 
     /**
-     * A {@code <?import?>} inside embedded FXML2 markup that has no corresponding code
+     * A {@code <?import?>} inside embedded FXML markup that has no corresponding code
      * import in the host Java file must be flagged.
      */
     @Test @Timeout(value = 20, unit = TimeUnit.SECONDS)

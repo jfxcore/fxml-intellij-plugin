@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Suppresses false-positive "Property 'X' is never used" warnings from Kotlin's K2
  * unused-symbol inspection ({@code UnusedSymbol}) for {@link org.jetbrains.kotlin.psi.KtProperty}
- * elements that are referenced in FXML2 markup, either standalone or embedded.
+ * elements that are referenced in FXML markup, either standalone or embedded.
  *
  * <h3>Why is this needed?</h3>
  * <p>Kotlin's K2 unused-declaration analysis distinguishes between two element kinds:
@@ -18,7 +18,7 @@ import org.jetbrains.annotations.Nullable;
  *       {@code isJavaEntryPoint.isEntryPoint(lightMethod)}, which in turn consults all
  *       registered {@link com.intellij.codeInsight.daemon.ImplicitUsageProvider}s.
  *       Our {@link Fxml2StandaloneImplicitUsageProvider} returns {@code true} for light
- *       methods whose property name appears in a standalone FXML2 binding path, so K2
+ *       methods whose property name appears in a standalone FXML binding path, so K2
  *       correctly suppresses the warning.</li>
  *   <li><b>{@code KtProperty}</b>: K2's {@code isEntryPoint} returns early via an
  *       annotation-pattern check only; it <em>never</em> calls
@@ -34,18 +34,18 @@ import org.jetbrains.annotations.Nullable;
  * {@link com.intellij.codeInspection.SuppressionUtil#inspectionResultSuppressed}, which
  * K2's {@code KotlinUnusedHighlightingProcessor.handleDeclaration} calls at line 197
  * (before the expensive {@code getPsiToReportProblem} path).  When the element is a
- * {@code KtProperty} and an FXML2 reference resolves back to that property, this
+ * {@code KtProperty} and an FXML reference resolves back to that property, this
  * suppressor returns {@code true} and the warning is suppressed immediately, without
  * depending on the reliability of the {@code MethodReferencesSearch} path.  Both
  * standalone and embedded markup are checked:
  * <ul>
  *   <li>{@link Fxml2StandaloneImplicitUsageProvider#isReferencedInStandaloneFxml}
- *       scans the file-system FXML2 files via the word index.</li>
+ *       scans the file-system FXML files via the word index.</li>
  *   <li>{@link Fxml2EmbeddedImplicitUsageProvider#isReferencedInEmbeddedFxml} scans the
  *       injected XML of every {@code @ComponentView}-annotated class whose markup
  *       contains the property name.  This covers the {@code <fx:context>} case where the
  *       Kotlin property lives on a non-{@code @ComponentView} context class and is only
- *       referenced from another class's embedded FXML2 binding.</li>
+ *       referenced from another class's embedded FXML binding.</li>
  * </ul>
  *
  * <p>Registered via {@code lang.inspectionSuppressor language="kotlin"} in
@@ -92,7 +92,7 @@ public final class Fxml2KotlinUnusedSymbolSuppressor implements InspectionSuppre
 
     @Override
     public SuppressQuickFix @NotNull [] getSuppressActions(@Nullable PsiElement element, @NotNull String toolId) {
-        // We do not offer a "Suppress" quick-fix: the property IS used (in FXML2).
+        // We do not offer a "Suppress" quick-fix: the property IS used (in FXML).
         return SuppressQuickFix.EMPTY_ARRAY;
     }
 }

@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * {@link PostFormatProcessor} that reformats embedded FXML2 markup inside
+ * {@link PostFormatProcessor} that reformats embedded FXML markup inside
  * {@code @ComponentView} text-block annotations after the standard Java / Kotlin
  * formatter has run.
  *

@@ -34,7 +34,7 @@ import java.util.List;
  *
  * <p>The synthetic wrapper root ({@code fxml2:embedded}) serves two purposes:
  * <ol>
- *   <li>It declares both FXML2 namespace URIs so that {@code fx:}-prefixed attributes
+ *   <li>It declares both FXML/2 namespace URIs so that {@code fx:}-prefixed attributes
  *       inside the user markup resolve to the correct namespace.</li>
  *   <li>It carries {@code fx:subclass} so that
  *       {@link org.jfxcore.fxml.resolve.Fxml2BindingPathResolver#resolveCodeBehindClass}

@@ -44,7 +44,7 @@ import java.util.regex.Pattern;
 /**
  * {@link RefactoringHelper} that prevents IntelliJ's
  * {@code OptimizeImportsRefactoringHelper} from removing Java imports that are needed
- * by embedded FXML2 markup in {@code @ComponentView}-annotated classes.
+ * by embedded FXML markup in {@code @ComponentView}-annotated classes.
  *
  * <h2>Problem</h2>
  * After every refactoring (rename, move, extract, etc.) IntelliJ runs
@@ -62,7 +62,7 @@ import java.util.regex.Pattern;
  *   <li>In the <b>read phase</b> ({@link #prepareOperation}): for every Java file
  *       involved in the refactoring that contains a {@code @ComponentView}-annotated
  *       class, we capture the list of import targets (e.g.
- *       {@code "javafx.scene.layout.*"}) that are referenced by the embedded FXML2
+ *       {@code "javafx.scene.layout.*"}) that are referenced by the embedded FXML
  *       markup.</li>
  *   <li>In the <b>write phase</b> ({@link #performOperation}): we add back any of
  *       those import targets that are no longer present in the file.</li>
@@ -199,7 +199,7 @@ public final class Fxml2EmbeddedJavaRefactoringHelper
 
     /**
      * Collects the import targets (FQNs or on-demand patterns) that are needed by the
-     * embedded FXML2 markup in {@code javaFile}.
+     * embedded FXML markup in {@code javaFile}.
      *
      * <p>Uses a three-level strategy:
      * <ol>
@@ -264,7 +264,7 @@ public final class Fxml2EmbeddedJavaRefactoringHelper
     }
 
     /**
-     * Fallback strategy: derive needed import FQNs directly from the FXML2 markup
+     * Fallback strategy: derive needed import FQNs directly from the FXML markup
      * content, using {@link PsiShortNamesCache} for class resolution.
      *
      * <p>Works even when the import list has already been stripped, or when the
@@ -400,7 +400,7 @@ public final class Fxml2EmbeddedJavaRefactoringHelper
 
     /**
      * If "prefer markup imports" is active, moves any code imports that are exclusively
-     * used inside embedded FXML2 markup to {@code <?import?>} PIs inside those blocks,
+     * used inside embedded FXML markup to {@code <?import?>} PIs inside those blocks,
      * and removes the corresponding Java import statements.
      */
     private static void applyPreferMarkupToJavaFile(

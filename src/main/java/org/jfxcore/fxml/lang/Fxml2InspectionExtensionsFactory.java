@@ -28,7 +28,7 @@ import java.util.List;
 
 /**
  * {@link InspectionExtensionsFactory} that suppresses false-positive "Unused import"
- * problems for imports that are actually needed by embedded FXML2 markup.
+ * problems for imports that are actually needed by embedded FXML markup.
  *
  * <h2>Problem</h2>
  * {@link com.intellij.codeInspection.unusedImport.UnusedImportInspection} is a
@@ -45,7 +45,7 @@ import java.util.List;
  * {@link ReportedProblemFilter} on the {@link GlobalInspectionContextEx} that is consulted
  * by {@link com.intellij.codeInspection.DefaultInspectionToolResultExporter#addProblemElement}
  * as each problem is recorded.  The filter returns {@code false} (suppress) for any
- * {@link PsiImportStatement} problem element that is actually needed by embedded FXML2
+ * {@link PsiImportStatement} problem element that is actually needed by embedded FXML
  * markup, preventing those descriptors from ever entering the "active problems" map.
  *
  * <p>Registered via {@code codeInspection.InspectionExtension} in {@code plugin.xml}.
@@ -92,7 +92,7 @@ public final class Fxml2InspectionExtensionsFactory extends InspectionExtensions
 
         /**
          * Called before any inspections run.  Installs a {@link ReportedProblemFilter} that
-         * suppresses "Unused import" problems whose import is needed by embedded FXML2 markup.
+         * suppresses "Unused import" problems whose import is needed by embedded FXML markup.
          *
          * <p>The filter is checked inside
          * {@link com.intellij.codeInspection.DefaultInspectionToolResultExporter#addProblemElement}
@@ -117,16 +117,16 @@ public final class Fxml2InspectionExtensionsFactory extends InspectionExtensions
                     return false;
                 }
                 // For each descriptor, if the problem element is an import statement that
-                // FXML2 actually needs, suppress the problem.
+                // FXML actually needs, suppress the problem.
                 // Guard: skip problems from preference inspections (Fxml2PreferMarkupImportInspection)
                 // that intentionally flag markup-needed imports for user action.
                 for (CommonProblemDescriptor descriptor : descriptors) {
                     if (!(descriptor instanceof ProblemDescriptor pd)) continue;
                     if (!(pd.getPsiElement() instanceof PsiImportStatement importStmt)) continue;
                     String desc = pd.getDescriptionTemplate();
-                    if (desc.contains("embedded FXML2 markup")) continue;
+                    if (desc.contains("embedded FXML markup")) continue;
                     if (isImportNeededByFxml2(importStmt)) {
-                        return false; // suppress the unused-import problem for FXML2-needed import
+                        return false; // suppress the unused-import problem for FXML-needed import
                     }
                 }
                 return true; // allow
@@ -151,7 +151,7 @@ public final class Fxml2InspectionExtensionsFactory extends InspectionExtensions
 
         /**
          * Returns {@code true} if the given import statement is needed by the embedded
-         * FXML2 markup of any {@code @ComponentView}-annotated class in the same Java file.
+         * FXML markup of any {@code @ComponentView}-annotated class in the same Java file.
          */
         private static boolean isImportNeededByFxml2(@NotNull PsiImportStatement importStmt) {
             if (importStmt instanceof PsiImportStaticStatement) return false;

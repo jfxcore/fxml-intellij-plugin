@@ -29,7 +29,7 @@ import java.util.List;
 
 /**
  * Provides a custom {@link FindUsagesHandler} when "Find Usages" is invoked on an
- * {@code fx:id} attribute value in an FXML 2.0 file.
+ * {@code fx:id} attribute value in an FXML file.
  *
  * <p>The handler's {@link FindUsagesHandler#getPrimaryElements()} returns both:
  * <ol>
@@ -91,14 +91,14 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
 
     /**
      * Returns {@code true} when {@code element} is a {@link PsiField} that corresponds to
-     * an {@code fx:id} declaration in an FXML 2.0 file.
+     * an {@code fx:id} declaration in an FXML file.
      *
      * <p>Two cases are handled:
      * <ol>
      *   <li>Synthetic fields whose {@code getNavigationElement()} returns an
      *       {@link XmlAttributeValue}: checked directly.</li>
      *   <li>Real Java fields from a compiler-generated base class whose navigation element
-     *       is the field itself: checked by searching FXML 2.0 files via the project index.</li>
+     *       is the field itself: checked by searching FXML files via the project index.</li>
      * </ol>
      */
     private static boolean isFxIdField(@NotNull PsiElement element) {
@@ -128,7 +128,7 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
     }
 
     /**
-     * Searches FXML 2.0 files via the project index for an {@code fx:id} whose value matches
+     * Searches FXML files via the project index for an {@code fx:id} whose value matches
      * {@code field.getName()} and whose {@code fx:subclass} is or extends the field's containing
      * class.  Returns the first matching {@link XmlAttributeValue}, or {@code null}.
      */
@@ -174,7 +174,7 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
                     return result[0] == null;
                 }, false);
 
-        // Also check embedded FXML 2.0 markup in @ComponentView-annotated classes.
+        // Also check embedded FXML markup in @ComponentView-annotated classes.
         if (result[0] == null) {
             result[0] = Fxml2EmbeddedUtil.findFxIdInEmbedded(field);
         }

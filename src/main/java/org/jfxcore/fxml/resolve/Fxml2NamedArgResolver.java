@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Resolves {@code @NamedArg} constructor parameters in JavaFX classes, mirroring the
- * fxml2 compiler's {@code ValueEmitterFactory.findNamedArgsConstructors} / {@code getNamedArgParams} logic.
+ * FXML compiler's {@code ValueEmitterFactory.findNamedArgsConstructors} / {@code getNamedArgParams} logic.
  *
  * <p>A constructor is a "NamedArgs constructor" if <em>every</em> formal parameter is annotated
  * with {@code @javafx.beans.NamedArg}.  Only public constructors are considered.
@@ -59,7 +59,7 @@ public final class Fxml2NamedArgResolver {
 
     /**
      * Returns {@code true} when the supplied attribute name should be resolved as a {@code @NamedArg}
-     * parameter rather than a regular JavaFX property, matching the fxml2 compiler's decision logic.
+     * parameter rather than a regular JavaFX property, matching the FXML compiler's decision logic.
      *
      * <p>The compiler uses named-arg construction when at least one attribute on the FXML tag does
      * <em>not</em> resolve as a JavaFX property.  Rather than scanning all sibling attributes here
@@ -169,7 +169,7 @@ public final class Fxml2NamedArgResolver {
      * Returns the explicit {@code defaultValue} string of {@code @NamedArg} on {@code param},
      * or {@code null} if the parameter is required (no explicit non-empty defaultValue).
      *
-     * <p>The fxml2 compiler treats a param as optional only when {@code defaultValue} is
+     * <p>The FXML compiler treats a param as optional only when {@code defaultValue} is
      * explicitly set in the bytecode to a non-empty string.  IntelliJ's
      * {@code findAttributeValue("defaultValue")} returns {@code ""} (the annotation-declared
      * default) even when the annotation element was never written, so we must reject empty

@@ -9,7 +9,7 @@ import org.junit.jupiter.api.TestInstance;
 /**
  * Tests for {@code fx:context} binding-context resolution.
  *
- * <p>The fxml2 compiler allows overriding the default binding context (the code-behind class)
+ * <p>The FXML compiler allows overriding the default binding context (the code-behind class)
  * via {@code fx:context} on the root tag. Two forms are supported:
  * <ol>
  *   <li><b>Attribute / binding-path form</b>: {@code fx:context="$myContext"}: the context

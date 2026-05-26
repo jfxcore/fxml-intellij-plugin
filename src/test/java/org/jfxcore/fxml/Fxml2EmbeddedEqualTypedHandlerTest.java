@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies that typing {@code =} after an attribute name in embedded FXML2 markup
+ * Verifies that typing {@code =} after an attribute name in embedded FXML markup
  * inserts double quotes ({@code =""}) rather than single quotes ({@code =''}).
  *
  * <p>Implementation under test:
@@ -38,7 +38,7 @@ class Fxml2EmbeddedEqualTypedHandlerTest extends Fxml2TestBase {
     }
 
     /**
-     * Typing {@code =} after an attribute name in embedded FXML2 must insert double
+     * Typing {@code =} after an attribute name in embedded FXML must insert double
      * quotes and place the caret between them ({@code item=""<caret>}).
      * <p>
      * Before the fix, IntelliJ's default XML typed handler would see that the context
@@ -72,7 +72,7 @@ class Fxml2EmbeddedEqualTypedHandlerTest extends Fxml2TestBase {
         String text = getFixture().getEditor().getDocument().getText();
 
         assertTrue(text.contains("maxWidth=\"\""),
-                "Typing '=' after attribute name in embedded FXML2 must insert double quotes.\n"
+                "Typing '=' after attribute name in embedded FXML must insert double quotes.\n"
                 + "Expected 'maxWidth=\"\"' but document was:\n" + text);
     }
 

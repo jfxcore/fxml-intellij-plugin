@@ -81,7 +81,7 @@ public final class Fxml2EmbeddedJavaImportOptimizer implements ImportOptimizer {
         if (!(file instanceof PsiJavaFile javaFile)) return EmptyRunnable.INSTANCE;
 
         // --- Read phase ---
-        // Collect the Java imports that are needed by the embedded FXML2 markup(s).
+        // Collect the Java imports that are needed by the embedded FXML markup(s).
         // We capture them now (before any optimizer modifies the file) so that the write
         // phase can restore any that get removed.
 
@@ -92,7 +92,7 @@ public final class Fxml2EmbeddedJavaImportOptimizer implements ImportOptimizer {
         if (importList == null) return EmptyRunnable.INSTANCE;
 
         // Primary strategy: import targets (FQN for specific, "pkg.*" for wildcard) that
-        // are referenced by at least one embedded FXML2 markup in this file.
+        // are referenced by at least one embedded FXML markup in this file.
         // Works when imports are still present (normal "Optimize Imports" flow).
         List<String> neededImports = collectNeededFromImportList(markupClasses, importList);
 
@@ -239,7 +239,7 @@ public final class Fxml2EmbeddedJavaImportOptimizer implements ImportOptimizer {
     }
 
     /**
-     * Fallback strategy: derives needed import FQNs by walking the injected FXML2 markup
+     * Fallback strategy: derives needed import FQNs by walking the injected FXML markup
      * content and resolving class names via the project's {@link PsiShortNamesCache}.
      *
      * <p>This is used when the host file's import list has already been stripped (e.g. by
@@ -350,7 +350,7 @@ public final class Fxml2EmbeddedJavaImportOptimizer implements ImportOptimizer {
             Pattern.compile("\\b([A-Z][A-Za-z0-9_$]*)\\.[a-z][A-Za-z0-9_$]*\\s*=");
 
     /**
-     * Scans raw FXML2 markup text for simple class names referenced as element tags and
+     * Scans raw FXML markup text for simple class names referenced as element tags and
      * static-property attribute prefixes.  Returns only names starting with an uppercase
      * letter (Java class-name convention).
      */
@@ -370,7 +370,7 @@ public final class Fxml2EmbeddedJavaImportOptimizer implements ImportOptimizer {
     /**
      * Resolves a simple class name using {@link PsiShortNamesCache} within {@code scope}.
      * When multiple classes share the name, prefers {@code javafx.*} then {@code org.jfxcore.*}
-     * classes (the namespaces that FXML2 markup typically references).
+     * classes (the namespaces that FXML markup typically references).
      * Returns {@code null} when no unique, deterministic match can be made.
      */
     private static @Nullable PsiClass resolveByShortName(

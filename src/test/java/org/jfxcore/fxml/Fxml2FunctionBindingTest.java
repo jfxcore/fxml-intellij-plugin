@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 /**
- * Tests for function-binding syntax in FXML2 binding expressions.
+ * Tests for function-binding syntax in FXML binding expressions.
  *
- * <p>FXML2 allows calling static or instance methods and constructors inside binding
+ * <p>FXML/2 allows calling static or instance methods and constructors inside binding
  * expressions. The method or constructor is re-evaluated when any observable argument
  * changes (for {@code fx:Observe}).
  *

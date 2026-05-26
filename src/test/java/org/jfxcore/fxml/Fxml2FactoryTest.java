@@ -14,7 +14,7 @@ import org.junit.jupiter.api.TestInstance;
  * Type witnesses may be provided after the method name
  * (e.g. {@code fx:factory="observableArrayList<String>"}).
  *
- * <p>Corresponds to {@code reference/factory.md} in the fxml2 compiler documentation.
+ * <p>Corresponds to {@code reference/factory.md} in the FXML compiler documentation.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2FactoryTest extends Fxml2TestBase {

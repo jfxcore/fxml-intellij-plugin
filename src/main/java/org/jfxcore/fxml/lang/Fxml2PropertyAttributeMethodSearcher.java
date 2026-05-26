@@ -14,7 +14,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * {@link MethodReferencesSearch} extension that finds FXML2 property-attribute usages
+ * {@link MethodReferencesSearch} extension that finds FXML property-attribute usages
  * of a Java property-setter (or other accessor) method.
  *
  * <p>IntelliJ routes "Find Usages" on a {@link com.intellij.psi.PsiMethod} through

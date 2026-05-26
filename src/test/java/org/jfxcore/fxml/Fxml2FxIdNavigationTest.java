@@ -30,7 +30,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Verifies the navigation model for {@code fx:id} in an FXML2 file whose code-behind
+ * Verifies the navigation model for {@code fx:id} in an FXML file whose code-behind
  * class extends a compiler-generated base class that declares the injected fields.
  *
  * <h3>Fixture layout</h3>
@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *       {@code protected Button myButton1;}</li>
  *   <li>{@code TestView extends TestViewBase}: user-authored code-behind referenced by
  *       {@code fx:subclass="test.TestView"}, containing a use site in a method body.</li>
- *   <li>{@code TestView.fxml}: FXML2 file with {@code <Button fx:id="myButton1"/>}
+ *   <li>{@code TestView.fxml}: FXML file with {@code <Button fx:id="myButton1"/>}
  *       (the canonical declaration) and a binding use
  *       {@code disable="${!myButton1.disabled}"}.</li>
  * </ul>
@@ -339,7 +339,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
 
     /**
      * Ctrl+clicking on an {@code fx:id}-injected field reference in the code-behind body
-     * must navigate to the canonical fx:id declaration in the FXML2 file.
+     * must navigate to the canonical fx:id declaration in the FXML file.
      */
     @Test
     void ctrlClickCodeBehindUseNavigatesToFxIdDeclaration() {
@@ -369,7 +369,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
 
     /**
      * Ctrl+clicking on the generated field declaration in the compiler-generated base class
-     * must navigate to the canonical fx:id declaration in the FXML2 file, even though
+     * must navigate to the canonical fx:id declaration in the FXML file, even though
      * {@code fx:subclass} points to the user-authored subclass, not the base class.
      */
     @Test
@@ -801,7 +801,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2 (@ComponentView): navigation tests
+    // Embedded FXML (@ComponentView): navigation tests
     // -----------------------------------------------------------------------
 
     /**
@@ -837,7 +837,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2FxIdDeclarationProvider} must return a declaration for an {@code fx:id}
-     * attribute value in embedded FXML2: just as it does for standalone FXML2 files.
+     * attribute value in embedded FXML: just as it does for standalone FXML files.
      */
     @Test
     void fxIdInEmbeddedFxml2IsRegisteredAsDeclaration() {
@@ -877,7 +877,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     /**
      * {@link Fxml2FxIdCodeBehindGotoHandler#getGotoDeclarationTargets} invoked on the
      * name identifier of a generated field must return the {@code fx:id}
-     * {@link XmlAttributeValue} from embedded FXML2.
+     * {@link XmlAttributeValue} from embedded FXML.
      */
     @Test
     void ctrlClickFieldNavigatesToEmbeddedFxId() {
@@ -928,8 +928,8 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
 
     /**
      * {@link Fxml2FxIdFindUsagesHandlerFactory} invoked on an {@code fx:id} in embedded
-     * FXML2 must return a handler whose primary elements include the code-behind field
-     * from the host class hierarchy: the same as for standalone FXML2.
+     * FXML must return a handler whose primary elements include the code-behind field
+     * from the host class hierarchy: the same as for standalone FXML.
      */
     @Test
     void findUsagesHandlerOnEmbeddedFxIdIncludesCodeBehindField() {

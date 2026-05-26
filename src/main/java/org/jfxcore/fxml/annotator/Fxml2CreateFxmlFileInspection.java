@@ -36,7 +36,7 @@ import java.util.List;
  * to extract the embedded markup into a standalone {@code .fxml} file.
  *
  * <p>Disabled by default; opt in via
- * <em>Settings -> Editor -> Inspections -> FXML2</em>.
+ * <em>Settings -> Editor -> Inspections -> FXML/2</em>.
  * When enabled, <em>Fix all in file</em> and <em>Fix all in scope</em>
  * become available to batch-create FXML files from embedded markup.
  * The inspection also participates in <em>Code -> Code Cleanup</em>

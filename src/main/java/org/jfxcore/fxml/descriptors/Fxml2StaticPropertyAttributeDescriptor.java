@@ -10,7 +10,7 @@ import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
 
 /**
  * {@link com.intellij.xml.XmlAttributeDescriptor} for a <em>static</em> property attribute
- * in FXML 2.0, e.g. {@code GridPane.rowIndex="2"}.
+ * in FXML, e.g. {@code GridPane.rowIndex="2"}.
  *
  * <p>The class part ({@code GridPane}) is resolved to a {@link PsiClass} by the caller;
  * {@link #getDeclaration()} delegates to {@link Fxml2PropertyResolver#resolveStaticProperty}

@@ -1,28 +1,28 @@
-# FXML 2.0 IntelliJ Plugin
+# FXML/2 IntelliJ Plugin
 
-An IntelliJ IDEA plugin that provides IDE support for [FXML 2.0](https://github.com/jfxcore/fxml-compiler) files used by the JFXcore FXML compiler.
+An IntelliJ IDEA plugin that provides IDE support for [FXML/2](https://github.com/jfxcore/fxml-compiler) markup files.
 
-A `.fxml` file is treated as FXML 2.0 when its root element carries both:
+A `.fxml` file is treated as FXML/2 when its root element carries both:
 - `xmlns="http://javafx.com/javafx"`
 - `xmlns:fx="http://jfxcore.org/fxml/2.0"`
 
 ### Features
 
-#### Standalone FXML 2.0 files
+#### Standalone FXML/2 files
 
-- Dedicated FXML 2.0 file type with XML syntax highlighting, folding, and formatting
+- Dedicated FXML/2 file type with XML syntax highlighting, folding, and formatting
 - Tag and attribute resolution, code completion, and navigation to JavaFX classes
 - Find usages, rename, and Go to Declaration for `fx:id` identifiers
 - Inspections for unknown tags, unresolved attributes, unused imports, and more
 - FXML-aware import optimizer
 
-#### Embedded FXML 2.0 via `@ComponentView`
+#### Embedded FXML/2 via `@ComponentView`
 
-FXML 2.0 markup can be embedded directly in a Java or Kotlin class using the
+FXML/2 markup can be embedded directly in a Java or Kotlin class using the
 `@ComponentView` annotation.
-The plugin injects full FXML 2.0 IDE support into the annotation value:
+The plugin injects full FXML/2 IDE support into the annotation value:
 
-- Language injection: the embedded markup is treated as a live FXML 2.0 document with the
+- Language injection: the embedded markup is treated as a live FXML/2 document with the
   same completion, navigation, inspections, and find usages as standalone files
 - Formatting: `Ctrl+Alt+L` reformats the embedded XML with the correct indentation,
   honoring EditorConfig `*.fxml` rules

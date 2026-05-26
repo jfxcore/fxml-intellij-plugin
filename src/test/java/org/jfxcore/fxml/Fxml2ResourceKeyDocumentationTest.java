@@ -19,16 +19,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Verifies that {@link Fxml2ResourceKeyDocumentationTargetProvider} redirects documentation to the
- * matching {@link IProperty} so that hovering over a resource-key reference in FXML2 markup
+ * matching {@link IProperty} so that hovering over a resource-key reference in FXML markup
  * shows the same tooltip as hovering over the key in the {@code .properties} file itself.
  *
  * <p>Covers:
  * <ul>
- *   <li>{@code %key} in embedded FXML2 ({@code @ComponentView} text block in a Java file)</li>
+ *   <li>{@code %key} in embedded FXML ({@code @ComponentView} text block in a Java file)</li>
  *   <li>{@code %key} in a standalone {@code .fxml2} file</li>
- *   <li>{@code {DynamicResource key}} in embedded FXML2</li>
+ *   <li>{@code {DynamicResource key}} in embedded FXML</li>
  *   <li>{@code {DynamicResource key}} in a standalone {@code .fxml2} file</li>
- *   <li>{@code {StaticResource key}} (long form) in embedded FXML2</li>
+ *   <li>{@code {StaticResource key}} (long form) in embedded FXML</li>
  *   <li>{@code generateDoc()} output includes the property value and file name</li>
  * </ul>
  */
@@ -100,11 +100,11 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2 (%key shorthand)
+    // Embedded FXML (%key shorthand)
     // -----------------------------------------------------------------------
 
     /**
-     * {@code %greeting} in an embedded FXML2 text block must redirect documentation to the
+     * {@code %greeting} in an embedded FXML text block must redirect documentation to the
      * {@link IProperty} for {@code greeting}.
      */
     @Test
@@ -117,7 +117,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
         ReadAction.run(() -> {
             IProperty prop = resolvedPropertyAt(getFixture().getFile(), "greeting");
             assertInstanceOf(IProperty.class, prop,
-                    "Expected IProperty for %greeting in embedded FXML2; got: " + prop);
+                    "Expected IProperty for %greeting in embedded FXML; got: " + prop);
             assertEquals("greeting", prop.getKey());
         });
     }
@@ -147,11 +147,11 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Embedded FXML2 ({DynamicResource key})
+    // Embedded FXML ({DynamicResource key})
     // -----------------------------------------------------------------------
 
     /**
-     * {@code {DynamicResource welcome}} in an embedded FXML2 text block must redirect
+     * {@code {DynamicResource welcome}} in an embedded FXML text block must redirect
      * documentation to the {@link IProperty} for {@code welcome}.
      */
     @Test
@@ -164,13 +164,13 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
         ReadAction.run(() -> {
             IProperty prop = resolvedPropertyAt(getFixture().getFile(), "welcome");
             assertInstanceOf(IProperty.class, prop,
-                    "Expected IProperty for {DynamicResource welcome} in embedded FXML2; got: " + prop);
+                    "Expected IProperty for {DynamicResource welcome} in embedded FXML; got: " + prop);
             assertEquals("welcome", prop.getKey());
         });
     }
 
     /**
-     * {@code {StaticResource name}} (long form) in an embedded FXML2 text block must redirect
+     * {@code {StaticResource name}} (long form) in an embedded FXML text block must redirect
      * documentation to the {@link IProperty} for {@code name}.
      */
     @Test
@@ -183,7 +183,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
         ReadAction.run(() -> {
             IProperty prop = resolvedPropertyAt(getFixture().getFile(), "name");
             assertInstanceOf(IProperty.class, prop,
-                    "Expected IProperty for {StaticResource name} in embedded FXML2; got: " + prop);
+                    "Expected IProperty for {StaticResource name} in embedded FXML; got: " + prop);
             assertEquals("name", prop.getKey());
         });
     }
@@ -348,7 +348,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
     /**
      * {@link Fxml2ResourceKeyDocumentationTargetProvider#documentationTargets} must return a
      * non-empty list when the offset is on the key text of a {@code %key} reference in
-     * embedded FXML2, verifying end-to-end integration with IntelliJ's V2 documentation pipeline.
+     * embedded FXML, verifying end-to-end integration with IntelliJ's V2 documentation pipeline.
      */
     @Test
     void documentationTargetProviderReturnsTargetForStaticResourceInEmbeddedFxml() {
@@ -367,7 +367,7 @@ class Fxml2ResourceKeyDocumentationTest extends Fxml2TestBase {
             List<? extends DocumentationTarget> targets = provider.documentationTargets(file, offset);
 
             assertFalse(targets.isEmpty(),
-                    "documentationTargets must return a non-empty list for %button.label in embedded FXML2");
+                    "documentationTargets must return a non-empty list for %button.label in embedded FXML");
         });
     }
 }

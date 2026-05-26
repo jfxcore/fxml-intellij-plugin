@@ -15,15 +15,15 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for the FXML2-aware import optimizer behavior in Java and Kotlin files carrying
+ * Tests for the FXML-aware import optimizer behavior in Java and Kotlin files carrying
  * {@code @ComponentView} annotations.
  *
  * <p>Covers:
  * <ul>
- *   <li>The "Optimize imports (FXML2)" intention action is available when the caret
+ *   <li>The "Optimize Imports (FXML/2)" intention action is available when the caret
  *       is in the import section of a {@code @ComponentView} Java or Kotlin file.</li>
  *   <li>Running that action preserves imports that are referenced only inside the
- *       embedded FXML2 markup and not in the surrounding host-language code.</li>
+ *       embedded FXML markup and not in the surrounding host-language code.</li>
  *   <li>The action is not available in host-language files that do not carry
  *       {@code @ComponentView}.</li>
  * </ul>
@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2OptimizeImportsTest extends Fxml2TestBase {
 
-    private static final String ACTION_NAME = "Optimize Imports (FXML2)";
+    private static final String ACTION_NAME = "Optimize Imports (FXML/2)";
 
     @BeforeAll
     void addComponentViewAnnotation() {
@@ -50,7 +50,7 @@ class Fxml2OptimizeImportsTest extends Fxml2TestBase {
     // Action availability
 
     /**
-     * The "Optimize imports (FXML2)" action must be available when the caret is positioned
+     * The "Optimize Imports (FXML/2)" action must be available when the caret is positioned
      * inside the import section of a {@code @ComponentView}-annotated Java file.
      */
     @Test @Timeout(value = 20, unit = TimeUnit.SECONDS)
@@ -73,7 +73,7 @@ class Fxml2OptimizeImportsTest extends Fxml2TestBase {
     }
 
     /**
-     * The "Optimize imports (FXML2)" action must NOT be available in a Java file that
+     * The "Optimize Imports (FXML/2)" action must NOT be available in a Java file that
      * has no {@code @ComponentView} annotation, so it does not interfere with ordinary
      * Java files.
      */
@@ -98,7 +98,7 @@ class Fxml2OptimizeImportsTest extends Fxml2TestBase {
     // Action behavior: markup-needed imports are preserved
 
     /**
-     * When "Optimize imports (FXML2)" is invoked on a {@code @ComponentView} Java file
+     * When "Optimize Imports (FXML/2)" is invoked on a {@code @ComponentView} Java file
      * whose only use of an import is inside the embedded markup, the import must be kept
      * because removing it would break the markup compilation.
      */
@@ -126,14 +126,14 @@ class Fxml2OptimizeImportsTest extends Fxml2TestBase {
 
         String text = ReadAction.compute(() -> getFixture().getFile().getText());
         assertTrue(text.contains("import javafx.scene.layout.BorderPane"),
-                "Optimize imports (FXML2) must preserve imports needed by embedded markup\n" + text);
+                "Optimize Imports (FXML/2) must preserve imports needed by embedded markup\n" + text);
     }
 
     // -----------------------------------------------------------------------
     // Kotlin
 
     /**
-     * The "Optimize imports (FXML2)" action must be available when the caret is inside
+     * The "Optimize Imports (FXML/2)" action must be available when the caret is inside
      * the import section of a {@code @ComponentView}-annotated Kotlin file.
      */
     @Test @Timeout(value = 20, unit = TimeUnit.SECONDS)
@@ -156,7 +156,7 @@ class Fxml2OptimizeImportsTest extends Fxml2TestBase {
     }
 
     /**
-     * When "Optimize imports (FXML2)" is invoked on a {@code @ComponentView} Kotlin file
+     * When "Optimize Imports (FXML/2)" is invoked on a {@code @ComponentView} Kotlin file
      * whose only use of an import is inside the embedded markup, the import must be kept.
      */
     @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
@@ -182,6 +182,6 @@ class Fxml2OptimizeImportsTest extends Fxml2TestBase {
 
         String text = ReadAction.compute(() -> getFixture().getFile().getText());
         assertTrue(text.contains("import javafx.scene.layout.BorderPane"),
-                "Optimize imports (FXML2) must preserve FXML2-needed imports in Kotlin\n" + text);
+                "Optimize Imports (FXML/2) must preserve FXML-needed imports in Kotlin\n" + text);
     }
 }

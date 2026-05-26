@@ -46,7 +46,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     @BeforeEach
     void addCodeBehind() {
-        // Minimal generated base class (normally produced by the fxml2 compiler)
+        // Minimal generated base class (normally produced by the FXML compiler)
         getFixture().addClass("""
                 package test;
                 import javafx.scene.layout.BorderPane;
@@ -227,7 +227,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     /**
      * A package-private static field on the code-behind class must resolve without error.
-     * The fxml2 compiler's {@code tryResolveField} only excludes private fields, so
+     * The FXML compiler's {@code tryResolveField} only excludes private fields, so
      * package-private (and protected/public) static fields are all valid binding targets.
      */
     @Test
@@ -354,7 +354,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     /**
      * A static field defined only on an implemented interface must NOT resolve when
-     * referenced via the implementing class name. The fxml2 compiler's field resolution
+     * referenced via the implementing class name. The FXML compiler's field resolution
      * walks the superclass chain only, not interfaces, matching Java semantics that do
      * not expose static interface members through implementing class names.
      */
@@ -382,7 +382,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     /**
      * A static field inherited from a superclass (not an interface) must resolve without
      * error. Superclass statics are accessible via subclass names in both Java and the
-     * fxml2 compiler's field resolution.
+     * FXML compiler's field resolution.
      */
     @Test
     void importedClassStaticFieldInheritedFromSuperclassProducesNoError() {
@@ -978,7 +978,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     /**
      * {@link ReferencesSearch} on the property accessor used in a {@code format=} path must
-     * find the usage in the FXML2 binding expression.
+     * find the usage in the FXML binding expression.
      */
     @Test
     void findUsagesOnPropertyFindsFormatParamPathUsage() {
@@ -1039,7 +1039,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
 
     /**
      * {@link ReferencesSearch} on {@code messageProperty()} must find the binding-path
-     * segment {@code "message"} in a standalone FXML2 file via
+     * segment {@code "message"} in a standalone FXML file via
      * {@link org.jfxcore.fxml.lang.Fxml2BindingSegmentSearcher}'s global-search path.
      *
      * <p>Without the global-search handler, {@code CachesBasedRefSearcher} looks for the
@@ -1079,7 +1079,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                            && ref.getElement().getContainingFile() instanceof XmlFile);
             assertTrue(foundInFxml,
                     "ReferencesSearch on messageProperty() must find the 'message' binding segment "
-                    + "in standalone FXML2.\nFound refs: "
+                    + "in standalone FXML.\nFound refs: "
                     + refs.stream()
                             .map(r -> r.getClass().getSimpleName()
                                       + " in " + r.getElement().getContainingFile().getName())
@@ -1095,7 +1095,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
      * binding-segment uses of the method are never found.
      *
      * <p>This test verifies that {@code MethodReferencesSearch} on a property accessor finds
-     * binding-path segments in a standalone FXML2 file, including the case where the property is
+     * binding-path segments in a standalone FXML file, including the case where the property is
      * on a view-model class (a two-level path like {@code vm.message}) rather than directly on
      * the code-behind.
      */
@@ -1147,7 +1147,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                            && ref.getElement().getContainingFile() instanceof XmlFile);
             assertTrue(foundInFxml,
                     "MethodReferencesSearch on vmMessageProperty() must find the 'vmMessage' binding "
-                    + "segment in the standalone FXML2 file.\nFound refs: "
+                    + "segment in the standalone FXML file.\nFound refs: "
                     + refs.stream()
                             .map(r -> r.getClass().getSimpleName()
                                       + " in " + r.getElement().getContainingFile().getName())
@@ -1162,7 +1162,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     /**
      * A Kotlin {@code val} property (without a corresponding {@code vmProperty()} function)
      * on the code-behind class must resolve as the first binding-path segment in a standalone
-     * FXML2 file.
+     * FXML file.
      *
      * <p>When the code-behind is a Kotlin class and its property {@code vm} is declared as
      * {@code val vm: ObjectProperty<Vm>} (no explicit {@code vmProperty()} companion),

@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Custom {@link XmlFileImpl} subclass used for FXML2 markup injected into Java / Kotlin
+ * Custom {@link XmlFileImpl} subclass used for FXML markup injected into Java / Kotlin
  * source files via the {@code @ComponentView} annotation.
  *
  * <p>The only behavioral difference from a plain {@link XmlFileImpl} is the

@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Tests for boolean prefix operators in binding expressions.
  *
- * <p>FXML2 supports two boolean prefix operators on binding paths:
+ * <p>FXML/2 supports two boolean prefix operators on binding paths:
  * <ul>
  *   <li>{@code !}: inverts the boolean value; converts {@code 0} or {@code null} to {@code true}</li>
  *   <li>{@code !!}: inverts twice; converts {@code 0} or {@code null} to {@code false}</li>
@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * types), but not to collection-content binding variants ({@code $..x}, {@code ${..x}},
  * {@code #{..x}}).
  *
- * <p>Corresponds to {@code markup-extension/expression/operators.md} in the fxml2 compiler documentation.
+ * <p>Corresponds to {@code markup-extension/expression/operators.md} in the FXML compiler documentation.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2BooleanOperatorTest extends Fxml2TestBase {

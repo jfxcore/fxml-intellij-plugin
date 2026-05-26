@@ -11,10 +11,10 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.lang.Fxml2NamespaceDataProvider;
 
 /**
- * Namespace descriptor for FXML 2.0 files.
+ * Namespace descriptor for FXML/2 files.
  *
  * <p>Registered via {@link Fxml2NamespaceDataProvider} as the metadata object for the
- * {@code http://javafx.com/javafx} namespace in FXML 2.0 files.  The IntelliJ platform calls
+ * {@code http://javafx.com/javafx} namespace in FXML/2 files.  The IntelliJ platform calls
  * {@link #getElementDescriptor(XmlTag)} when it needs to resolve any XML tag in the file,
  * which in turn drives Ctrl+click (Go to Declaration) navigation.
  */

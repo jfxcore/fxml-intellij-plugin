@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Validates {@code <?prefix X = ClassName?>} processing instructions in FXML 2.0 files.
+ * Validates {@code <?prefix X = ClassName?>} processing instructions in FXML files.
  *
  * <p>Reported problems:
  * <ul>
@@ -47,7 +47,7 @@ public final class Fxml2PrefixDeclarationInspection extends LocalInspectionTool 
 
         if (!(holder.getFile() instanceof XmlFile xmlFile)) return PsiElementVisitor.EMPTY_VISITOR;
         if (!Fxml2FileType.isFxml2(xmlFile)) return PsiElementVisitor.EMPTY_VISITOR;
-        // For embedded FXML 2.0 the <?prefix?> PIs (if any) come from the auto-generated
+        // For embedded FXML the <?prefix?> PIs (if any) come from the auto-generated
         // prefix, not from the user, so there is nothing to validate here.
         if (Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile)) return PsiElementVisitor.EMPTY_VISITOR;
 

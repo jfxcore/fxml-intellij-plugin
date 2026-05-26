@@ -21,7 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Utilities for CSS class-selector resolution used by the FXML2 plugin.
+ * Utilities for CSS class-selector resolution used by the FXML/2 plugin.
  *
  * <p>Because the IntelliJ CSS PSI (Ultimate-only) is not available in Community Edition,
  * this class resolves CSS class selectors by scanning {@code .css} files as plain text

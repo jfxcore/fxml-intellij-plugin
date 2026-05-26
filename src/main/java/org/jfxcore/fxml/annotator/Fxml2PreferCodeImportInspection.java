@@ -35,11 +35,11 @@ import java.util.List;
 
 /**
  * Inspection that reports {@code <?import?>} processing instructions inside embedded
- * FXML2 markup ({@code @ComponentView} annotation values) that could be moved to the
+ * FXML markup ({@code @ComponentView} annotation values) that could be moved to the
  * host Java or Kotlin file as regular import statements.
  *
  * <h2>Rationale</h2>
- * When FXML2 markup is embedded in a Java or Kotlin file via {@code @ComponentView}, the
+ * When FXML markup is embedded in a Java or Kotlin file via {@code @ComponentView}, the
  * user may choose to place class imports either as {@code <?import?>} PIs inside the
  * markup or as top-level code imports in the host file. Some projects prefer all imports
  * to live in the host file's import section so that the IDE's import management (import
@@ -49,7 +49,7 @@ import java.util.List;
  * A {@code <?import?>} PI inside an embedded markup block is reported when:
  * <ol>
  *   <li>The host file has at least one {@code @ComponentView}-annotated class whose
- *       injected FXML2 fragment contains the PI.</li>
+ *       injected FXML fragment contains the PI.</li>
  *   <li>The PI imports a specific (non-wildcard) fully-qualified class name.</li>
  *   <li>The host Java or Kotlin file does not already have an import for that FQN
  *       (neither an exact match nor a covering wildcard).</li>
@@ -63,7 +63,7 @@ import java.util.List;
  * file's editor context.
  *
  * <p>Disabled by default; opt in via
- * <em>Settings -> Editor -> Inspections -> FXML2</em>.
+ * <em>Settings -> Editor -> Inspections -> FXML/2</em>.
  * When enabled, <em>Fix all in file</em> and <em>Fix all in scope</em> are available.
  */
 public final class Fxml2PreferCodeImportInspection extends LocalInspectionTool {
@@ -218,7 +218,7 @@ public final class Fxml2PreferCodeImportInspection extends LocalInspectionTool {
     // -----------------------------------------------------------------------
 
     /**
-     * Quick-fix that moves a {@code <?import?>} PI from embedded FXML2 markup to the
+     * Quick-fix that moves a {@code <?import?>} PI from embedded FXML markup to the
      * host Java or Kotlin file as a regular import statement.
      *
      * <p>The fix:

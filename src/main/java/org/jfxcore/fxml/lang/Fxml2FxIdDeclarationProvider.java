@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Registers each {@code fx:id} attribute value in an FXML 2.0 file as a
+ * Registers each {@code fx:id} attribute value in an FXML file as a
  * {@link PsiSymbolDeclaration} in IntelliJ's Symbol/Declaration API.
  *
  * <p>This is what makes IntelliJ treat the {@code fx:id} value as a

@@ -16,7 +16,7 @@ import com.intellij.util.QueryExecutor;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * {@link MethodReferencesSearch} extension that finds embedded FXML2 element-tag and
+ * {@link MethodReferencesSearch} extension that finds embedded FXML element-tag and
  * markup-extension usages when "Find Usages" is invoked on a constructor.
  *
  * <p>IntelliJ routes "Find Usages" on a {@link PsiMethod} (including constructors) through
@@ -29,7 +29,7 @@ import org.jetbrains.annotations.NotNull;
  * containing class and delegates to {@link Fxml2EmbeddedClassTagSearcher#collectInScope},
  * so that element-tag usages (e.g. {@code <MyControl/>}) and markup-extension usages
  * (e.g. {@code {MyExtension value=foo}}) in {@code @ComponentView}-annotated embedded
- * FXML2 markup appear in the "Find Usages" results alongside normal Java call sites.
+ * FXML markup appear in the "Find Usages" results alongside normal Java call sites.
  *
  * <p>Complements {@link Fxml2EmbeddedClassTagSearcher} (which handles the
  * {@code ReferencesSearch} path for class-level "Find Usages" and for non-IDE callers).

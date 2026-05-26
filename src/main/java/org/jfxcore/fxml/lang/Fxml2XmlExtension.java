@@ -17,7 +17,7 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2TagResolver;
 
 /**
- * Plugs into the IntelliJ XML infrastructure for FXML 2.0 files.
+ * Plugs into the IntelliJ XML infrastructure for FXML files.
  * The key override is {@link #createTagNameReference}, which enables Ctrl+click
  * navigation from element tag names to their Java class declarations.
  */
@@ -39,7 +39,7 @@ public final class Fxml2XmlExtension extends DefaultXmlExtension {
     }
 
     /**
-     * Resolves every FXML 2.0 element tag name to the corresponding {@link PsiClass}
+     * Resolves every FXML element tag name to the corresponding {@link PsiClass}
      * via {@link Fxml2ImportResolver}.
      */
     public static final class Fxml2TagNameReference extends TagNameReference {
@@ -102,7 +102,7 @@ public final class Fxml2XmlExtension extends DefaultXmlExtension {
                 XmlTag tag = getTagElement();
                 if (tag != null) {
                     // Always use the simple (unqualified) class name as the tag name.
-                    // FXML 2.0 resolves element tags via <?import?> declarations, so a simple
+                    // FXML resolves element tags via <?import?> declarations, so a simple
                     // name is always correct as long as there is a matching import.
                     // Reading the stale injected-XML prolog to check whether the name is
                     // resolvable can produce the wrong answer during rename refactoring

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.TestInstance;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests that correspond to the fxml2 compiler's IntrinsicsTest
+ * Tests that correspond to the FXML compiler's IntrinsicsTest
  * ({@code src/compilerTest/java/org/jfxcore/compiler/IntrinsicsTest.java}).
  *
  * <p>Covers the built-in {@code fx:} attributes (id, class, constant, null,

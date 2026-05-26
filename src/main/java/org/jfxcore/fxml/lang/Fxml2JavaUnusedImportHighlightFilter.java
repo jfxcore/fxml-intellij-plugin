@@ -26,7 +26,7 @@ import org.jetbrains.annotations.Nullable;
  * <h2>Problem</h2>
  * IntelliJ's built-in Java highlighting (via {@code UnusedImportsVisitor}) analyzes only
  * the Java source to decide which imports are referenced.  It does <em>not</em> understand
- * that class names used inside the FXML2 markup string (the {@code @ComponentView}
+ * that class names used inside the FXML markup string (the {@code @ComponentView}
  * annotation value) also constitute "uses" of those imports.  As a result, imports such as
  * {@code import javafx.scene.layout.*} are highlighted as "Unused import statement" even
  * though they are required to resolve the class tags inside the embedded markup.
@@ -37,7 +37,7 @@ import org.jetbrains.annotations.Nullable;
  * in a Java file:
  * <ol>
  *   <li>It checks whether any class in that file carries {@code @ComponentView}.</li>
- *   <li>If so, it retrieves the injected FXML2 {@link com.intellij.psi.xml.XmlFile} and checks via
+ *   <li>If so, it retrieves the injected FXML {@link com.intellij.psi.xml.XmlFile} and checks via
  *       {@link Fxml2ImportUtil#isImportNeededByXmlFile}: whether the import is
  *       needed to resolve a name used in the markup.</li>
  *   <li>If the import is needed it returns {@code false} (suppress), otherwise {@code true}
@@ -51,7 +51,7 @@ import org.jetbrains.annotations.Nullable;
  *   <li><strong>Unused-import highlight</strong> ({@code UNUSED_IMPORT}): range exactly
  *       matches a {@link PsiImportStatement}.  Compile errors such as "cannot resolve
  *       symbol" use a sub-range, so they are never matched by mistake.  Static imports
- *       are excluded.  Suppressed for any import that is actually needed by FXML2
+ *       are excluded.  Suppressed for any import that is actually needed by FXML
  *       markup.</li>
  *   <li><strong>Missorted-imports highlight</strong> ({@code MISSORTED_IMPORTS}): range
  *       exactly matches the {@link PsiImportList} (the entire import section).
@@ -59,7 +59,7 @@ import org.jetbrains.annotations.Nullable;
  *       one import as redundant from a Java perspective, and attaches an
  *       {@code OptimizeImportsFix} that calls {@code JavaImportOptimizer} directly,
  *       bypassing the {@code Fxml2EmbeddedJavaImportOptimizer} extension.  For
- *       {@code @ComponentView} files that fix would incorrectly remove FXML2-needed
+ *       {@code @ComponentView} files that fix would incorrectly remove FXML-needed
  *       imports.  The correct optimizer is available via Ctrl+Alt+O or the
  *       {@code Fxml2OptimizeImportsAction} intention.</li>
  * </ul>
@@ -89,7 +89,7 @@ public final class Fxml2JavaUnusedImportHighlightFilter implements HighlightInfo
         // UnusedImportsVisitor creates a MISSORTED_IMPORTS highlight with
         // .range(importList), covering the entire import section, whenever it
         // considers at least one import redundant. Its attached OptimizeImportsFix
-        // calls JavaImportOptimizer directly and would remove FXML2-needed imports
+        // calls JavaImportOptimizer directly and would remove FXML-needed imports
         // in @ComponentView files. Suppress it; Ctrl+Alt+O and Fxml2OptimizeImportsAction
         // provide the correct optimizer for these files.
         PsiImportList importList = javaFile.getImportList();
@@ -111,7 +111,7 @@ public final class Fxml2JavaUnusedImportHighlightFilter implements HighlightInfo
                 PsiTreeUtil.getParentOfType(element, PsiImportStatement.class, false);
         if (importStmt == null) return true;
 
-        // Skip static imports: FXML2 markup never references static members by import.
+        // Skip static imports: FXML markup never references static members by import.
         if (importStmt instanceof PsiImportStaticStatement) return true;
 
         // Only suppress highlights that cover the ENTIRE import statement.

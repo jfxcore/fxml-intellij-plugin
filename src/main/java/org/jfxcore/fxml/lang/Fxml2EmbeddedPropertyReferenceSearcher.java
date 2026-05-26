@@ -18,16 +18,16 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * {@link ReferencesSearch} extension that finds {@link PropertyReferenceBase} instances in
- * embedded FXML2 markup ({@code @ComponentView} annotations) that resolve to a given
+ * embedded FXML markup ({@code @ComponentView} annotations) that resolve to a given
  * {@link IProperty}.
  *
  * <h3>Why is this needed?</h3>
  * <p>IntelliJ's standard {@code CachesBasedRefSearcher} uses the word index to locate
- * potential reference sites.  Because embedded FXML2 markup exists inside Java text-block
+ * potential reference sites.  Because embedded FXML markup exists inside Java text-block
  * literals (injected language fragments), it is never indexed in the word index.
  * Consequently, {@link ReferencesSearch#search} invoked on an {@link IProperty} never
  * reaches the embedded XML: "Find Usages" and "Navigate to Use Sites" show no results
- * even though the property is referenced via {@code %key} in embedded FXML2.
+ * even though the property is referenced via {@code %key} in embedded FXML.
  *
  * <p>This searcher bridges the gap: when the target element is an {@link IProperty}, it
  * walks all {@code @ComponentView}-annotated classes in the search scope, retrieves their

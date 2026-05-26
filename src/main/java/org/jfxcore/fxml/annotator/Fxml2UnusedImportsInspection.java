@@ -39,7 +39,7 @@ import java.util.Set;
 
 /**
  * Reports {@code <?import?>} processing instructions whose imported class or package
- * is not referenced anywhere in the FXML 2.0 document.
+ * is not referenced anywhere in the FXML document.
  *
  * <p>An import is considered used when:
  * <ul>
@@ -61,7 +61,7 @@ public final class Fxml2UnusedImportsInspection extends XmlSuppressableInspectio
         XmlFile xmlFile = (XmlFile) file;
 
         if (Fxml2EmbeddedUtil.isEmbeddedFxml2(file)) {
-            // For embedded FXML 2.0, the prolog holds synthesised Java-import PIs that are not
+            // For embedded FXML, the prolog holds synthesised Java-import PIs that are not
             // user-editable, so skip them.  However, user-written <?import?> PIs placed inside
             // the <fxml2:embedded> wrapper root ARE user-editable and should be checked.
             return checkEmbeddedFxmlImports(xmlFile, manager, isOnTheFly);
@@ -124,7 +124,7 @@ public final class Fxml2UnusedImportsInspection extends XmlSuppressableInspectio
 
     /**
      * Checks for unused {@code <?import?>} PIs written by the user inside the
-     * {@code <fxml2:embedded>} wrapper root of an embedded FXML 2.0 file.
+     * {@code <fxml2:embedded>} wrapper root of an embedded FXML file.
      *
      * <p>The synthesised Java-import PIs in the XML prolog are not checked here because they
      * are managed by the language injector and are not user-editable.
@@ -188,7 +188,7 @@ public final class Fxml2UnusedImportsInspection extends XmlSuppressableInspectio
 
     /**
      * Collects every simple class name (and static-property class prefix) referenced
-     * in the body of the FXML 2.0 document.
+     * in the body of the FXML document.
      */
     public static Set<String> collectUsedSimpleNames(XmlFile file) {
         Set<String> names = new HashSet<>();

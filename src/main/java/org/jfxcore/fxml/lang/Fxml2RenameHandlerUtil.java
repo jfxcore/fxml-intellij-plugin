@@ -15,7 +15,7 @@ import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Shared utility for FXML2 rename handlers.
+ * Shared utility for FXML rename handlers.
  */
 final class Fxml2RenameHandlerUtil {
 

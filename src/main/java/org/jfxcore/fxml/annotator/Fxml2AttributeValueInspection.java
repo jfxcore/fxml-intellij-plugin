@@ -38,7 +38,7 @@ import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 import java.util.List;
 
 /**
- * Validates literal attribute values in FXML 2.0 files (enum constants, color names, etc.),
+ * Validates literal attribute values in FXML files (enum constants, color names, etc.),
  * missing {@code @NamedArg} constructor arguments, and collection item-type mismatches.
  */
 public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
@@ -76,7 +76,7 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
     /**
      * When a property element tag is used as a {@code @NamedArg} constructor argument in element
      * notation AND the corresponding constructor parameter is a <em>non-vararg</em> array type
-     * (e.g. {@code Node[] nodes}), the fxml2 compiler imposes two constraints:
+     * (e.g. {@code Node[] nodes}), the FXML compiler imposes two constraints:
      * <ol>
      *   <li>More than one class-type child is rejected with
      *       {@code CANNOT_ASSIGN_FUNCTION_ARGUMENT_variadic}.</li>
@@ -419,7 +419,7 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
         if (localName.isEmpty()) return;
         if (tag.getNamespace().equals(Fxml2ImportResolver.FXML2_NAMESPACE)) return;
         if (localName.contains(".")) return;
-        // In FXML2 (as in FXML), class-element tags always start with an uppercase letter
+        // In FXML/2 (as in FXML), class-element tags always start with an uppercase letter
         // while property-element tags always start with a lowercase letter.  An
         // uppercase-starting tag that cannot be resolved (e.g. because its import is
         // missing) is still a class tag, not a property.  Treating it as a property

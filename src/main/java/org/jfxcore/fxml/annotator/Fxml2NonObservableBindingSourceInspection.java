@@ -38,12 +38,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Reports FXML2 {@code ${source}} (Observe) and {@code #{source}} (Synchronize) binding expressions
+ * Reports FXML {@code ${source}} (Observe) and {@code #{source}} (Synchronize) binding expressions
  * where <em>no segment</em> in the binding path chain has an observable declaration type
  * ({@code javafx.beans.value.ObservableValue}).
  *
  * <p>When every segment in the path is a plain field or Java-Beans getter (neither returns an
- * {@code ObservableValue}), the fxml2 compiler rejects the binding with
+ * {@code ObservableValue}), the FXML compiler rejects the binding with
  * {@code INVALID_UNIDIRECTIONAL_BINDING_SOURCE} or {@code INVALID_BIDIRECTIONAL_BINDING_SOURCE}.
  * A quick-fix offers to simplify the expression to a one-way {@code $source} (Evaluate) binding.
  *
@@ -247,7 +247,7 @@ public final class Fxml2NonObservableBindingSourceInspection extends LocalInspec
      *       (content-based dependency).</li>
      * </ul>
      *
-     * <p>This mirrors the fxml2 compiler's {@code hasObservableDependency()} check:
+     * <p>This mirrors the FXML compiler's {@code hasObservableDependency()} check:
      * observable collections count as content-based dependency providers. If an
      * intermediate segment is an {@code ObservableList} (for example), the binding is
      * re-evaluated whenever the collection content changes, even though {@code ObservableList}
@@ -297,7 +297,7 @@ public final class Fxml2NonObservableBindingSourceInspection extends LocalInspec
      *
      * <p>Observable types that do not implement {@code Property}, such as
      * {@code ReadOnlyStringProperty} or any plain {@code ObservableValue}, satisfy the
-     * observability requirement but not the writability requirement. The fxml2 compiler
+     * observability requirement but not the writability requirement. The FXML compiler
      * rejects such types as bidirectional binding sources with
      * {@code INVALID_BIDIRECTIONAL_BINDING_SOURCE}.
      *

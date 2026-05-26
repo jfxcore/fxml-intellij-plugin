@@ -12,7 +12,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Suppresses false-positive "unused property" warnings for {@code .properties} file entries
  * that are referenced only via {@code %key} shorthand or {@code {DynamicResource key}} /
- * {@code {StaticResource key}} long form in embedded FXML2 markup
+ * {@code {StaticResource key}} long form in embedded FXML markup
  * ({@code @ComponentView} annotations).
  *
  * <h3>Why is this needed?</h3>
@@ -27,7 +27,7 @@ import org.jetbrains.annotations.NotNull;
  *
  * <p>This provider intercepts the {@link #isUsed isUsed} check that runs <em>before</em>
  * the word-index short-circuit. It searches all {@code @ComponentView}-annotated classes
- * in the project for injected FXML2 markup that contains a resource key reference. If at
+ * in the project for injected FXML markup that contains a resource key reference. If at
  * least one such use site is found the property is reported as used, bypassing the broken
  * word-index path.
  */

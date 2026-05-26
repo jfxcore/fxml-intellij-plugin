@@ -21,23 +21,23 @@ import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 
 /**
  * {@link ReferencesSearch} extension that finds references to a {@link PsiClass} inside
- * <em>embedded</em> FXML2 markup ({@code @ComponentView} annotations).
+ * <em>embedded</em> FXML markup ({@code @ComponentView} annotations).
  *
  * <h3>Why is this needed?</h3>
- * <p>A class may be referenced in embedded FXML2 in two ways:
+ * <p>A class may be referenced in embedded FXML in two ways:
  * <ol>
  *   <li>As an <b>XML element tag</b>, e.g.:
  *       {@code <CustomControl fx:typeArguments="Double" item="1e2"/>}</li>
  *   <li>As a <b>markup extension</b> in an attribute value, e.g.:
  *       {@code <Label text="{MyMarkupExtension value=foo}"/>}</li>
  * </ol>
- * In both cases the FXML2 compiler instantiates the class at runtime. However, IntelliJ's
+ * In both cases the FXML/2 compiler instantiates the class at runtime. However, IntelliJ's
  * standard "Find Usages" for the {@code PsiClass} never discovers these usage sites because:
  * <ul>
- *   <li>Embedded FXML2 lives inside a Java text-block literal: an injected language fragment
+ *   <li>Embedded FXML lives inside a Java text-block literal: an injected language fragment
  *       that is <em>never</em> included in IntelliJ's word index.</li>
  *   <li>{@link Fxml2UseScopeEnlarger} only enlarges the search scope for {@code PsiField} and
- *       {@code PsiMethod} elements, so FXML2 files are never added to the scope when searching
+ *       {@code PsiMethod} elements, so FXML files are never added to the scope when searching
  *       for usages of a {@code PsiClass}.</li>
  * </ul>
  *
@@ -67,7 +67,7 @@ public final class Fxml2EmbeddedClassTagSearcher
         PsiElement target = params.getElementToSearch();
 
         // When "Find Usages" is invoked on a constructor, resolve the containing class and
-        // search for usages of that class in embedded FXML2 (the constructor is implicitly
+        // search for usages of that class in embedded FXML (the constructor is implicitly
         // called whenever the class is instantiated as a tag or markup extension).
         // NOTE: isConstructor() and getContainingClass() require a read action.
         PsiClass psiClass = ReadAction.compute(() -> {
@@ -89,7 +89,7 @@ public final class Fxml2EmbeddedClassTagSearcher
     }
 
     /**
-     * Searches embedded FXML2 markup in {@code globalScope} for element-tag and
+     * Searches embedded FXML markup in {@code globalScope} for element-tag and
      * markup-extension usages of {@code psiClass}, feeding matching references to
      * {@code consumer}.
      *
@@ -103,7 +103,7 @@ public final class Fxml2EmbeddedClassTagSearcher
             @NotNull GlobalSearchScope globalScope,
             @NotNull Processor<? super PsiReference> consumer) {
 
-        // Use the simple class name as the word-index key.  In FXML2 markup, the class is
+        // Use the simple class name as the word-index key.  In FXML markup, the class is
         // referenced either as its simple name (<CustomLabel>) or as a dotted FQN
         // (<sample.app.CustomLabel>).  Either way, the simple name always appears as a
         // separate word token (XML tag names are split at '<' and '.'), so an IN_PLAIN_TEXT

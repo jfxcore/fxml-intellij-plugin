@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Implements "Optimize Imports" for FXML 2.0 files:
+ * Implements "Optimize Imports" for FXML files:
  * <ol>
  *   <li>Removes {@code <?import?>} PIs whose class is not referenced anywhere in the document.</li>
  *   <li>Sorts the remaining imports strictly alphabetically.</li>
@@ -35,13 +35,13 @@ import java.util.Set;
  * that nothing outside the import range (comments, {@code <?xml?>}, root tag) moves.
  *
  * <p>Registered as {@code lang.importOptimizer} for language {@code XML} in {@code plugin.xml},
- * ordered before the built-in XML optimizer so it runs first on FXML 2.0 files.
+ * ordered before the built-in XML optimizer so it runs first on FXML files.
  */
 public final class Fxml2ImportOptimizer implements ImportOptimizer {
 
     @Override
     public boolean supports(@NotNull PsiFile file) {
-        // Embedded FXML2 (injected XML) must not be processed here, as its imports are
+        // Embedded FXML (injected XML) must not be processed here, as its imports are
         // backed by the host Java file and cannot be edited via the injected document.
         // Fxml2EmbeddedJavaImportOptimizer handles Java files with @ComponentView instead.
         if (Fxml2EmbeddedUtil.isEmbeddedFxml2(file)) return false;
