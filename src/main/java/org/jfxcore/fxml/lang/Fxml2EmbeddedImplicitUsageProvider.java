@@ -160,7 +160,11 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
         // narrow the search to only @ComponentView classes whose embedded markup text
         // contains the property name, avoiding a full scan of all annotated classes.
         String propertyWord = Fxml2PropertyNameUtil.propertyNameFromElement(element);
-        if (propertyWord == null) return false;
+        if (propertyWord == null) {
+            // Plain event-handler method: fall back to the method/function name.
+            propertyWord = Fxml2StandaloneImplicitUsageProvider.plainHandlerMethodName(element);
+            if (propertyWord == null) return false;
+        }
         Project project = element.getProject();
         GlobalSearchScope scope = GlobalSearchScope.projectScope(project);
         boolean[] found = {false};
@@ -183,9 +187,11 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
 
     /**
      * Returns {@code true} if {@code xmlFile} contains at least one reference that
-     * resolves to {@code element}: either a {@link Fxml2BindingSegmentReference} or an
-     * XML attribute whose {@link org.jfxcore.fxml.descriptors.Fxml2PropertyAttributeDescriptor}
-     * declaration matches {@code element} (e.g. {@code formatter="$doubleFormatter"}).
+     * resolves to {@code element}: a {@link Fxml2BindingSegmentReference}, a
+     * {@link Fxml2AttributeValueReference} (for event-handler method references such as
+     * {@code onAction="handleClick"}), or an XML attribute whose
+     * {@link org.jfxcore.fxml.descriptors.Fxml2PropertyAttributeDescriptor} declaration
+     * matches {@code element} (e.g. {@code formatter="$doubleFormatter"}).
      */
     private static boolean isReferencedInXmlFile(
             @NotNull PsiElement element, @NotNull XmlFile xmlFile) {
@@ -197,12 +203,14 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
         if (found[0]) return true;
 
         // Check 2: binding-segment references in attribute values.
+        // Check 3: event-handler method references (onAction="handleClick").
         xmlFile.accept(new XmlRecursiveElementVisitor() {
             @Override
             public void visitXmlAttributeValue(@NotNull XmlAttributeValue attrValue) {
                 if (found[0]) return;
                 for (PsiReference ref : attrValue.getReferences()) {
-                    if (!(ref instanceof Fxml2BindingSegmentReference)) continue;
+                    if (!(ref instanceof Fxml2BindingSegmentReference)
+                            && !(ref instanceof Fxml2AttributeValueReference)) continue;
                     PsiElement resolved = ref.resolve();
                     if (resolved == null) continue;
                     PsiManager mgr = element.getManager();
@@ -253,7 +261,10 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
         }
 
         String propertyWord = Fxml2PropertyNameUtil.propertyNameFromElement(element);
-        if (propertyWord == null) return false;
+        if (propertyWord == null) {
+            propertyWord = Fxml2StandaloneImplicitUsageProvider.plainHandlerMethodName(element);
+            if (propertyWord == null) return false;
+        }
         Project project = element.getProject();
         GlobalSearchScope scope = GlobalSearchScope.projectScope(project);
         boolean[] found = {false};

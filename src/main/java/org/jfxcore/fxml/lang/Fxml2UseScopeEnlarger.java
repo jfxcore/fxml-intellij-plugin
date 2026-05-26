@@ -48,12 +48,12 @@ public final class Fxml2UseScopeEnlarger extends UseScopeEnlarger {
             case PsiClass cls -> sourceFile = virtualFileOf(cls);
             case PsiField f -> sourceFile = virtualFileOf(f.getContainingClass());
             case PsiMethod m -> {
-                String methodName = m.getName();
-                int paramCount = m.getParameterList().getParametersCount();
-                boolean isPropertyMethod =
-                        (paramCount == 0)   // getter, xProperty(), no-arg constructors...
-                                || (paramCount == 1 && Fxml2PropertyNameUtil.isSetterName(methodName));
-                if (!isPropertyMethod) return null;
+                // 0-param: getters, xProperty() accessors, no-arg event handlers.
+                // 1-param: setters, single-event-arg handlers (e.g. void onClick(ActionEvent e)).
+                // 2+-param methods cannot be referenced from FXML2.
+                // Enlargement ensures the unused-declaration analysis includes FXML2 files in
+                // its word-index pre-check so MethodReferencesSearch is not skipped early.
+                if (m.getParameterList().getParametersCount() > 1) return null;
                 sourceFile = virtualFileOf(m.getContainingClass());
             }
             default -> sourceFile = kotlinElementSourceFile(element);
@@ -62,9 +62,10 @@ public final class Fxml2UseScopeEnlarger extends UseScopeEnlarger {
 
         // Only enlarge for elements whose source file is in project content (not a library).
         Project project = element.getProject();
-        if (!ProjectFileIndex.getInstance(project).isInSourceContent(sourceFile)) return null;
+        if (!ProjectFileIndex.getInstance(project).isInSourceContent(sourceFile)) {
+            return null;
+        }
 
-        // Include all .fxml and .fxml2 files within the project scope.
         return new Fxml2FilesSearchScope(GlobalSearchScope.projectScope(project));
     }
 

@@ -8,6 +8,7 @@ import com.intellij.psi.PsiInvalidElementAccessException;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.PsiSearchHelper;
 import com.intellij.psi.search.SearchScope;
 import com.intellij.psi.search.searches.MethodReferencesSearch;
 import com.intellij.psi.xml.XmlAttributeValue;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Objects;
 import org.jfxcore.fxml.lang.Fxml2BindingSegmentMethodSearcher;
 import org.jfxcore.fxml.lang.Fxml2BindingSegmentReference;
+import org.jfxcore.fxml.lang.Fxml2EventHandlerMethodSearcher;
 import org.jfxcore.fxml.lang.Fxml2KotlinUnusedSymbolSuppressor;
 import org.jfxcore.fxml.lang.Fxml2StandaloneImplicitUsageProvider;
 import org.jfxcore.fxml.lang.Fxml2UseScopeEnlarger;
@@ -1314,6 +1316,291 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
                     "SuppressionUtil.inspectionResultSuppressed must return true for a "
                     + "KtProperty referenced in standalone FXML2, when the inspection's "
                     + "suppressId is \"unused\" (matching the production K1/K2 registration).");
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Event-handler method references in standalone FXML2
+    // -----------------------------------------------------------------------
+
+    /**
+     * A plain Java event-handler method (e.g. {@code public void handleAction()}) referenced
+     * by name in a standalone FXML2 attribute value (e.g. {@code <Button onAction="handleAction"/>})
+     * must NOT be reported as implicitly used.
+     *
+     * <p>Such methods have an actual {@link com.intellij.psi.PsiReference} provided by
+     * {@code EventHandlerMethodReferenceProvider}, and that reference is discovered via
+     * {@link MethodReferencesSearch} by {@code Fxml2EventHandlerMethodSearcher}.
+     * {@link com.intellij.codeInsight.daemon.ImplicitUsageProvider} is therefore not needed for
+     * them.  Returning {@code true} from {@code isImplicitUsage} for a method that has real
+     * references would cause {@code UnusedDeclarationInspectionBase.isEntryPoint()} to return
+     * {@code true}, which suppresses the Code Vision usage count for the method.
+     */
+    @Test
+    void javaEventHandlerMethodReferencedInStandaloneFxmlIsNotImplicitlyUsed() {
+        getFixture().addClass("""
+                package test;
+                import javafx.event.ActionEvent;
+                import javafx.scene.control.Button;
+                import javafx.scene.layout.BorderPane;
+                public class EventHandlerView extends BorderPane {
+                    public EventHandlerView() { initializeComponent(); }
+                    protected void initializeComponent() {}
+                    public void handleAction() {}
+                    public void handleActionWithParam(ActionEvent e) {}
+                }
+                """);
+        getFixture().addFileToProject("test/EventHandlerView.fxml", fxml2(
+                "javafx.scene.control.Button",
+                """
+                  <Button onAction="handleAction"/>
+                """,
+                "test.EventHandlerView"
+        ));
+        getFixture().configureByText("EventHandlerView.fxml", fxml2(
+                "javafx.scene.control.Button",
+                """
+                  <Button onAction="handleAction"/>
+                """,
+                "test.EventHandlerView"
+        ));
+        getFixture().doHighlighting();
+
+        ReadAction.run(() -> {
+            var project = getFixture().getProject();
+            var cls = JavaPsiFacade.getInstance(project)
+                    .findClass("test.EventHandlerView", GlobalSearchScope.projectScope(project));
+            assertNotNull(cls, "Must find EventHandlerView class");
+
+            PsiMethod[] methods = cls.findMethodsByName("handleAction", false);
+            assertTrue(methods.length > 0, "Must find handleAction method");
+
+            var provider = new Fxml2StandaloneImplicitUsageProvider();
+            assertFalse(provider.isImplicitUsage(methods[0]),
+                    "isImplicitUsage must return false for a Java event-handler method: "
+                    + "these methods have actual PsiReferences (via EventHandlerMethodReferenceProvider) "
+                    + "discovered by MethodReferencesSearch, so ImplicitUsageProvider must not claim "
+                    + "them as entry points (which would suppress Code Vision usage counts)");
+            assertFalse(provider.isImplicitRead(methods[0]),
+                    "isImplicitRead must return false for a Java event-handler method "
+                    + "for the same reason");
+        });
+    }
+
+    /**
+     * A plain Java event-handler method with a parameter (e.g.
+     * {@code public void handleClick(ActionEvent e)}) must also NOT be reported as
+     * implicitly used, for the same reason as the zero-parameter case.
+     *
+     * <p>The {@link Fxml2UseScopeEnlarger} must enlarge the use scope for 1-param methods
+     * so that {@link MethodReferencesSearch} (via {@code Fxml2EventHandlerMethodSearcher})
+     * can find the FXML2 reference and suppress the "unused" warning correctly.
+     */
+    @Test
+    void javaEventHandlerMethodWithParamReferencedInStandaloneFxmlIsNotImplicitlyUsed() {
+        getFixture().addClass("""
+                package test;
+                import javafx.event.ActionEvent;
+                import javafx.scene.layout.BorderPane;
+                public class EventHandlerViewParam extends BorderPane {
+                    public EventHandlerViewParam() { initializeComponent(); }
+                    protected void initializeComponent() {}
+                    public void handleClick(ActionEvent e) {}
+                }
+                """);
+        getFixture().addFileToProject("test/EventHandlerViewParam.fxml", fxml2(
+                "javafx.scene.control.Button",
+                """
+                  <Button onAction="handleClick"/>
+                """,
+                "test.EventHandlerViewParam"
+        ));
+        getFixture().configureByText("EventHandlerViewParam.fxml", fxml2(
+                "javafx.scene.control.Button",
+                """
+                  <Button onAction="handleClick"/>
+                """,
+                "test.EventHandlerViewParam"
+        ));
+        getFixture().doHighlighting();
+
+        ReadAction.run(() -> {
+            var project = getFixture().getProject();
+            var cls = JavaPsiFacade.getInstance(project)
+                    .findClass("test.EventHandlerViewParam", GlobalSearchScope.projectScope(project));
+            assertNotNull(cls, "Must find EventHandlerViewParam class");
+
+            PsiMethod[] methods = cls.findMethodsByName("handleClick", false);
+            assertTrue(methods.length > 0, "Must find handleClick method");
+
+            var provider = new Fxml2StandaloneImplicitUsageProvider();
+            assertFalse(provider.isImplicitUsage(methods[0]),
+                    "isImplicitUsage must return false for a parameterized event-handler method: "
+                    + "actual references are found via MethodReferencesSearch");
+        });
+    }
+
+    /**
+     * {@link Fxml2UseScopeEnlarger} must enlarge the use scope for a Java method with a
+     * single non-setter parameter so that {@code MethodReferencesSearch} can scan FXML2
+     * files for event-handler references.
+     *
+     * <p>Without this enlargement, the IntelliJ "unused declaration" analysis would call
+     * {@code isCheapEnoughToSearch(name, scope)} with a scope that excludes FXML files.
+     * If the method name has zero occurrences in that narrow scope,
+     * {@link com.intellij.codeInsight.daemon.impl.UnusedSymbolUtil#processUsages} exits
+     * early and never invokes {@code MethodReferencesSearch}, so the FXML2 reference goes
+     * undetected and an "unused" warning appears.
+     */
+    @Test
+    void useScopeEnlargerAddsOneParamNonSetterMethodToFxmlScope() {
+        getFixture().addClass("""
+                package test;
+                import javafx.event.ActionEvent;
+                import javafx.scene.layout.BorderPane;
+                public class EventHandlerEnlargeView extends BorderPane {
+                    public void handleClick(ActionEvent e) {}
+                }
+                """);
+
+        ReadAction.run(() -> {
+            var project = getFixture().getProject();
+            var cls = JavaPsiFacade.getInstance(project)
+                    .findClass("test.EventHandlerEnlargeView", GlobalSearchScope.projectScope(project));
+            assertNotNull(cls, "Must find EventHandlerEnlargeView");
+
+            PsiMethod[] methods = cls.findMethodsByName("handleClick", false);
+            assertTrue(methods.length > 0, "Must find handleClick");
+
+            var enlarger = new Fxml2UseScopeEnlarger();
+            SearchScope scope = enlarger.getAdditionalUseScope(methods[0]);
+            assertNotNull(scope,
+                    "UseScopeEnlarger must return a non-null scope for a public 1-param "
+                    + "non-setter Java method so that FXML2 files are included in the word-index "
+                    + "search used by the unused-declaration analysis");
+        });
+    }
+
+    /**
+     * {@link MethodReferencesSearch} with {@code strict=true} and the method's actual use
+     * scope (as returned by {@link PsiSearchHelper#getUseScope}) must find the FXML2
+     * event-handler attribute reference.
+     *
+     * <p>This test mirrors the exact call path used by IntelliJ's "unused declaration"
+     * analysis: {@code UnusedSymbolUtil.processUsages} calls
+     * {@code MethodReferencesSearch.search(method, useScope, true)} where {@code useScope}
+     * is {@code PsiSearchHelper.getUseScope(method)}.  If this search does not find the
+     * FXML2 attribute, the analysis concludes "no usages" and emits the
+     * "Method 'X' is never used" warning, even though the method IS referenced from FXML2.
+     *
+     * <p>For the search to succeed:
+     * <ol>
+     *   <li>{@link org.jfxcore.fxml.lang.Fxml2UseScopeEnlarger} must add FXML files to the
+     *       method's use scope (so {@code getEffectiveSearchScope()} includes them).</li>
+     *   <li>{@link Fxml2EventHandlerMethodSearcher} must process those FXML files and emit
+     *       a synthetic reference for the matching attribute value.</li>
+     * </ol>
+     */
+    @Test
+    void methodReferencesSearchWithStrictModeAndUseScopeFindsJavaHandlerInStandaloneFxml() {
+        getFixture().addClass("""
+                package test;
+                import javafx.event.ActionEvent;
+                import javafx.scene.layout.BorderPane;
+                public class EventHandlerMrsView extends BorderPane {
+                    public EventHandlerMrsView() { initializeComponent(); }
+                    protected void initializeComponent() {}
+                    public void handleMrsAction() {}
+                    public void handleMrsActionWithParam(ActionEvent e) {}
+                }
+                """);
+        getFixture().addFileToProject("test/EventHandlerMrsView.fxml", fxml2(
+                "javafx.scene.control.Button",
+                """
+                  <Button onAction="handleMrsAction"/>
+                """,
+                "test.EventHandlerMrsView"
+        ));
+        getFixture().configureByText("EventHandlerMrsView.fxml", fxml2(
+                "javafx.scene.control.Button",
+                """
+                  <Button onAction="handleMrsAction"/>
+                """,
+                "test.EventHandlerMrsView"
+        ));
+        getFixture().doHighlighting();
+
+        ReadAction.run(() -> {
+            var project = getFixture().getProject();
+            var cls = JavaPsiFacade.getInstance(project)
+                    .findClass("test.EventHandlerMrsView", GlobalSearchScope.projectScope(project));
+            assertNotNull(cls, "Must find EventHandlerMrsView class");
+
+            PsiMethod[] methods = cls.findMethodsByName("handleMrsAction", false);
+            assertTrue(methods.length > 0, "Must find handleMrsAction");
+            // Prefer the 0-param overload (the one that would be selected for a
+            // 0-param handler); handleMrsAction has 0 params.
+            PsiMethod target = Arrays.stream(methods)
+                    .filter(m -> m.getParameterList().getParametersCount() == 0)
+                    .findFirst()
+                    .orElse(methods[0]);
+
+            // This is the exact scope that processUsages (for "unused declaration") uses.
+            SearchScope useScope = PsiSearchHelper.getInstance(project).getUseScope(target);
+            assertInstanceOf(GlobalSearchScope.class, useScope,
+                    "Use scope must be a GlobalSearchScope for MethodReferencesSearch to work");
+            GlobalSearchScope globalScope = (GlobalSearchScope) useScope;
+
+            List<PsiReference> found = new ArrayList<>();
+            MethodReferencesSearch.search(target, globalScope, /* strict= */ true)
+                    .forEach(ref -> { found.add(ref); return true; });
+
+            assertFalse(found.isEmpty(),
+                    "MethodReferencesSearch with strict=true and the method's use scope must " +
+                    "find the FXML2 event-handler reference. This is the path taken by the " +
+                    "'unused declaration' analysis to determine whether to show the " +
+                    "'Method is never used' warning. If this fails, the warning cannot be " +
+                    "suppressed via MethodReferencesSearch alone.");
+        });
+    }
+
+    /**
+     * A plain Java method that is NOT referenced as an event handler in any FXML2 file
+     * must NOT be reported as implicitly used.
+     */
+    @Test
+    void javaEventHandlerMethodNotReferencedInFxmlIsNotReportedAsUsed() {
+        getFixture().addClass("""
+                package test;
+                import javafx.scene.layout.BorderPane;
+                public class EventHandlerViewUnused extends BorderPane {
+                    public EventHandlerViewUnused() { initializeComponent(); }
+                    protected void initializeComponent() {}
+                    public void unusedHandler() {}
+                }
+                """);
+        getFixture().configureByText("EventHandlerViewUnused.fxml", fxml2(
+                "javafx.scene.control.Button",
+                """
+                  <Button onAction="otherHandler"/>
+                """,
+                "test.EventHandlerViewUnused"
+        ));
+        getFixture().doHighlighting();
+
+        ReadAction.run(() -> {
+            var project = getFixture().getProject();
+            var cls = JavaPsiFacade.getInstance(project)
+                    .findClass("test.EventHandlerViewUnused", GlobalSearchScope.projectScope(project));
+            assertNotNull(cls, "Must find EventHandlerViewUnused class");
+
+            PsiMethod[] methods = cls.findMethodsByName("unusedHandler", false);
+            assertTrue(methods.length > 0, "Must find unusedHandler method");
+
+            var provider = new Fxml2StandaloneImplicitUsageProvider();
+            assertFalse(provider.isImplicitUsage(methods[0]),
+                    "isImplicitUsage must return false for a method not referenced "
+                    + "as event handler in any FXML2 file");
         });
     }
 }
