@@ -15,14 +15,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A {@link DocumentationTarget} backed by a {@link PsiElement}, built only from public
- * documentation APIs.
+ * A {@link DocumentationTarget} backed by a {@link PsiElement}.
  *
- * <p>The platform's own PSI-backed target ({@code PsiElementDocumentationTarget}, produced by
- * {@code createPsiDocumentationTarget}) lives in the {@code @ApiStatus.Internal} package
- * {@code com.intellij.lang.documentation.psi} and therefore cannot be used by a
- * marketplace-compatible plugin.  This class reproduces the relevant behavior via
- * {@link LanguageDocumentation} and the public {@link DocumentationProvider} extension:
+ * <p>This class uses {@link LanguageDocumentation} and the public {@link DocumentationProvider} extension:
  * the ctrl-hover hint comes from {@link DocumentationProvider#getQuickNavigateInfo} and the
  * Quick Documentation popup from {@link DocumentationProvider#generateDoc}.
  *

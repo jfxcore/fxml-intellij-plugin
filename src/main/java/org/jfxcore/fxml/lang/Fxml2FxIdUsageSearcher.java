@@ -20,8 +20,8 @@ import java.util.List;
  *
  * <p>This searcher is activated when the {@link FxIdSymbol} returned by
  * {@link Fxml2FxIdDeclarationProvider} is passed as the search target.  It delegates
- * to {@link Fxml2FxIdUsageCollector} — the same collector used by the PSI
- * {@link Fxml2FxIdFindUsagesHandlerFactory} — so that both paths always return
+ * to {@link Fxml2FxIdUsageCollector}, the same collector used by the PSI
+ * {@link Fxml2FxIdFindUsagesHandlerFactory}, so that both paths always return
  * identical results.
  *
  * <p>Registered at {@code com.intellij.searcher} with

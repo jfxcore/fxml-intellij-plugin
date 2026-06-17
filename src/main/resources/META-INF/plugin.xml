@@ -431,8 +431,8 @@
         <!--
             UsageSearcher: when IntelliJ's symbol-native "Show Usages" path is triggered for
             an FxIdSymbol (e.g. Ctrl+click on an fx:id declaration), this searcher collects
-            all usages — binding-segment references, code-behind field usages, and the field
-            declaration — by delegating to Fxml2FxIdUsageCollector.  The same collector is
+            all usages (binding-segment references, code-behind field usages, and the field
+            declaration) by delegating to Fxml2FxIdUsageCollector.  The same collector is
             used by Fxml2FxIdFindUsagesHandlerFactory so both paths return identical results.
         -->
         <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"

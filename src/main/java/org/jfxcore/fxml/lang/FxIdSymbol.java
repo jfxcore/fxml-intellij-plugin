@@ -27,8 +27,7 @@ import java.util.Objects;
 
 /**
  * Symbol for an {@code fx:id} declaration that fully participates in IntelliJ's
- * symbol-native feature stack without requiring the {@code @Internal}
- * {@code PsiSymbolService}.
+ * symbol-native feature stack.
  *
  * <p>Implements:
  * <ul>
