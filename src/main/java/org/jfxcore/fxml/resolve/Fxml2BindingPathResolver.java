@@ -916,8 +916,8 @@ public final class Fxml2BindingPathResolver {
      * Returns the dependency array for {@link #BINDING_PATH_CACHE}: the FXML file itself,
      * the Java-language modification tracker, and (when the Kotlin plugin is present) the
      * Kotlin-language modification tracker.  Including the Kotlin tracker ensures that live
-     * edits to a Kotlin code-behind file — for example adding or removing a property accessor
-     * — invalidate the cached binding-path segments so that the annotator picks up the new
+     * edits to a Kotlin code-behind file, for example adding or removing a property accessor.
+     * Invalidate the cached binding-path segments so that the annotator picks up the new
      * resolution immediately.
      */
     private static Object[] bindingCacheDependencies(@NotNull XmlFile xmlFile) {

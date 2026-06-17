@@ -137,7 +137,7 @@ final class Fxml2FxIdUsageCollector {
             @NotNull Processor<? super PsiElement> declProcessor) {
 
         // Code usages via standard reference search.
-        // Binding-segment refs are filtered out — already collected in step 1.
+        // Binding-segment refs are filtered out (already collected in step 1).
         boolean[] proceed = {true};
         ReferencesSearch.search(member, scope).forEach(ref -> {
             if (!proceed[0]) return false;

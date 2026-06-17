@@ -303,7 +303,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
      */
     @Test
     void fxIdNotWarnedWhenGeneratedBaseClassIsUnresolvable() {
-        // UncompiledViewBase is intentionally absent — simulates the FXML compiler
+        // UncompiledViewBase is intentionally absent, simulates the FXML compiler
         // annotation processor not having run yet.
         getFixture().addFileToProject("test/UncompiledView.java", """
                 package test;
@@ -329,7 +329,7 @@ class Fxml2UnusedFxIdInspectionTest extends Fxml2TestBase {
      */
     @Test
     void fxIdNotWarnedWhenGeneratedBaseClassIsUnresolvableKotlin() {
-        // UncompiledKtViewBase is intentionally absent — simulates the FXML compiler
+        // UncompiledKtViewBase is intentionally absent, simulates the FXML compiler
         // annotation processor not having run yet.
         getFixture().addFileToProject("test/UncompiledKtView.kt", """
                 package test

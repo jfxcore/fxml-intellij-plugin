@@ -239,7 +239,7 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
          *   <li>If it is the fx:id {@link XmlAttributeValue}: calls {@link Fxml2FxIdUsageCollector}
          *       which handles binding-expression uses (FXML walk), code-behind field/method usages,
          *       and the field declaration in a single pass.</li>
-         *   <li>If it is a {@link PsiField}: no-op — the collector already handled all field-related
+         *   <li>If it is a {@link PsiField}: no-op: the collector already handled all field-related
          *       usages during the {@link XmlAttributeValue} primary pass.</li>
          *   <li>Otherwise (e.g. a no-arg method primary): runs the standard reference search.</li>
          * </ul>
@@ -258,7 +258,7 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
 
             if (isAttrValPrimary) {
                 // The collector handles: binding-segment references, code-behind field usages,
-                // and the field declaration — all in one pass via the shared collector.
+                // and the field declaration, all in one pass via the shared collector.
                 boolean[] ok = {true};
                 ok[0] = Fxml2FxIdUsageCollector.collect(
                         declaration,

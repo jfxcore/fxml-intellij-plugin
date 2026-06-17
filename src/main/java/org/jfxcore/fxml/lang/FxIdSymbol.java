@@ -31,12 +31,12 @@ import java.util.Objects;
  *
  * <p>Implements:
  * <ul>
- *   <li>{@link NavigatableSymbol} — Ctrl+click / Go To Declaration navigates to
+ *   <li>{@link NavigatableSymbol}: Ctrl+click / Go To Declaration navigates to
  *       the code-behind {@link PsiField} when present, or to the
  *       {@link XmlAttributeValue} declaration as a fallback.</li>
- *   <li>{@link DocumentationSymbol} — ctrl-hover shows the code-behind field's
+ *   <li>{@link DocumentationSymbol}: ctrl-hover shows the code-behind field's
  *       quick-documentation ("Button myButton1") rather than generic XML attribute docs.</li>
- *   <li>{@link SearchTarget} — enables the "Show Usages" popup when Ctrl+clicking
+ *   <li>{@link SearchTarget}: enables the "Show Usages" popup when Ctrl+clicking
  *       on an {@code fx:id} declaration, delegating usage collection to
  *       {@link Fxml2FxIdUsageSearcher}.</li>
  * </ul>
