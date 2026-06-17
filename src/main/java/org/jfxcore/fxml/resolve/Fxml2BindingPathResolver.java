@@ -116,6 +116,22 @@ public final class Fxml2BindingPathResolver {
     }
 
     /**
+     * Returns {@code true} when the file declares a code-behind class via a non-blank
+     * {@code fx:subclass} attribute on its root tag, regardless of whether that class can
+     * currently be resolved.  Used to distinguish "no code-behind declared" (default context
+     * is the root element type) from "code-behind declared but unresolvable" (do not validate
+     * against the root element type, to avoid reporting unseen members as unresolved).
+     */
+    public static boolean hasDeclaredCodeBehind(@NotNull XmlFile file) {
+        var doc = file.getDocument();
+        if (doc == null) return false;
+        XmlTag root = doc.getRootTag();
+        if (root == null) return false;
+        String fxClass = root.getAttributeValue("fx:subclass");
+        return fxClass != null && !fxClass.isBlank();
+    }
+
+    /**
      * Returns the {@link PsiClass} represented by an {@link XmlTag} (from its descriptor),
      * or {@code null} if the tag cannot be resolved to a class.
      */
@@ -238,7 +254,22 @@ public final class Fxml2BindingPathResolver {
             // If fx:context is explicitly set, it overrides the code-behind as start class.
             PsiClass contextClass = resolveContextClass(xmlFile);
             if (contextClass != null) return contextClass;
-            return resolveCodeBehindClass(xmlFile);
+            // The default evaluation context is the document's root element.  When a
+            // code-behind class is declared via fx:subclass, that class (a subtype of the
+            // root element type carrying the compiler-injected fx:id fields and any
+            // user-declared members) is the start class. When fx:subclass is absent, the
+            // start class is the root element type itself; fx:id fields are still resolved
+            // separately against the document, so first-segment fx:id references and root
+            // element properties keep resolving while unknown names are reported as errors.
+            PsiClass codeBehind = resolveCodeBehindClass(xmlFile);
+            if (codeBehind != null) return codeBehind;
+            // fx:subclass is declared but unresolvable (e.g., a stale build where the generated
+            // code-behind is missing): a code-behind exists whose members cannot be seen, so
+            // do not validate against the root element type; that would report user-declared
+            // members as unresolved. Only fall back to the root element type when no
+            // code-behind is declared at all.
+            if (hasDeclaredCodeBehind(xmlFile)) return null;
+            return effectiveRootTagClass(xmlFile);
         }
 
         if (selector.isSelf()) {
@@ -737,6 +768,20 @@ public final class Fxml2BindingPathResolver {
         XmlTag root = doc.getRootTag();
         if (root == null) return null;
         return resolveTagClass(root);
+    }
+
+    /**
+     * Returns the {@link PsiClass} of the effective user-written root element tag, i.e. the
+     * type that serves as the default evaluation context when no {@code fx:subclass} and no
+     * {@code fx:context} are present.
+     *
+     * <p>Unlike {@link #resolveRootTagClass(XmlFile)}, this unwraps the synthetic
+     * {@code <fxml2:embedded>} wrapper used for embedded markup (see {@link #effectiveRootTag}),
+     * so it returns the user's root element type rather than the wrapper.
+     */
+    public static @Nullable PsiClass effectiveRootTagClass(@NotNull XmlFile xmlFile) {
+        XmlTag root = effectiveRootTag(xmlFile);
+        return root != null ? resolveTagClass(root) : null;
     }
 
     /**
