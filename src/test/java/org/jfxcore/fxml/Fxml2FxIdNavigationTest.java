@@ -292,6 +292,13 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
             assertNotNull(docTarget,
                     "DocumentationTarget must be non-null so ctrl-hover shows field docs");
 
+            // The target must derive its content from the code-behind field via the public
+            // documentation provider, not from generic XML attribute docs.
+            String hint = docTarget.computeDocumentationHint();
+            assertNotNull(hint, "Ctrl-hover hint must be computed from the code-behind field");
+            assertTrue(hint.contains("myButton1"),
+                    "Ctrl-hover hint must mention the field name, got: " + hint);
+
             // XmlAttributeValue-level call must produce the same symbol contract.
             var declsFromAttrVal = provider.getDeclarations(fxIdVal, 1);
             assertFalse(declsFromAttrVal.isEmpty());

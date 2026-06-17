@@ -8,8 +8,6 @@ import com.intellij.navigation.NavigatableSymbol;
 import com.intellij.navigation.SymbolNavigationService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.platform.backend.documentation.DocumentationSymbol;
-import com.intellij.platform.backend.documentation.DocumentationTarget;
 import com.intellij.platform.backend.navigation.NavigationTarget;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiReference;
@@ -130,7 +128,7 @@ public final class Fxml2StyleClassImplicitReferenceProvider implements ImplicitR
     @SuppressWarnings("UnstableApiUsage")
     private record CssSelectorSymbol(
             @NotNull SmartPsiElementPointer<PsiElement> pointer)
-            implements NavigatableSymbol, DocumentationSymbol {
+            implements NavigatableSymbol {
 
         static @NotNull CssSelectorSymbol of(@NotNull PsiElement target) {
             return new CssSelectorSymbol(SmartPointerManager.createPointer(target));
@@ -148,15 +146,6 @@ public final class Fxml2StyleClassImplicitReferenceProvider implements ImplicitR
             return target == null
                     ? List.of()
                     : List.of(SymbolNavigationService.getInstance().psiElementNavigationTarget(target));
-        }
-
-        @Override
-        public @NotNull DocumentationTarget getDocumentationTarget() {
-            // The platform restores the symbol from its pointer before requesting
-            // documentation, so the backing element is present at this point.
-            PsiElement target = Objects.requireNonNull(pointer.getElement(),
-                    "CSS selector symbol queried for documentation after its PSI was invalidated");
-            return com.intellij.lang.documentation.psi.UtilKt.createPsiDocumentationTarget(target, null);
         }
     }
 }

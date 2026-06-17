@@ -121,9 +121,10 @@ final class FxIdSymbol implements NavigatableSymbol, DocumentationSymbol, Search
         PsiField f = getField();
         XmlAttributeValue decl = getDeclaration();
         if (f != null) {
-            return com.intellij.lang.documentation.psi.UtilKt.createPsiDocumentationTarget(f, decl);
+            // Document the code-behind field, using the declaration as the original context.
+            return Fxml2PsiDocumentationTarget.of(f, decl);
         }
-        return com.intellij.lang.documentation.psi.UtilKt.createPsiDocumentationTarget(
+        return Fxml2PsiDocumentationTarget.of(
                 Objects.requireNonNull(decl,
                         "FxIdSymbol queried for documentation after its PSI was invalidated"),
                 null);
