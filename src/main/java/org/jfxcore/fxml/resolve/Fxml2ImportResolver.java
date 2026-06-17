@@ -65,6 +65,35 @@ public final class Fxml2ImportResolver {
     public static final String JAVAFX_NAMESPACE = "http://javafx.com/javafx";
 
     /**
+     * Returns {@code true} when {@code ns} is the FXML/2 intrinsics namespace.
+     *
+     * <p>The comparison is case-sensitive: the rest of the plugin (the file-type classifier
+     * {@code Fxml2FileType.isFxml2} and the namespace checks on resolved tags/attributes) keys
+     * on the canonical lower-case URI, so a differently cased namespace would not be treated
+     * as FXML/2 anywhere else either.
+     */
+    public static boolean isFxml2Namespace(@Nullable String ns) {
+        return ns != null && (ns.equals(FXML2_NAMESPACE) || ns.equals(FXML2_NAMESPACE + "/"));
+    }
+
+    /**
+     * Returns {@code true} when {@code ns} is the JavaFX default namespace.
+     *
+     * <p>The comparison is case-sensitive (see {@link #isFxml2Namespace}).
+     */
+    public static boolean isJavaFxNamespace(@Nullable String ns) {
+        return ns != null && (ns.equals(JAVAFX_NAMESPACE) || ns.startsWith(JAVAFX_NAMESPACE + "/"));
+    }
+
+    /**
+     * Returns {@code true} when {@code ns} is any namespace recognized by the FXML/2 toolchain:
+     * either the JavaFX default namespace or the FXML/2 intrinsics namespace.
+     */
+    public static boolean isFxmlNamespace(@Nullable String ns) {
+        return isJavaFxNamespace(ns) || isFxml2Namespace(ns);
+    }
+
+    /**
      * Characters that are valid as a prefix character in a {@code <?prefix?>} declaration:
      * {@code @ % & ^ °(U+00B0) §(U+00A7) ? ~}.
      */

@@ -999,6 +999,22 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2StandaloneImplicitUsageProvider"/>
 
         <!--
+            ImplicitUsageProvider: suppresses the platform's false-positive "Namespace
+            declaration is never used" warning (XmlUnusedNamespaceInspection) for the FXML/2
+            namespace declaration xmlns:fx="http://jfxcore.org/fxml/2.0".
+
+            A document is classified as FXML/2 purely by the presence of this namespace URI.
+            When a document never references an fx: intrinsic, the fx prefix has no textual
+            usage, so the platform inspection  would flag the declaration as unused and offer
+            to remove it.
+            Removing it would delete the only occurrence of the URI, and the IDE would stop
+            recognizing the file as FXML/2.
+            The declaration is therefore load-bearing and must never be reported as unused.
+        -->
+        <implicitUsageProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2NamespaceImplicitUsageProvider"/>
+
+        <!--
             FileViewProviderFactory: returns Fxml2FileViewProvider for FXML files.
             The custom view provider overrides findElementAt() so that positions within
             import-PI data (e.g. "javafx.scene.control.Label") and within dotted property
