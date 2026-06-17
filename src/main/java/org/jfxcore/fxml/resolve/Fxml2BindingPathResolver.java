@@ -427,6 +427,432 @@ public final class Fxml2BindingPathResolver {
         return resolveImpl(path, startClass, scope, kind, null);
     }
 
+    // -----------------------------------------------------------------------
+    // Function-call resolution
+    // -----------------------------------------------------------------------
+
+    /**
+     * Returns the index of the first {@code '('} in {@code path} that starts a function-call
+     * argument list, or {@code -1} if {@code path} is not a function call.
+     *
+     * <p>A {@code '('} immediately preceded by {@code '.'} opens an attached-property group
+     * (e.g. {@code (VBox.margin)}), not a function call, and is skipped.
+     */
+    public static int functionCallParenIndex(@NotNull String path) {
+        for (int i = 0; i < path.length(); i++) {
+            if (path.charAt(i) == '(') {
+                if (i > 0 && path.charAt(i - 1) == '.') continue;
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Resolves a function-call binding expression such as
+     * {@code String.format('Width: %.0f', width)} into a flat list of {@link Segment}s
+     * whose {@link Segment#pathOffset()} is relative to the start of {@code path}.
+     *
+     * <p>Resolution mirrors the fxml-compiler's {@code AbstractFunctionEmitterFactory.findFunction}:
+     * <ul>
+     *   <li>The last segment of the function-name path is the method name; the preceding
+     *       segments are interpreted first as an <em>instance path</em> against the binding
+     *       context, then (failing that) as a <em>class name</em> for a static method, and
+     *       finally the whole path is tried as a constructor (class) reference.</li>
+     *   <li>Each argument that is itself a path expression (e.g. {@code width}, {@code self/width},
+     *       or a nested function call) is resolved against the binding context; string, number,
+     *       boolean, {@code null}, and markup-extension literals carry no navigable reference.</li>
+     * </ul>
+     *
+     * <p>When {@code path} is not a function call, this delegates to
+     * {@link #resolve(String, PsiClass, GlobalSearchScope, Kind, XmlFile)}.
+     *
+     * @param contextTag the tag on which the binding appears, used to resolve {@code self/} and
+     *                   {@code parent/} selectors in argument paths; may be {@code null}
+     */
+    public static @NotNull List<Segment> resolveFunctionCall(
+            @NotNull String path,
+            @NotNull PsiClass startClass,
+            @NotNull GlobalSearchScope scope,
+            @Nullable Kind kind,
+            @NotNull XmlFile xmlFile,
+            @Nullable XmlTag contextTag) {
+        int parenIdx = functionCallParenIndex(path);
+        if (parenIdx < 0) {
+            return resolve(path, startClass, scope, kind, xmlFile);
+        }
+
+        // Function-name path (everything before the '(').
+        String funcPath = path.substring(0, parenIdx);
+        List<Segment> result = new ArrayList<>(
+                resolveFunctionName(funcPath, startClass, scope, kind, xmlFile));
+
+        // Argument list.
+        for (FunctionArgument arg : functionArguments(path)) {
+            appendArgumentSegments(arg, startClass, scope, kind, xmlFile, contextTag, result);
+        }
+
+        return result;
+    }
+
+    /**
+     * A single function-call argument, with {@link #text()} trimmed of surrounding whitespace
+     * and {@link #offset()} pointing at its first non-whitespace character within the full
+     * binding path string.
+     */
+    public record FunctionArgument(@NotNull String text, int offset) {}
+
+    /**
+     * The interpretation of a function-call argument, used to decide how (or whether) to
+     * resolve it.
+     */
+    public enum ArgumentKind {
+        /** String, number, boolean, {@code null}, or {@code {...}} markup-extension literal. */
+        LITERAL,
+        /** A nested method or constructor invocation, e.g. {@code list.get(index)}. */
+        NESTED_CALL,
+        /** A path expression resolved against the evaluation context, e.g. {@code self/width}. */
+        PATH
+    }
+
+    /**
+     * Splits the argument list of a function-call binding path into its top-level arguments,
+     * ignoring commas nested inside parentheses, brackets, braces, or string literals.  Each
+     * returned {@link FunctionArgument} carries the trimmed argument text and the offset of its
+     * first character within {@code path}.  Returns an empty list when {@code path} is not a
+     * function call or has no arguments.
+     */
+    public static @NotNull List<FunctionArgument> functionArguments(@NotNull String path) {
+        int parenIdx = functionCallParenIndex(path);
+        if (parenIdx < 0) return List.of();
+        int closeIdx = matchingCloseParen(path, parenIdx);
+        int argsEnd = closeIdx < 0 ? path.length() : closeIdx;
+        String argsStr = path.substring(parenIdx + 1, argsEnd);
+        int argsBase = parenIdx + 1;
+        List<FunctionArgument> out = new ArrayList<>();
+        for (int[] span : splitTopLevelArgs(argsStr)) {
+            String raw = argsStr.substring(span[0], span[1]);
+            int lead = 0;
+            while (lead < raw.length() && Character.isWhitespace(raw.charAt(lead))) lead++;
+            String trimmed = raw.substring(lead).stripTrailing();
+            if (trimmed.isEmpty()) continue;
+            out.add(new FunctionArgument(trimmed, argsBase + span[0] + lead));
+        }
+        return out;
+    }
+
+    /**
+     * Classifies a (trimmed) function-call argument so callers can decide whether to resolve it
+     * as a path, recurse into a nested call, or skip it as a non-navigable literal.
+     */
+    public static @NotNull ArgumentKind classifyArgument(@NotNull String arg) {
+        if (arg.isEmpty()) return ArgumentKind.LITERAL;
+        char c0 = arg.charAt(0);
+        if (c0 == '\'' || c0 == '"') return ArgumentKind.LITERAL;                 // string literal
+        if (c0 == '-' || c0 == '+' || Character.isDigit(c0)) return ArgumentKind.LITERAL; // number literal
+        if (c0 == '{') return ArgumentKind.LITERAL;                               // markup extension / fx:Null / constant
+        if (arg.equals("true") || arg.equals("false") || arg.equals("null")) return ArgumentKind.LITERAL;
+        if (functionCallParenIndex(arg) >= 0) return ArgumentKind.NESTED_CALL;
+        return ArgumentKind.PATH;
+    }
+
+    // -----------------------------------------------------------------------
+    // Caret location within a partial path (for completion)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Describes where the caret sits within a partial binding path whose text ends at the caret,
+     * so completion can decide what to offer.  The {@link #contentStart()} is the offset within the
+     * analyzed path at which the sub-expression the caret is currently editing begins.
+     *
+     * @param kind         the kind of construct the caret is inside
+     * @param contentStart start offset (within the analyzed path) of the active sub-expression
+     */
+    public record CaretLocation(@NotNull Kind kind, int contentStart) {
+        public enum Kind {
+            /** The caret is completing a plain name path (no enclosing unclosed parenthesis). */
+            PATH,
+            /** The caret is inside an unclosed attached-property group {@code (ClassName.prop}. */
+            ATTACHED_PROPERTY,
+            /** The caret is inside an unclosed function-call argument list. */
+            FUNCTION_ARGUMENT
+        }
+    }
+
+    /**
+     * Locates the innermost unclosed parenthesis in {@code path} (whose end is the caret) and
+     * classifies the construct the caret is editing.
+     *
+     * <p>An unclosed {@code '('} is a <em>function call</em> when it is immediately preceded by a
+     * Java identifier character (a method name), e.g. {@code String.format(}; otherwise it opens an
+     * <em>attached-property group</em>, e.g. a leading {@code (VBox.margin} or a {@code .(} group.
+     * String literals are skipped so parentheses and commas inside them are ignored.
+     *
+     * @return a {@link CaretLocation} whose {@code contentStart} points at the active argument (for
+     *         {@code FUNCTION_ARGUMENT}), at the text just after {@code '('} (for
+     *         {@code ATTACHED_PROPERTY}), or at {@code 0} (for {@code PATH})
+     */
+    public static @NotNull CaretLocation locateCaret(@NotNull String path) {
+        // Stack of [openParenIndex, isFunctionCall?1:0] for currently-open parentheses.
+        java.util.ArrayDeque<int[]> open = new java.util.ArrayDeque<>();
+        char quote = 0;
+        for (int i = 0; i < path.length(); i++) {
+            char c = path.charAt(i);
+            if (quote != 0) {
+                if (c == quote) quote = 0;
+            } else if (c == '\'' || c == '"') {
+                quote = c;
+            } else if (c == '(') {
+                boolean isCall = i > 0 && Character.isJavaIdentifierPart(path.charAt(i - 1));
+                open.push(new int[]{i, isCall ? 1 : 0});
+            } else if (c == ')') {
+                if (!open.isEmpty()) open.pop();
+            }
+        }
+        if (open.isEmpty()) return new CaretLocation(CaretLocation.Kind.PATH, 0);
+
+        int[] top = open.peek();
+        int openIdx = top[0];
+        if (top[1] == 0) {
+            return new CaretLocation(CaretLocation.Kind.ATTACHED_PROPERTY, openIdx + 1);
+        }
+        // Function call: the active argument is the last top-level argument after the '('.
+        String argsText = path.substring(openIdx + 1);
+        List<int[]> spans = splitTopLevelArgs(argsText);
+        int lastStart = spans.isEmpty() ? 0 : spans.getLast()[0];
+        // Skip leading whitespace so the active argument text starts at its first real character.
+        while (lastStart < argsText.length() && Character.isWhitespace(argsText.charAt(lastStart))) {
+            lastStart++;
+        }
+        return new CaretLocation(CaretLocation.Kind.FUNCTION_ARGUMENT, openIdx + 1 + lastStart);
+    }
+
+    /**
+     * Resolves the function-name path (the portion before the {@code '('}) into segments,
+     * with {@link Segment#pathOffset()} relative to the start of {@code funcPath}.
+     *
+     * <p>The last segment is the method name; the preceding segments are interpreted first as an
+     * instance path against the binding context, then as a class name (static method), and finally
+     * the whole path is tried as a constructor (class) reference.  Walking the returned segments
+     * with a {@code prevType} chain (starting at {@code startClass}) yields the owner type of any
+     * unresolved segment for diagnostics.
+     */
+    public static @NotNull List<Segment> resolveFunctionName(
+            @NotNull String funcPath,
+            @NotNull PsiClass startClass,
+            @NotNull GlobalSearchScope scope,
+            @Nullable Kind kind,
+            @NotNull XmlFile xmlFile) {
+        List<Segment> segs = new ArrayList<>();
+        if (funcPath.isBlank()) return segs;
+
+        int lastDot = funcPath.lastIndexOf('.');
+        if (lastDot > 0) {
+            String qualifier = funcPath.substring(0, lastDot);
+            String methodName = funcPath.substring(lastDot + 1);
+            int methodOffset = lastDot + 1;
+
+            // 1. Try the qualifier as an instance path against the binding context.
+            List<Segment> qualSegs = resolve(qualifier, startClass, scope, kind, xmlFile);
+            boolean instanceResolved = !qualSegs.isEmpty()
+                    && qualSegs.stream().allMatch(Segment::isResolved)
+                    && qualSegs.getLast().resultType() != null;
+
+            PsiClass declClass = null;
+            if (instanceResolved) {
+                declClass = qualSegs.getLast().resultType();
+                segs.addAll(qualSegs);
+            } else {
+                // 2. Try the qualifier as a class name (static method).
+                PsiClass cls = resolveClass(qualifier, scope, startClass.getProject(), xmlFile);
+                if (cls != null) {
+                    declClass = cls;
+                    segs.addAll(classQualifierSegments(qualifier, cls, startClass.getProject()));
+                }
+            }
+
+            if (declClass != null) {
+                segs.add(methodSegment(methodName, declClass, methodOffset));
+                return segs;
+            }
+
+            // 3. Try the whole function path as a constructor (class) reference.
+            PsiClass ctorClass = resolveClass(funcPath, scope, startClass.getProject(), xmlFile);
+            if (ctorClass != null) {
+                return classQualifierSegments(funcPath, ctorClass, startClass.getProject());
+            }
+
+            // Unresolved: emit the qualifier (best effort) and an unresolved method segment.
+            segs.add(new Segment(qualifier, null, null, false, false, 0));
+            segs.add(new Segment(methodName, null, null, false, false, methodOffset));
+            return segs;
+        }
+
+        // Bare name: method on the binding context, or a constructor (class) reference.
+        if (firstMethodByName(startClass, funcPath) != null) {
+            segs.add(methodSegment(funcPath, startClass, 0));
+            return segs;
+        }
+        PsiClass cls = resolveClass(funcPath, scope, startClass.getProject(), xmlFile);
+        if (cls != null) {
+            segs.add(new Segment(funcPath, cls, cls, true, false, 0));
+            return segs;
+        }
+        segs.add(new Segment(funcPath, null, null, false, false, 0));
+        return segs;
+    }
+
+    /**
+     * Appends the navigable segments of a single function-call argument (with {@code pathOffset}
+     * relative to the full path) to {@code result}.  Literals contribute no segments; nested
+     * calls recurse; path expressions resolve against the binding context (honoring any
+     * {@code self/}/{@code parent/} selector).
+     */
+    private static void appendArgumentSegments(
+            @NotNull FunctionArgument arg,
+            @NotNull PsiClass startClass,
+            @NotNull GlobalSearchScope scope,
+            @Nullable Kind kind,
+            @NotNull XmlFile xmlFile,
+            @Nullable XmlTag contextTag,
+            @NotNull List<Segment> result) {
+        String text = arg.text();
+        int base = arg.offset();
+        switch (classifyArgument(text)) {
+            case LITERAL -> { /* no navigable reference */ }
+            case NESTED_CALL -> result.addAll(shiftSegments(
+                    resolveFunctionCall(text, startClass, scope, kind, xmlFile, contextTag), base));
+            case PATH -> {
+                // Path expression, possibly prefixed with a context selector (self/, parent/, this.).
+                ContextSelector selector = Fxml2BindingExpressionParser.parseContextSelector(text);
+                PsiClass argStartClass = startClass;
+                if (selector != null && contextTag != null) {
+                    argStartClass = resolveStartClass(selector, contextTag, xmlFile);
+                }
+                if (argStartClass == null) return;
+
+                String remainingPath = selector != null ? selector.remainingPath() : text;
+                if (remainingPath.isBlank()) return;
+                int selLen = selector != null ? selector.selectorLength() : 0;
+
+                result.addAll(shiftSegments(
+                        resolve(remainingPath, argStartClass, scope, kind, xmlFile), base + selLen));
+            }
+        }
+    }
+
+    /** Builds a {@link Segment} for a resolved (or unresolved) method name on {@code declClass}. */
+    private static @NotNull Segment methodSegment(
+            @NotNull String methodName, @NotNull PsiClass declClass, int offset) {
+        PsiMethod method = firstMethodByName(declClass, methodName);
+        PsiClass returnType = null;
+        if (method != null) {
+            PsiType ret = method.getReturnType();
+            if (ret != null) returnType = PsiUtil.resolveClassInType(ret);
+        }
+        return new Segment(methodName, method, returnType, false, false, offset);
+    }
+
+    /** Returns the first method named {@code name} (including inherited), or {@code null}. */
+    private static @Nullable PsiMethod firstMethodByName(@NotNull PsiClass cls, @NotNull String name) {
+        PsiMethod[] methods = cls.findMethodsByName(name, true);
+        return methods.length > 0 ? methods[0] : null;
+    }
+
+    /**
+     * Splits a dotted class name into per-segment class-qualifier {@link Segment}s
+     * (package parts navigate to the {@link com.intellij.psi.PsiPackage}, the final part
+     * navigates to {@code cls}), with {@code pathOffset} relative to the qualifier's start.
+     */
+    private static @NotNull List<Segment> classQualifierSegments(
+            @NotNull String qualifier, @NotNull PsiClass cls, @NotNull Project project) {
+        List<Segment> out = new ArrayList<>();
+        JavaPsiFacade facade = JavaPsiFacade.getInstance(project);
+        String[] parts = qualifier.split("\\.", -1);
+        int off = 0;
+        StringBuilder pkg = new StringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            boolean isClass = (i == parts.length - 1);
+            PsiElement decl;
+            PsiClass type = null;
+            if (isClass) {
+                decl = cls;
+                type = cls;
+            } else {
+                if (!pkg.isEmpty()) pkg.append('.');
+                pkg.append(parts[i]);
+                decl = facade.findPackage(pkg.toString());
+            }
+            out.add(new Segment(parts[i], decl, type, true, false, off));
+            off += parts[i].length() + 1; // +1 for the '.'
+        }
+        return out;
+    }
+
+    /** Returns a copy of {@code segments} with every {@code pathOffset} shifted by {@code delta}. */
+    private static @NotNull List<Segment> shiftSegments(@NotNull List<Segment> segments, int delta) {
+        if (delta == 0) return segments;
+        List<Segment> out = new ArrayList<>(segments.size());
+        for (Segment s : segments) {
+            out.add(new Segment(s.name(), s.declaration(), s.resultType(),
+                    s.classQualifier(), s.observableSelector(), s.pathOffset() + delta));
+        }
+        return out;
+    }
+
+    /**
+     * Returns the index of the {@code ')'} that matches the {@code '('} at {@code openIdx},
+     * accounting for nested parentheses and single/double-quoted string literals, or {@code -1}
+     * if no matching close paren exists.
+     */
+    private static int matchingCloseParen(@NotNull String s, int openIdx) {
+        int depth = 0;
+        char quote = 0;
+        for (int i = openIdx; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (quote != 0) {
+                if (c == quote) quote = 0;
+            } else if (c == '\'' || c == '"') {
+                quote = c;
+            } else if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                if (--depth == 0) return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Splits a function argument list on top-level commas (ignoring commas nested inside
+     * parentheses, brackets, braces, or string literals).  Returns one {@code [start, end)}
+     * index pair (relative to {@code argsStr}) per argument.
+     */
+    private static @NotNull List<int[]> splitTopLevelArgs(@NotNull String argsStr) {
+        List<int[]> spans = new ArrayList<>();
+        if (argsStr.isBlank()) return spans;
+        int depth = 0;
+        char quote = 0;
+        int start = 0;
+        for (int i = 0; i < argsStr.length(); i++) {
+            char c = argsStr.charAt(i);
+            if (quote != 0) {
+                if (c == quote) quote = 0;
+            } else if (c == '\'' || c == '"') {
+                quote = c;
+            } else if (c == '(' || c == '[' || c == '{') {
+                depth++;
+            } else if (c == ')' || c == ']' || c == '}') {
+                if (depth > 0) depth--;
+            } else if (c == ',' && depth == 0) {
+                spans.add(new int[]{start, i});
+                start = i + 1;
+            }
+        }
+        spans.add(new int[]{start, argsStr.length()});
+        return spans;
+    }
+
     private static @NotNull List<Segment> resolveImpl(
             @NotNull String path,
             @NotNull PsiClass startClass,

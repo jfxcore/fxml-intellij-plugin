@@ -1,9 +1,19 @@
 package org.jfxcore.fxml;
 
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiMethod;
+import com.intellij.psi.PsiReference;
+import com.intellij.psi.xml.XmlAttributeValue;
 import org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection;
+import org.jfxcore.fxml.lang.Fxml2BindingSegmentReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests for function-binding syntax in FXML binding expressions.
@@ -43,10 +53,18 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
                 """);
         getFixture().addClass("""
                 package test;
+                public class Helper {
+                    public String shout(String s) { return s.toUpperCase(); }
+                }
+                """);
+        getFixture().addClass("""
+                package test;
                 import javafx.beans.property.DoubleProperty;
                 import javafx.beans.property.SimpleDoubleProperty;
                 import javafx.beans.property.StringProperty;
                 import javafx.beans.property.SimpleStringProperty;
+                import javafx.beans.property.ObjectProperty;
+                import javafx.beans.property.SimpleObjectProperty;
                 public class TestView extends TestViewBase {
                     private final DoubleProperty value = new SimpleDoubleProperty(0);
                     public DoubleProperty valueProperty() { return value; }
@@ -55,6 +73,10 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
                     private final StringProperty label = new SimpleStringProperty("");
                     public StringProperty labelProperty() { return label; }
                     public String getLabel() { return label.get(); }
+
+                    private final ObjectProperty<Helper> helper = new SimpleObjectProperty<>(new Helper());
+                    public ObjectProperty<Helper> helperProperty() { return helper; }
+                    public Helper getHelper() { return helper.get(); }
 
                     public static String formatDouble(double d) {
                         return String.format("%.2f", d);
@@ -444,5 +466,252 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
                 """
         ));
         getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Element-notation {@code <fx:Evaluate source="method(badArg)"/>} must report an unresolvable
+     * path argument, the same as attribute notation.
+     */
+    @Test
+    void fxEvaluateElementNotationWithUnresolvableArgumentProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label>
+                    <text><fx:Evaluate source="String.format('%s', <error descr="'nope' in test.TestView cannot be resolved">nope</error>)"/></text>
+                  </Label>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Element-notation {@code <fx:Push source="method(args)"/>} is not applicable to function
+     * expressions.
+     */
+    @Test
+    void fxPushElementNotationWithFunctionProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label>
+                    <text><fx:Push source="<error descr="format is not a valid reverse binding source">String.format('%s', value)</error>"/></text>
+                  </Label>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Navigation: Ctrl+click on the function name and on path arguments
+    // -----------------------------------------------------------------------
+
+    /**
+     * Ctrl+click on the method name of a static method call ({@code String.format})
+     * must navigate to the {@code java.lang.String#format} method, mirroring how the
+     * compiler resolves the last path segment of a function call as a method name.
+     */
+    @Test
+    void ctrlClickOnStaticMethodNameResolvesToMethod() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${String.for<caret>mat('Value: %.2f', value)}"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        PsiMethod method = assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'format' should resolve to a method");
+        assertEquals("format", method.getName());
+        assertNotNull(method.getContainingClass());
+        assertEquals("java.lang.String", method.getContainingClass().getQualifiedName());
+    }
+
+    /**
+     * Ctrl+click on a path argument of a function call ({@code value} in
+     * {@code String.format('...', value)}) must navigate to the property declaration on
+     * the binding context, the same as a plain binding path would.
+     */
+    @Test
+    void ctrlClickOnPathArgumentResolvesToProperty() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${String.format('Value: %.2f', val<caret>ue)}"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertNotNull(target, "Ctrl+click on 'value' argument should resolve to a declaration");
+    }
+
+    /**
+     * Without an {@code fx:subclass}, the default evaluation context is the root element type
+     * (here {@code VBox}).  A bare path argument ({@code width}) must resolve against that root
+     * element type, and the {@code String.format} method name must resolve as well.
+     */
+    @Test
+    void rootContextFunctionCallArgumentResolves() {
+        getFixture().configureByText("WidthView.fxml", """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <?import javafx.scene.control.Button?>
+                <?import javafx.scene.layout.VBox?>
+                <VBox xmlns="http://javafx.com/javafx"
+                      xmlns:fx="http://jfxcore.org/fxml/2.0">
+                  <Button text="${String.format('Width: %.0f', wid<caret>th)}"/>
+                </VBox>
+                """);
+        PsiElement target = resolveSegmentAtCaret();
+        PsiMethod method = assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'width' should resolve to its accessor on the root element type");
+        assertEquals("widthProperty", method.getName());
+    }
+
+    // -----------------------------------------------------------------------
+    // Argument resolution and error reporting
+    // -----------------------------------------------------------------------
+
+    /**
+     * An unresolvable path argument must be reported against the evaluation context,
+     * highlighting only the offending segment (not the whole function call).
+     */
+    @Test
+    void unresolvableArgumentPathProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${String.format('%s', <error descr="'noSuchField' in test.TestView cannot be resolved">noSuchField</error>)}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A typo in a chained argument path must be reported against the owner type of the chain,
+     * not the binding context.
+     */
+    @Test
+    void unresolvableChainedArgumentSegmentProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${String.format('%s', helper.<error descr="'missing' in test.Helper cannot be resolved">missing</error>)}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A qualified <em>instance</em> method path ({@code helper.shout(label)}) must resolve against
+     * the evaluation context (the method path is resolved like any other expression), producing no
+     * error.
+     */
+    @Test
+    void instanceMethodPathProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${helper.shout(label)}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * An unresolvable method on a resolved instance receiver must report the method-name segment
+     * against the receiver type.
+     */
+    @Test
+    void unknownInstanceMethodProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${helper.<error descr="'whisper' in test.Helper cannot be resolved">whisper</error>(label)}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A constant reference ({@code Double.POSITIVE_INFINITY}) is a valid argument and must produce
+     * no error.
+     */
+    @Test
+    void constantArgumentProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\njava.lang.Double",
+                """
+                  <Label text="${String.format('%s', Double.POSITIVE_INFINITY)}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A nested method invocation as an argument must have its own arguments resolved too.
+     */
+    @Test
+    void unresolvableArgumentInNestedCallProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${String.format('%s', String.valueOf(<error descr="'bogus' in test.TestView cannot be resolved">bogus</error>))}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Applicability per markup extension
+    // -----------------------------------------------------------------------
+
+    /**
+     * Function expressions are not applicable to {@code fx:Push} (reverse) bindings; the compiler
+     * reports {@code INVALID_REVERSE_BINDING_SOURCE}.
+     */
+    @Test
+    void functionInPushBindingProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text=">{<error descr="format is not a valid reverse binding source">String.format('%s', value)</error>}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A bidirectional ({@code fx:Synchronize}) function binding must invoke the method with exactly
+     * one argument (compiler: {@code INVALID_BIDIRECTIONAL_METHOD_PARAM_COUNT}).
+     */
+    @Test
+    void bidirectionalFunctionWithMultipleArgumentsProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{<error descr="A bidirectional conversion method or constructor must be invoked with a single argument">formatDouble(value, label)</error>; inverseMethod=parseDouble}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Finds the first {@link Fxml2BindingSegmentReference} at the caret that resolves to a
+     * non-null element.
+     */
+    private PsiElement resolveSegmentAtCaret() {
+        return ReadAction.compute(() -> {
+            int offset = getFixture().getCaretOffset();
+            XmlAttributeValue attrVal = com.intellij.psi.util.PsiTreeUtil.findElementOfClassAtOffset(
+                    getFixture().getFile(), offset, XmlAttributeValue.class, false);
+            if (attrVal == null) return null;
+            int relOffset = offset - attrVal.getTextRange().getStartOffset();
+            for (PsiReference ref : attrVal.getReferences()) {
+                if (!(ref instanceof Fxml2BindingSegmentReference)) continue;
+                if (ref.getRangeInElement().containsOffset(relOffset)) {
+                    return ref.resolve();
+                }
+            }
+            return null;
+        });
     }
 }

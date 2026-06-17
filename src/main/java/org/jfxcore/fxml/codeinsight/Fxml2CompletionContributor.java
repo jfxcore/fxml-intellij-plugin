@@ -1232,6 +1232,92 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 strippedPath = partial != null ? partial : "";
             }
 
+            completeBindingPath(strippedPath, tag, xmlFile, targetPropType, result);
+        }
+
+        /**
+         * Completes a (possibly partial) binding path whose text ends at the caret, dispatching on
+         * where the caret sits.  This is the shared entry point for both top-level binding paths and
+         * function-call arguments: when the caret is inside an unclosed function-call argument list,
+         * the active argument is itself a binding sub-expression and is completed recursively.
+         *
+         * @param pathExpr       the path text up to the caret (no notation prefix, selector kept)
+         * @param targetPropType the binding target property type used to filter static-field
+         *                       completions; {@code null} for arguments whose type is unknown
+         */
+        private static void completeBindingPath(
+                @NotNull String pathExpr,
+                @NotNull XmlTag tag,
+                @NotNull XmlFile xmlFile,
+                @Nullable PsiType targetPropType,
+                @NotNull CompletionResultSet result) {
+            Fxml2BindingPathResolver.CaretLocation loc = Fxml2BindingPathResolver.locateCaret(pathExpr);
+            switch (loc.kind()) {
+                case FUNCTION_ARGUMENT -> {
+                    String activeArg = pathExpr.substring(loc.contentStart());
+                    // Literal arguments (strings, numbers, booleans, null, {markup}) carry no path.
+                    if (!activeArg.isBlank()
+                            && Fxml2BindingPathResolver.classifyArgument(activeArg)
+                                    == Fxml2BindingPathResolver.ArgumentKind.LITERAL) {
+                        return;
+                    }
+                    // The argument type is not statically known here, so no target-type filtering.
+                    completeBindingPath(activeArg, tag, xmlFile, null, result);
+                }
+                case ATTACHED_PROPERTY ->
+                        completeAttachedProperty(pathExpr.substring(loc.contentStart()), xmlFile, result);
+                case PATH ->
+                        completeNamePath(pathExpr, tag, xmlFile, targetPropType, result);
+            }
+        }
+
+        /**
+         * Offers static property names of {@code ClassName} for an unclosed attached-property group
+         * {@code (ClassName.partial<caret>)}, e.g. {@code (VBox.mar} -> {@code margin}.
+         *
+         * @param attachedContent the text after the opening {@code '('}, e.g. {@code "VBox.mar"}
+         */
+        private static void completeAttachedProperty(
+                @NotNull String attachedContent,
+                @NotNull XmlFile xmlFile,
+                @NotNull CompletionResultSet result) {
+            int innerDot = attachedContent.lastIndexOf('.');
+            if (innerDot < 0) return;
+            String className = attachedContent.substring(0, innerDot).trim();
+            String propPartial = attachedContent.substring(innerDot + 1);
+            GlobalSearchScope attachedScope = xmlFile.getResolveScope();
+            PsiClass attachedClass = Fxml2ImportResolver.resolve(className, xmlFile);
+            if (attachedClass == null) {
+                attachedClass = JavaPsiFacade.getInstance(xmlFile.getProject())
+                        .findClass(className, attachedScope);
+            }
+            if (attachedClass == null) return;
+            CompletionResultSet attachedResult = result.withPrefixMatcher(
+                    new PlainPrefixMatcher(propPartial, true));
+            for (String propName : Fxml2PropertyResolver.getAllStaticPropertyNames(attachedClass)) {
+                if (propName.startsWith(propPartial)) {
+                    attachedResult.addElement(LookupElementBuilder.create(propName)
+                            .withIcon(AllIcons.Nodes.Property)
+                            .withTypeText(attachedClass.getName()));
+                }
+            }
+        }
+
+        /**
+         * Completes a binding name path (no enclosing unclosed parenthesis), offering: a
+         * {@code self/}/{@code parent/} context selector when none is typed yet; instance property
+         * names, {@code fx:id} elements, and class names at the first segment; and static fields and
+         * static methods on a class qualifier.  Class names and static methods make function-binding
+         * expressions completable (e.g. {@code Str} -> {@code String}, {@code String.fo} ->
+         * {@code format}).
+         */
+        private static void completeNamePath(
+                @NotNull String strippedPath,
+                @NotNull XmlTag tag,
+                @NotNull XmlFile xmlFile,
+                @Nullable PsiType targetPropType,
+                @NotNull CompletionResultSet result) {
+
             // Parse context selector (self/, parent/, etc.) from the stripped path
             Fxml2BindingExpressionParser.ContextSelector selector =
                     Fxml2BindingExpressionParser.parseContextSelector(strippedPath);
@@ -1257,39 +1343,6 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
 
             // The actual property path is what follows the selector
             String propertyPath = selector != null ? selector.remainingPath() : strippedPath;
-
-            // --- Attached-property completion: (ClassName.partial<caret>) ---
-            // When the user is typing inside an attached-property group "(ClassName.propPart)",
-            // the opening '(' has not been closed yet (the closing ')' is past the caret or absent).
-            // Offer static property names of ClassName so that e.g. "(VBox.mar" -> "margin".
-            int lastOpenParen = propertyPath.lastIndexOf('(');
-            int lastCloseParen = propertyPath.lastIndexOf(')');
-            if (lastOpenParen >= 0 && lastOpenParen > lastCloseParen) {
-                String attachedContent = propertyPath.substring(lastOpenParen + 1); // "VBox.mar"
-                int innerDot = attachedContent.lastIndexOf('.');
-                if (innerDot >= 0) {
-                    String className = attachedContent.substring(0, innerDot).trim();
-                    String propPartial = attachedContent.substring(innerDot + 1);
-                    GlobalSearchScope attachedScope = xmlFile.getResolveScope();
-                    PsiClass attachedClass = Fxml2ImportResolver.resolve(className, xmlFile);
-                    if (attachedClass == null) {
-                        attachedClass = JavaPsiFacade.getInstance(xmlFile.getProject())
-                                .findClass(className, attachedScope);
-                    }
-                    if (attachedClass != null) {
-                        CompletionResultSet attachedResult = result.withPrefixMatcher(
-                                new PlainPrefixMatcher(propPartial, true));
-                        for (String propName : Fxml2PropertyResolver.getAllStaticPropertyNames(attachedClass)) {
-                            if (propName.startsWith(propPartial)) {
-                                attachedResult.addElement(LookupElementBuilder.create(propName)
-                                        .withIcon(AllIcons.Nodes.Property)
-                                        .withTypeText(attachedClass.getName()));
-                            }
-                        }
-                    }
-                }
-                return;
-            }
 
             // Determine the last complete segment and the partial name being typed.
             // Both '.' and '::' are valid path separators; '::' is the observable-selection
@@ -1411,7 +1464,9 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
 
             if (lastIsClassQualifier) {
                 // The prefix resolved to a class name (e.g. "javafx.scene.layout.Region").
-                // The user is now completing a static field on that class.
+                // The user is now completing a static member on that class: a static field
+                // (e.g. Region.USE_PREF_SIZE) or a static method invoked as a function binding
+                // (e.g. String.format(...)).
                 for (PsiField field : currentClass.getAllFields()) {
                     if (!field.hasModifierProperty(PsiModifier.PUBLIC)) continue;
                     if (!field.hasModifierProperty(PsiModifier.STATIC)) continue;
@@ -1423,6 +1478,17 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                                 .withIcon(AllIcons.Nodes.Field)
                                 .withTypeText(currentClass.getName()));
                     }
+                }
+                // Static methods callable as function bindings. Overloads share a name, so de-dup.
+                Set<String> staticMethodNames = new HashSet<>();
+                for (PsiMethod method : currentClass.getAllMethods()) {
+                    if (!method.hasModifierProperty(PsiModifier.PUBLIC)) continue;
+                    if (!method.hasModifierProperty(PsiModifier.STATIC)) continue;
+                    String mName = method.getName();
+                    if (!mName.startsWith(partialName) || !staticMethodNames.add(mName)) continue;
+                    prefixResult.addElement(LookupElementBuilder.create(mName)
+                            .withIcon(AllIcons.Nodes.Method)
+                            .withTypeText(currentClass.getName()));
                 }
             } else {
                 // Offer all instance property names on currentClass matching the partial name
@@ -1446,6 +1512,15 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 // is clear from the XML structure alone.
                 if (completedPrefix.isEmpty() && (selector == null || selector.isThis())) {
                     addFxIdCompletions(xmlFile, partialName, prefixResult);
+                }
+
+                // A first path segment may also be a class name: a binding expression can begin a
+                // static method call or a constructor invocation (e.g. "${String.format(...)}" or
+                // "${Color(...)}"). Offer class names matching the partial name so the qualifier
+                // can be completed (e.g. "Str" -> "String"). Only when a prefix is typed, to avoid
+                // enumerating every project class for the empty-prefix case.
+                if (completedPrefix.isEmpty() && !partialName.isEmpty()) {
+                    addBindingClassNameCompletions(partialName, xmlFile, result);
                 }
 
                 // Root-tag class fallback: when the FXML compiler-generated base class is absent
@@ -1479,6 +1554,63 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        /**
+         * Offers class names whose simple name starts with {@code partial} as binding-path
+         * completions, so a static method call or constructor invocation can be written inside a
+         * binding expression.  The lookup string is the simple name; classes that are not already
+         * importable insert an {@code <?import?>} PI on selection.  Mirrors the class-offering logic
+         * of {@link FqnClassNameCompletionProvider#completeFqn} but inserts simple names (not FQNs)
+         * and offers no packages, matching the single-segment binding-path context.
+         */
+        private static void addBindingClassNameCompletions(
+                @NotNull String partial,
+                @NotNull XmlFile xmlFile,
+                @NotNull CompletionResultSet result) {
+            if (partial.isEmpty()) return;
+            Project project = xmlFile.getProject();
+            GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
+            Set<VirtualFile> runtimeRoots = Fxml2AddImportFix.buildProductionRuntimeRoots(xmlFile);
+            CompletionResultSet classResult = result.withPrefixMatcher(
+                    new PlainPrefixMatcher(partial, true));
+            Set<String> offered = new HashSet<>();
+
+            // Already-importable classes (explicit imports + implicit java.lang.*): no import needed.
+            for (String importFqn : Fxml2ImportResolver.parseImports(xmlFile)) {
+                if (importFqn.endsWith(".*")) continue;
+                String simpleName = importFqn.substring(importFqn.lastIndexOf('.') + 1);
+                if (!simpleName.startsWith(partial) || !offered.add(simpleName)) continue;
+                PsiClass cls = Fxml2ImportResolver.resolve(simpleName, xmlFile);
+                if (cls == null) continue;
+                if (Fxml2AddImportFix.shouldSkipClass(cls, cls.getQualifiedName(), runtimeRoots, false)) continue;
+                int tier = Fxml2AddImportFix.candidateTier(cls);
+                classResult.addElement(PrioritizedLookupElement.withPriority(
+                        LookupElementBuilder.create(cls, simpleName)
+                                .withIcon(AllIcons.Nodes.Class)
+                                .withTailText(" (" + cls.getQualifiedName() + ")", true),
+                        -tier));
+            }
+
+            // Other project/library classes: insert the simple name and add an <?import?> PI when
+            // the name is not already resolvable in this file.
+            PsiShortNamesCache cache = PsiShortNamesCache.getInstance(project);
+            for (String name : cache.getAllClassNames()) {
+                if (!name.startsWith(partial) || offered.contains(name)) continue;
+                for (PsiClass cls : cache.getClassesByName(name, allScope)) {
+                    String fqn = cls.getQualifiedName();
+                    if (Fxml2AddImportFix.shouldSkipClass(cls, fqn, runtimeRoots, false)) continue;
+                    boolean needsImport = Fxml2ImportResolver.resolve(name, xmlFile) == null;
+                    int tier = Fxml2AddImportFix.candidateTier(cls);
+                    classResult.addElement(PrioritizedLookupElement.withPriority(
+                            LookupElementBuilder.create(cls, name)
+                                    .withIcon(AllIcons.Nodes.Class)
+                                    .withTailText(" (" + fqn + ")", true)
+                                    .withInsertHandler(needsImport ? new TypeArgImportInsertHandler(cls) : null),
+                            -tier));
+                    offered.add(name);
                 }
             }
         }

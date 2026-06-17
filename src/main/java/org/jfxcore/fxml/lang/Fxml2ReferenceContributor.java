@@ -923,8 +923,12 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         if (startClass == null) return;
 
         GlobalSearchScope scope = xmlFile.getResolveScope();
-        List<Fxml2BindingPathResolver.Segment> segments =
-                Fxml2BindingPathResolver.resolve(pathForResolution, startClass, scope,
+        boolean isFunctionCall =
+                Fxml2BindingPathResolver.functionCallParenIndex(pathForResolution) >= 0;
+        List<Fxml2BindingPathResolver.Segment> segments = isFunctionCall
+                ? Fxml2BindingPathResolver.resolveFunctionCall(pathForResolution, startClass, scope,
+                        expr.kind(), xmlFile, contextTag)
+                : Fxml2BindingPathResolver.resolve(pathForResolution, startClass, scope,
                         expr.kind(), xmlFile);
 
         // Base offset in attrVal text for the first path segment
@@ -937,7 +941,11 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         // In that case a hard UnresolvedClassSegmentReference is emitted so that the IDE
         // reports "Cannot resolve symbol 'X'" and offers the "Add import for X" quick fix,
         // matching the behavior for unresolved names in fx:typeArguments attributes.
-        emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
+        if (isFunctionCall) {
+            emitScatteredSegmentRefs(refs, attrVal, segments, pathBase);
+        } else {
+            emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
+        }
     }
 
     /**
@@ -1120,10 +1128,18 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             }
 
             GlobalSearchScope scope = xmlFile.getResolveScope();
+            // Function-call binding (e.g. ${String.format('...', width)}): the function-name path
+            // and each path argument resolve to scattered, non-contiguous segments, so they are
+            // emitted via their own offsets rather than walked contiguously.
+            boolean isFunctionCall =
+                    Fxml2BindingPathResolver.functionCallParenIndex(pathForResolution) >= 0;
             List<Fxml2BindingPathResolver.Segment> segments = pathForResolution.isEmpty()
                     ? List.of()
-                    : Fxml2BindingPathResolver.resolve(pathForResolution, startClass, scope,
-                            expr.kind(), xmlFile);
+                    : isFunctionCall
+                            ? Fxml2BindingPathResolver.resolveFunctionCall(pathForResolution,
+                                    startClass, scope, expr.kind(), xmlFile, contextTag)
+                            : Fxml2BindingPathResolver.resolve(pathForResolution, startClass, scope,
+                                    expr.kind(), xmlFile);
 
             // Boolean operator reference:
             //   ! (NOT)    -> BooleanBindings.isNot  (Boolean), isZero  (Number), isNull  (other)
@@ -1131,7 +1147,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             //                  no wrapping on Boolean (compiler yields child directly)
             // Falls back to BooleanExpression.not() when the markup library is absent.
             int opLen = expr.operatorLength();
-            if (opLen > 0) {
+            if (opLen > 0 && !isFunctionCall) {
                 int opStart = 1 + expr.pathOffset();
                 int opEnd = opStart + opLen;
                 PsiClass resultType = segments.isEmpty() ? null : segments.getLast().resultType();
@@ -1158,7 +1174,13 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
             // Path segment references.
             // Walk strippedPath to get correct offsets: :: is a 2-char separator, . is 1 char.
-            emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
+            // Function-call segments are scattered (function name + arguments) and carry their
+            // own offsets, so they are emitted directly rather than walked contiguously.
+            if (isFunctionCall) {
+                emitScatteredSegmentRefs(refs, attrVal, segments, pathBase);
+            } else {
+                emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
+            }
 
             // Secondary param path references (format= / converter=).
             // "inverseMethod" is a function-call path, not a property path, so it is skipped here;
@@ -1542,8 +1564,12 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             }
 
             GlobalSearchScope scope = xmlFile.getResolveScope();
-            List<Fxml2BindingPathResolver.Segment> segments =
-                    Fxml2BindingPathResolver.resolve(remainingPath, startClass, scope, kind, xmlFile);
+            boolean isFunctionCall =
+                    Fxml2BindingPathResolver.functionCallParenIndex(remainingPath) >= 0;
+            List<Fxml2BindingPathResolver.Segment> segments = isFunctionCall
+                    ? Fxml2BindingPathResolver.resolveFunctionCall(remainingPath, startClass, scope,
+                            kind, xmlFile, fxTag)
+                    : Fxml2BindingPathResolver.resolve(remainingPath, startClass, scope, kind, xmlFile);
 
             List<PsiReference> refs = new ArrayList<>();
 
@@ -1558,7 +1584,11 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             int selectorLength = selector != null ? selector.selectorLength() : 0;
             int pathBase = 1 + selectorLength + dotDotLen;
 
-            emitPathSegmentRefs(refs, attrVal, segments, pathBase, remainingPath);
+            if (isFunctionCall) {
+                emitScatteredSegmentRefs(refs, attrVal, segments, pathBase);
+            } else {
+                emitPathSegmentRefs(refs, attrVal, segments, pathBase, remainingPath);
+            }
 
             return refs.isEmpty() ? PsiReference.EMPTY_ARRAY : refs.toArray(PsiReference.EMPTY_ARRAY);
         }
@@ -2675,6 +2705,29 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             if (cursor < path.length()) {
                 cursor += path.startsWith("::", cursor) ? 2 : 1;
             }
+        }
+    }
+
+    /**
+     * Appends per-segment binding path references for function-call segments whose offsets are
+     * non-contiguous (the function-name path plus each path argument).  Unlike
+     * {@link #emitPathSegmentRefs}, each segment's {@link Fxml2BindingPathResolver.Segment#pathOffset()}
+     * is used directly instead of walking a contiguous path string.
+     *
+     * @param pathBase offset of the resolved path's first character in {@code attrVal.getText()}
+     */
+    private static void emitScatteredSegmentRefs(
+            @NotNull List<PsiReference> refs,
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull List<Fxml2BindingPathResolver.Segment> segments,
+            int pathBase) {
+        for (Fxml2BindingPathResolver.Segment seg : segments) {
+            String segName = seg.name();
+            if (segName.isBlank()) continue;
+            int segStart = pathBase + seg.pathOffset();
+            int segEnd = segStart + segName.length();
+            refs.add(new Fxml2BindingSegmentReference(
+                    attrVal, new TextRange(segStart, segEnd), seg.declaration()));
         }
     }
 

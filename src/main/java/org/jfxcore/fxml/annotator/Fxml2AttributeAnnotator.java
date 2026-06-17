@@ -285,66 +285,34 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         }
 
         int selectorOffset = selector != null ? selector.selectorLength() : 0;
+        // Base offset within the attribute value text (past the opening quote, selector, and "..").
+        int base = 1 + selectorOffset + dotDotOffset;
 
-        // Function-call syntax: detect '(' that is not immediately preceded by '.'
+        // Function-call syntax: a '(' that is not immediately preceded by '.'
         // (a '.' before '(' marks an attached-property group, not a function call).
-        // Mirrors the same detection used for attribute-notation bindings.
-        int parenIdx = -1;
-        for (int pi = 0; pi < remainingPath.length(); pi++) {
-            if (remainingPath.charAt(pi) == '(') {
-                if (pi > 0 && remainingPath.charAt(pi - 1) == '.') continue;
-                parenIdx = pi;
-                break;
-            }
-        }
+        int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(remainingPath);
         if (parenIdx > 0) {
-            String funcPath = remainingPath.substring(0, parenIdx);
-            int base = 1 + selectorOffset + dotDotOffset;
-            annotateFunctionCallPath(attrVal, funcPath, startClass, xmlFile, holder, base);
-            // Bidirectional method binding requires an inverse method unless an explicit
-            // inverseMethod= attribute is present on the <fx:Synchronize> element.
-            if (kind == Kind.SYNCHRONIZE && fxTag.getAttribute("inverseMethod") == null) {
-                annotateInverseMethodRequired(attrVal, funcPath, startClass, xmlFile, holder, base);
+            // fx:Push (reverse binding) is not applicable to function expressions; the compiler
+            // fails on this alone, so report only that and skip detailed function validation.
+            if (kind == Kind.PUSH || kind == Kind.PUSH_CONTENT) {
+                annotateFunctionNotReverseBindable(attrVal, remainingPath, holder, base);
+                return;
+            }
+            annotateFunctionCall(attrVal, remainingPath, startClass, fxTag, xmlFile, holder, base, kind);
+            // fx:Synchronize: single-argument requirement and an available inverse method
+            // (unless an explicit inverseMethod= attribute is present on the element).
+            if (kind == Kind.SYNCHRONIZE || kind == Kind.SYNCHRONIZE_CONTENT) {
+                annotateBidirectionalArgumentCount(attrVal, remainingPath, holder, base);
+                if (fxTag.getAttribute("inverseMethod") == null) {
+                    String funcPath = remainingPath.substring(0, parenIdx);
+                    annotateInverseMethodRequired(attrVal, funcPath, startClass, xmlFile, holder, base);
+                }
             }
             return;
         }
 
         var segments = Fxml2BindingPathResolver.resolve(remainingPath, startClass, scope, kind, xmlFile);
-
-        // Compute the doc offset of the first character of the path value (past opening quote).
-        int attrDocBase = attrVal.getTextRange().getStartOffset() + 1; // skip opening "
-
-        PsiClass prevType = startClass;
-        boolean prevResolved = true;
-
-        for (Fxml2BindingPathResolver.Segment seg : segments) {
-            int segStart = attrDocBase + selectorOffset + dotDotOffset + seg.pathOffset();
-            int segEnd = segStart + seg.name().length();
-            if (!seg.isResolved()) {
-                if (prevResolved) {
-                    String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
-                    holder.newAnnotation(HighlightSeverity.ERROR,
-                            "'" + seg.name() + "' in " + ownerName + " cannot be resolved")
-                            .range(new TextRange(segStart, segEnd))
-                            .create();
-                }
-                prevResolved = false;
-                prevType = null;
-            } else {
-                if (seg.observableSelector() && !seg.classQualifier()
-                        && isNotObservableDeclaration(seg.declaration(), xmlFile)) {
-                    String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
-                    holder.newAnnotation(HighlightSeverity.ERROR,
-                            "'" + seg.name() + "' in " + ownerName
-                            + " cannot be referenced"
-                            + " (note: '.' can be used instead of '::' within a path expression)")
-                            .range(new TextRange(segStart, segEnd))
-                            .create();
-                }
-                prevResolved = true;
-                prevType = seg.resultType();
-            }
-        }
+        reportPathSegments(attrVal, segments, startClass, base, xmlFile, holder);
     }
 
     /**
@@ -439,93 +407,189 @@ public final class Fxml2AttributeAnnotator implements Annotator {
     }
 
     /**
-     * Annotates a function-binding path like {@code "formatDouble"} or {@code "String.format"}.
-     * For a bare name (no dot), the name must resolve as a method or constructor on {@code startClass}.
-     * For a dotted name (e.g. {@code "String.format"}), the last segment is a method name on the
-     * class resolved by the preceding qualifier chain.
+     * Reports "cannot be resolved" (and {@code ::} observable-selector) errors for a contiguous
+     * sequence of resolved/unresolved binding path {@link Fxml2BindingPathResolver.Segment}s,
+     * walking a {@code prevType} chain (starting at {@code startClass}) so each unresolved segment
+     * is reported against its owner type.  Only the first unresolved segment in the chain is
+     * reported.  Shared by attribute-notation, element-notation, function-name, function-argument,
+     * and secondary-parameter path validation.
      *
-     * @param funcPath the function path before the {@code (}, e.g. {@code "formatDouble"} or
-     *                 {@code "String.format"} or {@code "Color"} (constructor)
-     * @param base     the offset within the attribute value (0 = first char after opening quote)
-     *                 where funcPath starts
+     * @param attrTextBase offset within the attribute value text (1 = first char after the opening
+     *                     quote) of the first character of the segments' path
+     * @return {@code true} if every segment resolved without error
      */
-    private static void annotateFunctionCallPath(
+    private static boolean reportPathSegments(
             @NotNull XmlAttributeValue attrVal,
-            @NotNull String funcPath,
+            @NotNull java.util.List<Fxml2BindingPathResolver.Segment> segments,
             @NotNull PsiClass startClass,
+            int attrTextBase,
+            @NotNull XmlFile xmlFile,
+            @NotNull AnnotationHolder holder) {
+        int attrDocBase = attrVal.getTextRange().getStartOffset();
+        PsiClass prevType = startClass;
+        boolean prevResolved = true;
+        boolean allResolved = true;
+
+        for (Fxml2BindingPathResolver.Segment seg : segments) {
+            int docStart = attrDocBase + attrTextBase + seg.pathOffset();
+            int docEnd = docStart + seg.name().length();
+            if (!seg.isResolved()) {
+                if (prevResolved) {
+                    // For attached-property segments like (VBox.prop), extract the declaring
+                    // class name from inside the parens for a clearer error message.
+                    String ownerName;
+                    String segName = seg.name();
+                    if (segName.startsWith("(") && segName.endsWith(")")) {
+                        String inner = segName.substring(1, segName.length() - 1);
+                        int lastDot = inner.lastIndexOf('.');
+                        ownerName = lastDot > 0 ? inner.substring(0, lastDot) : inner;
+                    } else {
+                        ownerName = prevType != null ? prevType.getQualifiedName() : "?";
+                    }
+                    holder.newAnnotation(HighlightSeverity.ERROR,
+                            "'" + segName + "' in " + ownerName + " cannot be resolved")
+                            .range(new TextRange(docStart, docEnd))
+                            .create();
+                }
+                prevResolved = false;
+                prevType = null;
+                allResolved = false;
+            } else {
+                // When the segment was accessed via '::' (observable-selection operator), the FXML
+                // compiler requires the member to be an ObservableValue subtype. If it is not,
+                // the compiler rejects the reference with INVALID_INVARIANT_REFERENCE.
+                if (seg.observableSelector() && !seg.classQualifier()
+                        && isNotObservableDeclaration(seg.declaration(), xmlFile)) {
+                    String segName = seg.name();
+                    String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
+                    int selectorDocOffset = ReplaceObservableSelectorFix.selectorOffsetBefore(docStart);
+                    ReplaceObservableSelectorFix fix =
+                            ReplaceObservableSelectorFix.of(attrVal, selectorDocOffset);
+                    var builder = holder.newAnnotation(HighlightSeverity.ERROR,
+                            "'" + segName + "' in " + ownerName
+                            + " cannot be referenced"
+                            + " (note: '.' can be used instead of '::' within a path expression)")
+                            .range(new TextRange(docStart, docEnd));
+                    if (fix != null) builder = builder.withFix(fix);
+                    builder.create();
+                    allResolved = false;
+                }
+                prevResolved = true;
+                prevType = seg.resultType();
+            }
+        }
+        return allResolved;
+    }
+
+    /**
+     * Validates a function-call binding expression: the function-name path and every path
+     * argument.  Mirrors the fxml-compiler's {@code AbstractFunctionEmitterFactory.findFunction}
+     * (the method path is resolved as an instance path, a static class path, or a constructor)
+     * plus the per-argument resolution of expression arguments against the evaluation context.
+     *
+     * <p>String, number, boolean, {@code null}, and {@code {...}} markup-extension arguments are
+     * literals and carry no resolution error.
+     *
+     * @param path         the full binding path (selector and {@code ..} already stripped),
+     *                     e.g. {@code "String.format('Width: %.0f', width)"}
+     * @param attrTextBase offset within the attribute value text of {@code path[0]}
+     */
+    private static void annotateFunctionCall(
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull String path,
+            @NotNull PsiClass startClass,
+            @org.jetbrains.annotations.Nullable XmlTag contextTag,
             @NotNull XmlFile xmlFile,
             @NotNull AnnotationHolder holder,
-            int base) {
-        if (funcPath.isBlank()) return;
-
+            int attrTextBase,
+            @NotNull Kind kind) {
+        int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
+        if (parenIdx <= 0) return;
         GlobalSearchScope scope = xmlFile.getResolveScope();
-        int lastDot = funcPath.lastIndexOf('.');
-        if (lastDot > 0) {
-            // Qualified path: e.g. "String.format"
-            // Resolve the class qualifier (everything before the last dot), then validate the
-            // method name (after the last dot) on that class.
-            String classQualifier = funcPath.substring(0, lastDot);   // e.g. "String"
-            String methodName     = funcPath.substring(lastDot + 1);  // e.g. "format"
 
-            // Resolve the class qualifier using the path resolver (handles FQN + imports)
-            PsiClass qualifierClass = resolveClassFromPath(classQualifier, startClass, scope, xmlFile);
-            if (qualifierClass == null) {
-                // Could not resolve the class qualifier: report on the qualifier portion
-                int docStart = attrVal.getTextRange().getStartOffset() + base;
-                int docEnd   = docStart + classQualifier.length();
-                String ownerName = startClass.getQualifiedName();
-                holder.newAnnotation(HighlightSeverity.ERROR,
-                        "'" + classQualifier + "' in " + ownerName + " cannot be resolved")
-                        .range(new TextRange(docStart, docEnd))
-                        .create();
-                return;
+        // Function-name path (instance path, static class path, or constructor).
+        String funcPath = path.substring(0, parenIdx);
+        var nameSegs = Fxml2BindingPathResolver.resolveFunctionName(funcPath, startClass, scope, kind, xmlFile);
+        reportPathSegments(attrVal, nameSegs, startClass, attrTextBase, xmlFile, holder);
+
+        // Arguments.
+        for (Fxml2BindingPathResolver.FunctionArgument arg : Fxml2BindingPathResolver.functionArguments(path)) {
+            switch (Fxml2BindingPathResolver.classifyArgument(arg.text())) {
+                case LITERAL -> { /* no resolution */ }
+                case NESTED_CALL -> annotateFunctionCall(attrVal, arg.text(), startClass, contextTag,
+                        xmlFile, holder, attrTextBase + arg.offset(), kind);
+                case PATH -> {
+                    Fxml2BindingExpressionParser.ContextSelector sel =
+                            Fxml2BindingExpressionParser.parseContextSelector(arg.text());
+                    PsiClass argStart = startClass;
+                    if (sel != null && contextTag != null) {
+                        argStart = Fxml2BindingPathResolver.resolveStartClass(sel, contextTag, xmlFile);
+                    }
+                    String remaining = sel != null ? sel.remainingPath() : arg.text();
+                    int selLen = sel != null ? sel.selectorLength() : 0;
+                    if (argStart != null && !remaining.isBlank()) {
+                        var segs = Fxml2BindingPathResolver.resolve(remaining, argStart, scope, kind, xmlFile);
+                        reportPathSegments(attrVal, segs, argStart,
+                                attrTextBase + arg.offset() + selLen, xmlFile, holder);
+                    }
+                }
             }
-
-            // Check that the method exists on the resolved qualifier class
-            if (qualifierClass.findMethodsByName(methodName, true).length == 0) {
-                int methodStart = attrVal.getTextRange().getStartOffset() + base + lastDot + 1;
-                int methodEnd   = methodStart + methodName.length();
-                holder.newAnnotation(HighlightSeverity.ERROR,
-                        "'" + methodName + "' in " + qualifierClass.getQualifiedName() + " cannot be resolved")
-                        .range(new TextRange(methodStart, methodEnd))
-                        .create();
-            }
-        } else {
-            // Bare name: could be (1) a method on startClass, (2) an imported class (constructor call)
-            // Try as a method on the start class first
-            if (startClass.findMethodsByName(funcPath, true).length > 0) return; // found as method
-
-            // Try as a class (constructor call), e.g. "Color" imported
-            PsiClass cls = Fxml2ImportResolver.resolve(funcPath, xmlFile);
-            if (cls == null) {
-                cls = JavaPsiFacade.getInstance(xmlFile.getProject()).findClass(funcPath, scope);
-            }
-            if (cls != null) return; // found as constructor, OK
-
-            // Not found: report error on the function name
-            int docStart = attrVal.getTextRange().getStartOffset() + base;
-            int docEnd   = docStart + funcPath.length();
-            holder.newAnnotation(HighlightSeverity.ERROR,
-                    "'" + funcPath + "' in " + startClass.getQualifiedName() + " cannot be resolved")
-                    .range(new TextRange(docStart, docEnd))
-                    .create();
         }
     }
 
     /**
+     * Reports that a function expression is not a valid reverse ({@code fx:Push} / {@code >{...}})
+     * binding source, mirroring the compiler's {@code INVALID_REVERSE_BINDING_SOURCE} diagnostic.
+     * Highlights the whole function-call expression.
+     */
+    private static void annotateFunctionNotReverseBindable(
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull String path,
+            @NotNull AnnotationHolder holder,
+            int attrTextBase) {
+        int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
+        if (parenIdx <= 0) return;
+        String funcPath = path.substring(0, parenIdx);
+        int lastDot = funcPath.lastIndexOf('.');
+        String name = lastDot >= 0 ? funcPath.substring(lastDot + 1) : funcPath;
+        int docStart = attrVal.getTextRange().getStartOffset() + attrTextBase;
+        holder.newAnnotation(HighlightSeverity.ERROR,
+                        name + " is not a valid reverse binding source")
+                .range(new TextRange(docStart, docStart + path.length()))
+                .create();
+    }
+
+    /**
+     * For a bidirectional ({@code fx:Synchronize} / {@code #{...}}) function binding, the method or
+     * constructor must be invoked with exactly one argument
+     * (compiler: {@code INVALID_BIDIRECTIONAL_METHOD_PARAM_COUNT}).
+     */
+    private static void annotateBidirectionalArgumentCount(
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull String path,
+            @NotNull AnnotationHolder holder,
+            int attrTextBase) {
+        if (Fxml2BindingPathResolver.functionArguments(path).size() == 1) return;
+        int docStart = attrVal.getTextRange().getStartOffset() + attrTextBase;
+        holder.newAnnotation(HighlightSeverity.ERROR,
+                        "A bidirectional conversion method or constructor must be invoked with a single argument")
+                .range(new TextRange(docStart, docStart + path.length()))
+                .create();
+    }
+
+    /**
      * For bidirectional function bindings ({@code #{method(arg)}}) without an explicit
-     * {@code inverseMethod=} parameter, the method must be annotated with
-     * {@code @org.jfxcore.markup.InverseMethod}.
+     * {@code inverseMethod=}, the referenced method must be annotated with
+     * {@code @org.jfxcore.markup.InverseMethod} (compiler: {@code METHOD_NOT_INVERTIBLE}).
      *
-     * <p>Reports a {@link HighlightSeverity#ERROR} on the method-name portion of
-     * {@code funcPath} when no overload carries that annotation.
-     * This mirrors the compiler's {@code METHOD_NOT_INVERTIBLE} diagnostic, which reports
-     * the fully-qualified annotation name.
+     * <p>Reports a {@link HighlightSeverity#ERROR} on the method-name segment when the method
+     * resolves but no overload carries the annotation.  When the method does not resolve (the
+     * error is already reported by {@link #annotateFunctionCall}) or the path is a constructor,
+     * nothing is reported here.
      *
-     * @param funcPath the function path before the {@code (}, e.g. {@code "formatDouble"} or
-     *                 {@code "String.format"}
-     * @param base     offset within the attribute value (past the opening quote) where
-     *                 {@code funcPath} starts
+     * @param funcPath the function path before the {@code (}, e.g. {@code "formatDouble"},
+     *                 {@code "String.format"}, or {@code "c1.c2.instanceNot"}
+     * @param base     offset within the attribute value text where {@code funcPath} starts
      */
     private static void annotateInverseMethodRequired(
             @NotNull XmlAttributeValue attrVal,
@@ -537,64 +601,36 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         if (funcPath.isBlank()) return;
 
         GlobalSearchScope scope = xmlFile.getResolveScope();
-        PsiMethod[] methods;
-        String methodName;
-        int docStart = attrVal.getTextRange().getStartOffset() + base;
-        int docEnd;
+        var nameSegs = Fxml2BindingPathResolver.resolveFunctionName(
+                funcPath, startClass, scope, Kind.SYNCHRONIZE, xmlFile);
+        if (nameSegs.isEmpty()) return;
 
-        int lastDot = funcPath.lastIndexOf('.');
-        if (lastDot > 0) {
-            String classQualifier = funcPath.substring(0, lastDot);
-            methodName = funcPath.substring(lastDot + 1);
-            PsiClass qualifierClass = resolveClassFromPath(classQualifier, startClass, scope, xmlFile);
-            if (qualifierClass == null) return; // already reported by annotateFunctionCallPath
-            methods = qualifierClass.findMethodsByName(methodName, true);
-            docStart += lastDot + 1; // highlight only the method-name portion
-            docEnd = docStart + methodName.length();
-        } else {
-            methodName = funcPath;
-            methods = startClass.findMethodsByName(funcPath, true);
-            if (methods.length == 0) return; // constructor or unresolvable, no annotation to check
-            docEnd = docStart + funcPath.length();
-        }
-
-        if (methods.length == 0) return; // no methods found, skip
+        Fxml2BindingPathResolver.Segment methodSeg = nameSegs.getLast();
+        // Constructor (class) reference: @InverseMethod is not applicable here.
+        if (methodSeg.classQualifier()) return;
+        if (!(methodSeg.declaration() instanceof PsiMethod resolvedMethod)) return; // unresolved: already reported
+        PsiClass owner = resolvedMethod.getContainingClass();
+        if (owner == null) return;
 
         // Accept if any overload carries @org.jfxcore.markup.InverseMethod.
-        for (PsiMethod method : methods) {
+        for (PsiMethod method : owner.findMethodsByName(resolvedMethod.getName(), true)) {
             if (method.hasAnnotation("org.jfxcore.markup.InverseMethod")) return;
         }
 
+        int docStart = attrVal.getTextRange().getStartOffset() + base + methodSeg.pathOffset();
+        int docEnd = docStart + methodSeg.name().length();
         holder.newAnnotation(HighlightSeverity.ERROR,
-                "'" + methodName + "' is not annotated with @org.jfxcore.markup.InverseMethod, " +
+                "'" + resolvedMethod.getName() + "' is not annotated with @org.jfxcore.markup.InverseMethod, " +
                 "and no user-defined inverse method was provided")
                 .range(new TextRange(docStart, docEnd))
                 .create();
     }
 
     /**
-     * Resolves a class from a dotted path (e.g. {@code "String"} or {@code "java.lang.String"})
-     * using imports and the project scope.
-     */
-    private static @org.jetbrains.annotations.Nullable PsiClass resolveClassFromPath(
-            @NotNull String classPath,
-            @NotNull PsiClass startClass,
-            @NotNull GlobalSearchScope scope,
-            @NotNull XmlFile xmlFile) {
-        // Simple name: try imports first
-        if (!classPath.contains(".")) {
-            PsiClass cls = Fxml2ImportResolver.resolve(classPath, xmlFile);
-            if (cls != null) return cls;
-        }
-        return JavaPsiFacade.getInstance(startClass.getProject()).findClass(classPath, scope);
-    }
-
-    /**
-     * Validates the secondary parameter path (e.g. {@code inverseMethod=parseDouble},
-     * {@code format=myFormatter}, {@code converter=myConverter}) of a binding expression.
+     * Validates the secondary parameter path of a binding expression.
      *
-     * <p>For {@code inverseMethod}, the value is a method name on the start class.
-     * For {@code format}/{@code converter}, the value is a property path.
+     * <p>For {@code inverseMethod}, the value is a method path (no argument list) resolved like a
+     * function name.  For {@code format}/{@code converter}, the value is a property path.
      */
     private static void annotateSecondaryParam(
             @NotNull XmlAttributeValue attrVal,
@@ -605,37 +641,20 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         String paramPath = expr.paramPath();
         int paramPathOffset = expr.paramPathOffset();
         if (paramPath == null || paramPath.isBlank() || paramPathOffset < 0) return;
+        GlobalSearchScope scope = xmlFile.getResolveScope();
 
-        // "inverseMethod" param: the value is a method name (or dotted method ref) on the start class
+        // "inverseMethod" param: the value is a method path (bare name, qualified static, or an
+        // instance path), with no argument list.
         if ("inverseMethod".equals(expr.paramName())) {
-            // Check as a function-call path (bare method name or Qualifier.method)
-            annotateFunctionCallPath(attrVal, paramPath, startClass, xmlFile, holder,
-                    1 + paramPathOffset);
+            var nameSegs = Fxml2BindingPathResolver.resolveFunctionName(
+                    paramPath, startClass, scope, Kind.SYNCHRONIZE, xmlFile);
+            reportPathSegments(attrVal, nameSegs, startClass, 1 + paramPathOffset, xmlFile, holder);
             return;
         }
 
-        // Other params (format, converter): treat as a property path
-        GlobalSearchScope scope = xmlFile.getResolveScope();
+        // Other params (format, converter): treat as a property path.
         var segments = Fxml2BindingPathResolver.resolve(paramPath, startClass, scope, null, xmlFile);
-        if (segments.isEmpty()) return;
-
-        int attrDocBase = attrVal.getTextRange().getStartOffset();
-        int base = 1 + paramPathOffset; // +1 for opening quote
-        PsiClass prevType = startClass;
-
-        for (Fxml2BindingPathResolver.Segment seg : segments) {
-            int docStart = attrDocBase + base + seg.pathOffset();
-            int docEnd = docStart + seg.name().length();
-            if (!seg.isResolved()) {
-                String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
-                holder.newAnnotation(HighlightSeverity.ERROR,
-                        "'" + seg.name() + "' in " + ownerName + " cannot be resolved")
-                        .range(new TextRange(docStart, docEnd))
-                        .create();
-                break;
-            }
-            prevType = seg.resultType();
-        }
+        reportPathSegments(attrVal, segments, startClass, 1 + paramPathOffset, xmlFile, holder);
     }
 
     /**
@@ -1314,29 +1333,30 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         // If the path is empty after stripping the selector (e.g. bare "self/"), nothing to validate
         if (path.isBlank()) return;
 
-        // Function-call syntax: if path contains '(' that is NOT immediately preceded by '.'
-        // (which would indicate an attached-property group like "(VBox.margin)"),
-        // this is a function binding.
-        // e.g. "formatDouble(value)", "String.format('...', x)", "Color(0.5, 0.5, 0.5, 1.0)"
-        // Strip the argument list and resolve only the function-name path.
-        int parenIdx = -1;
-        for (int pi = 0; pi < path.length(); pi++) {
-            if (path.charAt(pi) == '(') {
-                // '(' immediately after '.' is an attached-property group segment, not a function call
-                if (pi > 0 && path.charAt(pi - 1) == '.') continue;
-                parenIdx = pi;
-                break;
-            }
-        }
+        // Function-call syntax: a '(' that is NOT immediately preceded by '.'
+        // (which would indicate an attached-property group like "(VBox.margin)").
+        // e.g. "formatDouble(value)", "String.format('...', x)", "Color(0.5, 0.5, 0.5, 1.0)".
+        int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
         if (parenIdx > 0) {
-            String funcPath = path.substring(0, parenIdx); // e.g. "formatDouble" or "String.format"
             int pathBase = 1 + expr.strippedPathOffset() + (selector != null ? selector.selectorLength() : 0);
-            annotateFunctionCallPath(attrVal, funcPath, startClass, xmlFile, holder, pathBase);
-            // Bidirectional function bindings without inverseMethod= require
-            // @org.jfxcore.markup.InverseMethod on the method (compiler: METHOD_NOT_INVERTIBLE).
-            if (expr.kind() == Kind.SYNCHRONIZE
-                    && (!expr.hasParam() || !"inverseMethod".equals(expr.paramName()))) {
-                annotateInverseMethodRequired(attrVal, funcPath, startClass, xmlFile, holder, pathBase);
+            // fx:Push (reverse binding) is not applicable to function expressions; the compiler
+            // fails on this alone, so report only that and skip detailed function validation.
+            if (expr.kind() == Kind.PUSH || expr.kind() == Kind.PUSH_CONTENT) {
+                annotateFunctionNotReverseBindable(attrVal, path, holder, pathBase);
+                return;
+            }
+            // Validate the function-name path and every path argument (compiler:
+            // AbstractFunctionEmitterFactory.findFunction plus per-argument resolution).
+            annotateFunctionCall(attrVal, path, startClass, contextTag, xmlFile, holder,
+                    pathBase, expr.kind());
+            // fx:Synchronize: the method/constructor must be invoked with a single argument and
+            // an inverse method must be available.
+            if (expr.kind() == Kind.SYNCHRONIZE || expr.kind() == Kind.SYNCHRONIZE_CONTENT) {
+                annotateBidirectionalArgumentCount(attrVal, path, holder, pathBase);
+                String funcPath = path.substring(0, parenIdx);
+                if (!expr.hasParam() || !"inverseMethod".equals(expr.paramName())) {
+                    annotateInverseMethodRequired(attrVal, funcPath, startClass, xmlFile, holder, pathBase);
+                }
             }
             // Also validate the secondary param (inverseMethod=, format=, converter=) if present
             if (expr.hasParam()) {
@@ -1348,63 +1368,10 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         GlobalSearchScope scope = xmlFile.getResolveScope();
         var segments = Fxml2BindingPathResolver.resolve(path, startClass, scope, expr.kind(), xmlFile);
 
-        // Base document offset: skip opening quote, boolean operator, and context selector.
-        // Each segment's document position is computed as base + seg.pathOffset(), where
-        // pathOffset() is the segment's start offset within the resolved path string.
-        int attrDocBase = attrVal.getTextRange().getStartOffset();
+        // Base offset within the attribute value text: skip opening quote, boolean operator, and
+        // context selector.  Each segment is positioned at base + seg.pathOffset().
         int base = 1 + expr.strippedPathOffset() + (selector != null ? selector.selectorLength() : 0);
-        PsiClass prevType = startClass;
-        boolean prevResolved = true;
-        boolean allResolved = true;
-
-        for (Fxml2BindingPathResolver.Segment seg : segments) {
-            int docStart = attrDocBase + base + seg.pathOffset();
-            int docEnd = docStart + seg.name().length();
-            if (!seg.isResolved()) {
-                if (prevResolved) {
-                    // For attached-property segments like (VBox.prop), extract the declaring
-                    // class name from inside the parens for a clearer error message.
-                    String ownerName;
-                    String segName = seg.name();
-                    if (segName.startsWith("(") && segName.endsWith(")")) {
-                        String inner = segName.substring(1, segName.length() - 1);
-                        int lastDot = inner.lastIndexOf('.');
-                        ownerName = lastDot > 0 ? inner.substring(0, lastDot) : inner;
-                    } else {
-                        ownerName = prevType != null ? prevType.getQualifiedName() : "?";
-                    }
-                    holder.newAnnotation(HighlightSeverity.ERROR,
-                            "'" + segName + "' in " + ownerName + " cannot be resolved")
-                            .range(new TextRange(docStart, docEnd))
-                            .create();
-                }
-                prevResolved = false;
-                prevType = null;
-                allResolved = false;
-            } else {
-                // When the segment was accessed via '::' (observable-selection operator), the FXML
-                // compiler requires the member to be an ObservableValue subtype. If it is not,
-                // the compiler rejects the reference with INVALID_INVARIANT_REFERENCE.
-                if (seg.observableSelector() && !seg.classQualifier()
-                        && isNotObservableDeclaration(seg.declaration(), xmlFile)) {
-                    String segName = seg.name();
-                    String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
-                    int selectorDocOffset = ReplaceObservableSelectorFix.selectorOffsetBefore(docStart);
-                    ReplaceObservableSelectorFix fix =
-                            ReplaceObservableSelectorFix.of(attrVal, selectorDocOffset);
-                    var builder = holder.newAnnotation(HighlightSeverity.ERROR,
-                            "'" + segName + "' in " + ownerName
-                            + " cannot be referenced"
-                            + " (note: '.' can be used instead of '::' within a path expression)")
-                            .range(new TextRange(docStart, docEnd));
-                    if (fix != null) builder = builder.withFix(fix);
-                    builder.create();
-                    allResolved = false;
-                }
-                prevResolved = true;
-                prevType = seg.resultType();
-            }
-        }
+        boolean allResolved = reportPathSegments(attrVal, segments, startClass, base, xmlFile, holder);
 
         // Validate secondary param (inverseMethod=, format=, converter=) if present
         if (expr.hasParam()) {
