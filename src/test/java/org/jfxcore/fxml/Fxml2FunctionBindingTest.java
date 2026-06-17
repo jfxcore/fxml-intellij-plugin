@@ -13,7 +13,6 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection;
 import org.jfxcore.fxml.lang.Fxml2BindingParamNameReference;
-import org.jfxcore.fxml.lang.Fxml2BindingSegmentReference;
 import org.jfxcore.fxml.lang.Fxml2NamespaceUrlReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -968,25 +967,49 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    // -----------------------------------------------------------------------
+    // Navigation on partially-typed (unterminated) binding expressions
+    // -----------------------------------------------------------------------
+
     /**
-     * Finds the first {@link Fxml2BindingSegmentReference} at the caret that resolves to a
-     * non-null element.
+     * A binding expression that is still being typed and has no closing brace
+     * (e.g. {@code ${String.fo}) must still resolve its early, already-complete segments.
+     * Ctrl+click on the {@code String} class qualifier must navigate to {@code java.lang.String}
+     * even though the trailing member segment is incomplete and the {@code }} is missing.
      */
-    private PsiElement resolveSegmentAtCaret() {
-        return ReadAction.compute(() -> {
-            int offset = getFixture().getCaretOffset();
-            XmlAttributeValue attrVal = com.intellij.psi.util.PsiTreeUtil.findElementOfClassAtOffset(
-                    getFixture().getFile(), offset, XmlAttributeValue.class, false);
-            if (attrVal == null) return null;
-            int relOffset = offset - attrVal.getTextRange().getStartOffset();
-            for (PsiReference ref : attrVal.getReferences()) {
-                if (!(ref instanceof Fxml2BindingSegmentReference)) continue;
-                if (ref.getRangeInElement().containsOffset(relOffset)) {
-                    return ref.resolve();
-                }
-            }
-            return null;
-        });
+    @Test
+    void ctrlClickOnClassQualifierOfUnterminatedPathResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${Str<caret>ing.fo"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(com.intellij.psi.PsiClass.class, target,
+                "Ctrl+click on 'String' in an unterminated binding should resolve to the class");
+        assertEquals("java.lang.String",
+                ((com.intellij.psi.PsiClass) target).getQualifiedName());
+    }
+
+    /**
+     * The function-name qualifier of an unterminated function-call binding
+     * (e.g. {@code ${String.format('foo', height}) where the {@code )} and {@code }} are
+     * missing) must still resolve. Ctrl+click on {@code String} must navigate to the class.
+     */
+    @Test
+    void ctrlClickOnFunctionQualifierOfUnterminatedCallResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${Str<caret>ing.format('foo', value"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(com.intellij.psi.PsiClass.class, target,
+                "Ctrl+click on 'String' in an unterminated function call should resolve to the class");
+        assertEquals("java.lang.String",
+                ((com.intellij.psi.PsiClass) target).getQualifiedName());
     }
 
     /**

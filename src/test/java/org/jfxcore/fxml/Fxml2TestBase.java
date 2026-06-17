@@ -1,12 +1,17 @@
 package org.jfxcore.fxml;
 
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.projectRoots.JavaSdk;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.roots.ContentEntry;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiReference;
+import com.intellij.psi.xml.XmlAttributeValue;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.testFramework.IdeaTestUtil;
 import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.common.ThreadLeakTracker;
@@ -14,6 +19,7 @@ import com.intellij.testFramework.fixtures.DefaultLightProjectDescriptor;
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.MavenDependencyUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jfxcore.fxml.lang.Fxml2BindingSegmentReference;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
@@ -145,6 +151,27 @@ public abstract class Fxml2TestBase {
      */
     protected static String fxml(String imports, String body) {
         return fxml(imports, body, "test.TestView");
+    }
+
+    /**
+     * Finds the first {@link Fxml2BindingSegmentReference} at the caret position and
+     * returns its resolved target, or {@code null} if none resolves.
+     */
+    protected PsiElement resolveSegmentAtCaret() {
+        return ReadAction.compute(() -> {
+            int offset = getFixture().getCaretOffset();
+            XmlAttributeValue attrVal = PsiTreeUtil.findElementOfClassAtOffset(
+                    getFixture().getFile(), offset, XmlAttributeValue.class, false);
+            if (attrVal == null) return null;
+            int relOffset = offset - attrVal.getTextRange().getStartOffset();
+            for (PsiReference ref : attrVal.getReferences()) {
+                if (!(ref instanceof Fxml2BindingSegmentReference)) continue;
+                if (ref.getRangeInElement().containsOffset(relOffset)) {
+                    return ref.resolve();
+                }
+            }
+            return null;
+        });
     }
 
     protected static String fxml(String imports, String body, String fxClass) {

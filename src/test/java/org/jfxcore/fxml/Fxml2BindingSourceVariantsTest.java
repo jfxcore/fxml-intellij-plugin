@@ -2,20 +2,19 @@ package org.jfxcore.fxml;
 
 import com.intellij.codeInspection.BatchQuickFix;
 import com.intellij.codeInspection.ex.QuickFixWrapper;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
-import com.intellij.psi.PsiReference;
-import com.intellij.psi.xml.XmlAttributeValue;
 import java.util.Objects;
 import org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection;
 import org.jfxcore.fxml.annotator.Fxml2NonObservableBindingSourceInspection;
-import org.jfxcore.fxml.lang.Fxml2BindingSegmentReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests for binding paths that resolve via Java-Beans-style getters and plain fields,
@@ -759,27 +758,6 @@ class Fxml2BindingSourceVariantsTest extends Fxml2TestBase {
                 + method.getName() + " in " + Objects.requireNonNull(method.getContainingClass()).getQualifiedName());
         assertEquals("test.LabelViewModel2", method.getContainingClass().getQualifiedName(),
                 "Expected labelProperty() to be declared in LabelViewModel2");
-    }
-
-    /**
-     * Resolves the {@link Fxml2BindingSegmentReference} at the caret offset.
-     */
-    @SuppressWarnings("SameParameterValue")
-    private PsiElement resolveSegmentAtCaret() {
-        return ReadAction.compute(() -> {
-            int offset = getFixture().getCaretOffset();
-            XmlAttributeValue attrVal = com.intellij.psi.util.PsiTreeUtil.findElementOfClassAtOffset(
-                    getFixture().getFile(), offset, XmlAttributeValue.class, false);
-            if (attrVal == null) return null;
-            int relOffset = offset - attrVal.getTextRange().getStartOffset();
-            for (PsiReference ref : attrVal.getReferences()) {
-                if (!(ref instanceof Fxml2BindingSegmentReference)) continue;
-                if (ref.getRangeInElement().containsOffset(relOffset)) {
-                    return ref.resolve();
-                }
-            }
-            return null;
-        });
     }
 
     // -----------------------------------------------------------------------

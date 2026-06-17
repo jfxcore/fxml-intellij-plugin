@@ -105,7 +105,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 new XmlSpaceAttrValueReferenceProvider(),
                 PsiReferenceRegistrar.HIGHER_PRIORITY);
 
-        // Binding expressions: $path, ${path}, #{path}, {fx:...}
+        // Binding expressions: $path, ${path}, #{path}, >{path}, {fx:...}
         registrar.registerReferenceProvider(
                 XmlPatterns.xmlAttributeValue()
                         .withValue(string().startsWith("$")),
@@ -121,6 +121,12 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         registrar.registerReferenceProvider(
                 XmlPatterns.xmlAttributeValue()
                         .withValue(string().startsWith("#{")),
+                new BindingReferenceProvider(),
+                PsiReferenceRegistrar.HIGHER_PRIORITY);
+
+        registrar.registerReferenceProvider(
+                XmlPatterns.xmlAttributeValue()
+                        .withValue(string().startsWith(">{")),
                 new BindingReferenceProvider(),
                 PsiReferenceRegistrar.HIGHER_PRIORITY);
 
@@ -1041,8 +1047,10 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             String rawValue = attrVal.getValue();
             if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
 
+            // Use the lenient parse so a binding expression whose closing brace has not been typed
+            // yet still resolves its already-complete leading segments for Ctrl+click navigation.
             Fxml2BindingExpressionParser.ParsedExpression expr =
-                    Fxml2BindingExpressionParser.parseExpression(rawValue);
+                    Fxml2BindingExpressionParser.parseExpressionLenient(rawValue);
             if (expr == null) return PsiReference.EMPTY_ARRAY;
 
             // Get the context tag (parent XmlTag of the attribute)
@@ -1383,8 +1391,10 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             String rawValue = attrVal.getValue();
             if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
 
+            // Lenient parse so a still-being-typed ${...} context expression resolves its
+            // already-complete leading segments for navigation before the brace is typed.
             Fxml2BindingExpressionParser.ParsedExpression expr =
-                    Fxml2BindingExpressionParser.parseExpression(rawValue);
+                    Fxml2BindingExpressionParser.parseExpressionLenient(rawValue);
             if (expr == null || expr.strippedPath().isEmpty()) return PsiReference.EMPTY_ARRAY;
 
             PsiClass codeBehind = Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
