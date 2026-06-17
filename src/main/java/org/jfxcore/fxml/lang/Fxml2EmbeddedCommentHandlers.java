@@ -3,6 +3,7 @@
 
 package org.jfxcore.fxml.lang;
 
+import com.intellij.codeInsight.generation.CommentByBlockCommentHandler;
 import com.intellij.codeInsight.generation.actions.CommentByLineCommentAction;
 import com.intellij.injected.editor.EditorWindow;
 import com.intellij.lang.injection.InjectedLanguageManager;
@@ -14,6 +15,7 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Caret;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.ScrollType;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiDocumentManager;
@@ -613,14 +615,24 @@ public final class Fxml2EmbeddedCommentHandlers {
         }
 
         /**
-         * Delegates to a fresh instance of the platform's block-comment action.
-         * Using a new instance avoids ActionManager lookup (which would return our
-         * overriding action) while still reusing all platform block-comment logic.
+         * Delegates to the platform's block-comment handler when the caret is outside
+         * an FXML injection, so that Java/Kotlin block comments work normally.
          */
-        @SuppressWarnings("UnstableApiUsage")
         private static void fallback(@NotNull AnActionEvent e) {
-            new com.intellij.codeInsight.generation.actions.CommentByBlockCommentAction()
-                    .actionPerformed(e);
+            Project project = e.getProject();
+            Editor editor = e.getData(CommonDataKeys.EDITOR);
+            if (project == null || editor == null) return;
+
+            PsiFile file = PsiDocumentManager.getInstance(project)
+                    .getPsiFile(editor.getDocument());
+            if (file == null) return;
+
+            CommentByBlockCommentHandler handler = new CommentByBlockCommentHandler();
+            WriteCommandAction.runWriteCommandAction(project, "Comment with Block Comment", null, () -> {
+                editor.getCaretModel().runForEachCaret(caret -> handler.invoke(project, editor, caret, file));
+                handler.postInvoke();
+            }, file);
+            editor.getScrollingModel().scrollToCaret(ScrollType.RELATIVE);
         }
     }
 
