@@ -70,6 +70,83 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // Default evaluation context without fx:subclass (root element is the context)
+    //
+    // Expressions are evaluated against the document's root element by default.
+    // A code-behind class declared via fx:subclass is merely a subtype of the root element type;
+    // when it is absent, the root element type itself is the evaluation context, and
+    // compiler-injected fx:id fields remain resolvable.
+    // -----------------------------------------------------------------------
+
+    /**
+     * Builds a standalone FXML/2 document <em>without</em> an {@code fx:subclass} attribute,
+     * so the default evaluation context is the root element type itself.
+     */
+    private static String fxmlNoSubclass(String imports, String body) {
+        var sb = new StringBuilder();
+        sb.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        for (String imp : imports.split("\\R")) {
+            String trimmed = imp.trim();
+            if (!trimmed.isEmpty()) {
+                sb.append("<?import ").append(trimmed).append("?>\n");
+            }
+        }
+        sb.append("<VBox xmlns=\"http://javafx.com/javafx\"\n");
+        sb.append("      xmlns:fx=\"http://jfxcore.org/fxml/2.0\">\n");
+        sb.append(body);
+        sb.append("</VBox>\n");
+        return sb.toString();
+    }
+
+    /**
+     * Without {@code fx:subclass}, a binding segment that does not exist on the root element
+     * type must still be reported as an error.  This guards against the resolver bailing out
+     * (and thus skipping all binding validation) when no code-behind class is declared.
+     */
+    @Test
+    void unresolvedSegmentReportedWithoutFxSubclass() {
+        getFixture().configureByText("NoSubclassTypo.fxml", fxmlNoSubclass(
+                "javafx.scene.layout.VBox\njavafx.scene.control.Label\njavafx.scene.control.TextField",
+                """
+                  <TextField fx:id="textField"/>
+                  <Label visible="${<error descr="'textFeild' in javafx.scene.layout.VBox cannot be resolved">textFeild</error>.text.empty}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Without {@code fx:subclass}, a binding path that references an {@code fx:id} field and a
+     * chain of root-element-reachable properties must resolve without error.
+     */
+    @Test
+    void fxIdAndRootPropertyPathResolvesWithoutFxSubclass() {
+        getFixture().configureByText("NoSubclassValid.fxml", fxmlNoSubclass(
+                "javafx.scene.layout.VBox\njavafx.scene.control.Label\njavafx.scene.control.TextField",
+                """
+                  <TextField fx:id="textField"/>
+                  <Label visible="${textField.text.empty}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Without {@code fx:subclass}, a property declared on the root element type must resolve as
+     * the first binding segment in default context.
+     */
+    @Test
+    void rootElementPropertyResolvesWithoutFxSubclass() {
+        getFixture().configureByText("NoSubclassRootProp.fxml", fxmlNoSubclass(
+                "javafx.scene.layout.VBox\njavafx.scene.control.Label",
+                """
+                  <Label visible="${visible}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
     // Bindings that should resolve without error
     // -----------------------------------------------------------------------
 

@@ -300,29 +300,21 @@ class Fxml2RedundantQualifierTest extends Fxml2TestBase {
     /**
      * When a FQN static field reference is used but neither the class is imported nor
      * the field is inherited by the start class, no warning is produced.
-     * We use a file without fx:subclass (no code-behind) and without an import.
+     *
+     * <p>The file has no {@code fx:subclass}, so the default evaluation context is the root
+     * element type ({@code Rectangle}).  The referenced static field belongs to an unrelated,
+     * unimported class ({@code javafx.scene.layout.Region}) that is neither a supertype of the
+     * context nor imported, so the qualifier cannot be shortened and no warning appears.
      */
     @Test
     void bindingExpressionFqnWithoutImportOrInheritanceProducesNoWarning() {
         getFixture().enableInspections(new Fxml2RedundantQualifierInspection());
-        // No fx:subclass -> no code-behind -> no inheritance; Region is NOT imported -> no warning.
-        getFixture().configureByText("TestView.fxml",
-                """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <?import javafx.scene.layout.Region?>
-                <javafx.scene.layout.Region xmlns="http://javafx.com/javafx"
-                                            xmlns:fx="http://jfxcore.org/fxml/2.0"
-                                            minHeight="$javafx.scene.layout.Region.USE_PREF_SIZE"/>
-                """);
-        // Region IS imported here, so the package prefix IS redundant (Case 2).
-        // This test is now only meaningful without any import: use a raw FQN tag + no import.
-        // Rewrite: no import, no code-behind -> no reduction possible.
         getFixture().configureByText("TestView2.fxml",
                 """
                 <?xml version="1.0" encoding="UTF-8"?>
-                <javafx.scene.layout.Region xmlns="http://javafx.com/javafx"
-                                            xmlns:fx="http://jfxcore.org/fxml/2.0"
-                                            minHeight="$javafx.scene.layout.Region.USE_PREF_SIZE"/>
+                <javafx.scene.shape.Rectangle xmlns="http://javafx.com/javafx"
+                                              xmlns:fx="http://jfxcore.org/fxml/2.0"
+                                              width="$javafx.scene.layout.Region.USE_PREF_SIZE"/>
                 """);
         getFixture().checkHighlighting(false, false, true);
     }
