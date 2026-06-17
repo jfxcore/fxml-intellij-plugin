@@ -1,13 +1,21 @@
 package org.jfxcore.fxml.lang;
 
+import com.intellij.model.Pointer;
 import com.intellij.model.Symbol;
 import com.intellij.model.psi.ImplicitReferenceProvider;
 import com.intellij.model.psi.PsiSymbolReference;
-import com.intellij.model.psi.PsiSymbolService;
+import com.intellij.navigation.NavigatableSymbol;
+import com.intellij.navigation.SymbolNavigationService;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.platform.backend.documentation.DocumentationSymbol;
+import com.intellij.platform.backend.documentation.DocumentationTarget;
+import com.intellij.platform.backend.navigation.NavigationTarget;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.ResolveResult;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
@@ -18,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -79,43 +88,75 @@ public final class Fxml2StyleClassImplicitReferenceProvider implements ImplicitR
 
     // -----------------------------------------------------------------------
 
-    private static final class StyleClassSymbolReference implements PsiSymbolReference {
-
-        private final @NotNull PsiElement myElement;
-        private final @NotNull TextRange myAbsoluteRange;
-        private final @NotNull Fxml2StyleClassReference myDelegate;
-
-        StyleClassSymbolReference(
-                @NotNull PsiElement element,
-                @NotNull TextRange absoluteRange,
-                @NotNull Fxml2StyleClassReference delegate) {
-            myElement       = element;
-            myAbsoluteRange = absoluteRange;
-            myDelegate      = delegate;
-        }
+    private record StyleClassSymbolReference(
+            @NotNull PsiElement element,
+            @NotNull TextRange absoluteRange,
+            @NotNull Fxml2StyleClassReference delegate) implements PsiSymbolReference {
 
         @Override
         public @NotNull PsiElement getElement() {
-            return myElement;
+            return element;
         }
 
         @Override
         public @NotNull TextRange getRangeInElement() {
-            return myAbsoluteRange.shiftLeft(myElement.getTextRange().getStartOffset());
+            return absoluteRange.shiftLeft(element.getTextRange().getStartOffset());
         }
 
         @Override
         public @NotNull TextRange getAbsoluteRange() {
-            return myAbsoluteRange;
+            return absoluteRange;
         }
 
         @Override
         public @NotNull Collection<? extends Symbol> resolveReference() {
-            return Arrays.stream(myDelegate.multiResolve(false))
+            return Arrays.stream(delegate.multiResolve(false))
                     .map(ResolveResult::getElement)
                     .filter(Objects::nonNull)
-                    .map(el -> PsiSymbolService.getInstance().asSymbol(el))
+                    .map(CssSelectorSymbol::of)
                     .toList();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+
+    /**
+     * Symbol backed by a CSS selector {@link PsiElement} that supports navigation
+     * (Ctrl+click / Go To Declaration) and hover documentation.
+     *
+     * <p>A {@link SmartPsiElementPointer} is used instead of a raw {@code PsiElement}
+     * so that the symbol remains valid across PSI reparse events.
+     */
+    @SuppressWarnings("UnstableApiUsage")
+    private record CssSelectorSymbol(
+            @NotNull SmartPsiElementPointer<PsiElement> pointer)
+            implements NavigatableSymbol, DocumentationSymbol {
+
+        static @NotNull CssSelectorSymbol of(@NotNull PsiElement target) {
+            return new CssSelectorSymbol(SmartPointerManager.createPointer(target));
+        }
+
+        @Override
+        public @NotNull Pointer<CssSelectorSymbol> createPointer() {
+            return Pointer.delegatingPointer(pointer,
+                    psiElement -> new CssSelectorSymbol(SmartPointerManager.createPointer(psiElement)));
+        }
+
+        @Override
+        public @NotNull Collection<? extends NavigationTarget> getNavigationTargets(@NotNull Project project) {
+            PsiElement target = pointer.getElement();
+            return target == null
+                    ? List.of()
+                    : List.of(SymbolNavigationService.getInstance().psiElementNavigationTarget(target));
+        }
+
+        @Override
+        public @NotNull DocumentationTarget getDocumentationTarget() {
+            // The platform restores the symbol from its pointer before requesting
+            // documentation, so the backing element is present at this point.
+            PsiElement target = Objects.requireNonNull(pointer.getElement(),
+                    "CSS selector symbol queried for documentation after its PSI was invalidated");
+            return com.intellij.lang.documentation.psi.UtilKt.createPsiDocumentationTarget(target, null);
         }
     }
 }

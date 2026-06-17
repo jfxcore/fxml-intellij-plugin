@@ -73,25 +73,26 @@ public final class Fxml2StyleClassSearcher
             @NotNull ReferencesSearch.SearchParameters params,
             @NotNull Processor<? super PsiReference> consumer) {
 
-        String className = ReadAction.compute(() -> extractClassName(params.getElementToSearch()));
+        String className = ReadAction.nonBlocking(() -> extractClassName(params.getElementToSearch())).executeSynchronously();
         if (className == null) return true;
 
         SearchScope scope = params.getEffectiveSearchScope();
         if (!(scope instanceof GlobalSearchScope globalScope)) return true;
 
-        Project project = ReadAction.compute(() -> params.getElementToSearch().getProject());
+        Project project = ReadAction.nonBlocking(() -> params.getElementToSearch().getProject()).executeSynchronously();
 
         // Search standalone .fxml and .fxmlx files
-        ReadAction.run(() -> {
+        ReadAction.nonBlocking(() -> {
             for (String ext : new String[]{"fxml", "fxmlx"}) {
                 for (VirtualFile vf : FilenameIndex.getAllFilesByExt(project, ext, globalScope)) {
                     PsiFile psiFile = com.intellij.psi.PsiManager.getInstance(project).findFile(vf);
                     if (!(psiFile instanceof XmlFile xmlFile)) continue;
                     if (!Fxml2FileType.isFxml2(xmlFile)) continue;
-                    if (!searchInXmlFile(xmlFile, className, consumer)) return;
+                    if (!searchInXmlFile(xmlFile, className, consumer)) return null;
                 }
             }
-        });
+            return null;
+        }).executeSynchronously();
 
         // Search embedded FXML markup in @ComponentView-annotated classes.
         // Java text-block content is indexed as IN_PLAIN_TEXT; Kotlin raw strings as IN_STRINGS.
@@ -99,13 +100,14 @@ public final class Fxml2StyleClassSearcher
         // so we use the first segment as the pre-filter word to narrow candidate files,
         // relying on the per-attribute walk to confirm the full name.
         String wordKey = className.contains("-") ? className.substring(0, className.indexOf('-')) : className;
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             Fxml2EmbeddedUtil.processAnnotatedClassesContainingWord(wordKey, project, globalScope, annotatedClass -> {
                 XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass);
                 if (xmlFile == null) return true;
                 return searchInXmlFile(xmlFile, className, consumer);
-            })
-        );
+            });
+            return null;
+        }).executeSynchronously();
 
         return true;
     }

@@ -150,15 +150,15 @@ public final class Fxml2BindingSegmentSearcher
             @NotNull GlobalSearchScope globalScope,
             @NotNull Processor<? super PsiReference> consumer) {
 
-        String propertyName = ReadAction.compute(() -> Fxml2PropertyNameUtil.propertyNameFromElement(target));
+        String propertyName = ReadAction.nonBlocking(() -> Fxml2PropertyNameUtil.propertyNameFromElement(target)).executeSynchronously();
         if (propertyName == null) return;
 
-        Project project = ReadAction.compute(target::getProject);
+        Project project = ReadAction.nonBlocking(target::getProject).executeSynchronously();
 
         // 1. Standalone FXML files: use the word index to find candidates efficiently.
         //    processAllFilesWithWord, and everything it calls transitively, requires a
         //    read action held for the entire duration (same pattern as Fxml2FxIdFieldSearcher).
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             PsiSearchHelper.getInstance(project).processAllFilesWithWord(
                     propertyName,
                     globalScope,
@@ -168,22 +168,24 @@ public final class Fxml2BindingSegmentSearcher
                         collectMatchingSegments(xmlFile, target, consumer);
                         return true;
                     },
-                    false)
-        );
+                    false);
+            return null;
+        }).executeSynchronously();
 
         // 2. Embedded FXML markup: injected XML is not indexed, but Java text-block content
         //    is indexed as IN_PLAIN_TEXT (and Kotlin raw strings as IN_STRINGS), so use the
         //    word index to pre-filter to only the host files containing the property name.
         //    The target may be a member of a non-@ComponentView class (e.g. a view-model)
         //    referenced via a multi-segment path, so all annotated classes in scope are candidates.
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             Fxml2EmbeddedUtil.processAnnotatedClassesContainingWord(propertyName, project, globalScope, annotatedClass -> {
                 XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass);
                 if (xmlFile == null) return true;
                 collectMatchingSegments(xmlFile, target, consumer);
                 return true;
-            })
-        );
+            });
+            return null;
+        }).executeSynchronously();
     }
 
 

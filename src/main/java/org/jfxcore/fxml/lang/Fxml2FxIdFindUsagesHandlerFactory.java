@@ -48,17 +48,17 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
 
     @Override
     public boolean canFindUsages(@NotNull PsiElement element) {
-        return ReadAction.compute(() -> isFxIdValue(element) || isFxIdField(element));
+        return ReadAction.nonBlocking(() -> isFxIdValue(element) || isFxIdField(element)).executeSynchronously();
     }
 
     @Override
     public @Nullable FindUsagesHandler createFindUsagesHandler(
             @NotNull PsiElement element, boolean forHighlightUsages) {
-        XmlAttributeValue attrVal = ReadAction.compute(() -> {
+        XmlAttributeValue attrVal = ReadAction.nonBlocking(() -> {
             XmlAttributeValue fromDirect = toFxIdAttrVal(element);
             if (fromDirect != null) return fromDirect;
             return fxIdAttrValForField(element);
-        });
+        }).executeSynchronously();
         if (attrVal == null) return null;
         return new Fxml2FxIdFindUsagesHandler(attrVal);
     }
@@ -199,7 +199,7 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
          */
         @Override
         public PsiElement @NotNull [] getPrimaryElements() {
-            return ReadAction.compute(this::computePrimaryElements);
+            return ReadAction.nonBlocking(this::computePrimaryElements).executeSynchronously();
         }
 
         private PsiElement @NotNull [] computePrimaryElements() {
@@ -252,15 +252,15 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
                 @NotNull Processor<? super UsageInfo> processor,
                 @NotNull com.intellij.find.findUsages.FindUsagesOptions options) {
 
-            XmlAttributeValue declaration = ReadAction.compute(
-                    () -> (XmlAttributeValue) getPsiElement());
+            XmlAttributeValue declaration = ReadAction.nonBlocking(
+                    () -> (XmlAttributeValue) getPsiElement()).executeSynchronously();
 
-            boolean isAttrValPrimary = ReadAction.compute(
-                    () -> declaration.getManager().areElementsEquivalent(element, declaration));
+            boolean isAttrValPrimary = ReadAction.nonBlocking(
+                    () -> declaration.getManager().areElementsEquivalent(element, declaration)).executeSynchronously();
             if (isAttrValPrimary) {
                 boolean[] proceed = {true};
-                ReadAction.run(() -> {
-                    if (!(declaration.getContainingFile() instanceof XmlFile xmlFile)) return;
+                ReadAction.nonBlocking(() -> {
+                    if (!(declaration.getContainingFile() instanceof XmlFile xmlFile)) return null;
                     xmlFile.accept(new XmlRecursiveElementVisitor() {
                         @Override
                         public void visitXmlAttributeValue(@NotNull XmlAttributeValue candidate) {
@@ -275,35 +275,36 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
                             }
                         }
                     });
-                });
+                    return null;
+                }).executeSynchronously();
                 if (!proceed[0]) return false;
             }
 
             if (element instanceof PsiField field) {
-                PsiElement nameId = ReadAction.compute(field::getNameIdentifier);
+                PsiElement nameId = ReadAction.nonBlocking(field::getNameIdentifier).executeSynchronously();
                 // Collect code uses first, then append the field declaration last.
                 boolean codeUsesOk = super.processElementUsages(element, usageInfo -> {
-                    PsiReference ref = ReadAction.compute(usageInfo::getReference);
+                    PsiReference ref = ReadAction.nonBlocking(usageInfo::getReference).executeSynchronously();
                     if (ref != null) {
-                        PsiElement refEl = ReadAction.compute(ref::getElement);
-                        boolean isDecl = ReadAction.compute(
-                                () -> declaration.getManager().areElementsEquivalent(refEl, declaration));
+                        PsiElement refEl = ReadAction.nonBlocking(ref::getElement).executeSynchronously();
+                        boolean isDecl = ReadAction.nonBlocking(
+                                () -> declaration.getManager().areElementsEquivalent(refEl, declaration)).executeSynchronously();
                         if (isDecl) return true;
                     }
                     return processor.process(usageInfo);
                 }, options);
                 if (!codeUsesOk) return false;
                 // UsageInfo constructor calls getContainingFile() which requires the read lock.
-                UsageInfo fieldDeclUsage = ReadAction.compute(() -> new UsageInfo(nameId));
+                UsageInfo fieldDeclUsage = ReadAction.nonBlocking(() -> new UsageInfo(nameId)).executeSynchronously();
                 return processor.process(fieldDeclUsage);
             }
 
             return super.processElementUsages(element, usageInfo -> {
-                PsiReference ref = ReadAction.compute(usageInfo::getReference);
+                PsiReference ref = ReadAction.nonBlocking(usageInfo::getReference).executeSynchronously();
                 if (ref != null) {
-                    PsiElement refEl = ReadAction.compute(ref::getElement);
-                    boolean isDecl = ReadAction.compute(
-                            () -> declaration.getManager().areElementsEquivalent(refEl, declaration));
+                    PsiElement refEl = ReadAction.nonBlocking(ref::getElement).executeSynchronously();
+                    boolean isDecl = ReadAction.nonBlocking(
+                            () -> declaration.getManager().areElementsEquivalent(refEl, declaration)).executeSynchronously();
                     if (isDecl) return true;
                 }
                 return processor.process(usageInfo);

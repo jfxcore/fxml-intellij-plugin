@@ -87,8 +87,8 @@ public final class Fxml2PropertyAttributeSearcher
         PsiElement target = params.getElementToSearch();
 
         // Only handle Java methods and fields.
-        String propertyName = ReadAction.compute(
-                () -> Fxml2PropertyNameUtil.propertyNameFromElement(target));
+        String propertyName = ReadAction.nonBlocking(
+                () -> Fxml2PropertyNameUtil.propertyNameFromElement(target)).executeSynchronously();
         if (propertyName == null) return true;
 
         SearchScope effectiveScope = params.getEffectiveSearchScope();
@@ -111,11 +111,11 @@ public final class Fxml2PropertyAttributeSearcher
             @NotNull GlobalSearchScope globalScope,
             @NotNull Processor<? super PsiReference> consumer) {
 
-        Project project = ReadAction.compute(target::getProject);
+        Project project = ReadAction.nonBlocking(target::getProject).executeSynchronously();
 
         // 1. Standalone FXML files: use the word index (IN_PLAIN_TEXT context) to locate
         //    candidate files containing the property name, then walk each file for matches.
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             PsiSearchHelper.getInstance(project).processAllFilesWithWordInText(
                     propertyName,
                     globalScope,
@@ -125,20 +125,22 @@ public final class Fxml2PropertyAttributeSearcher
                         collectMatchingAttributes(xmlFile, target, consumer);
                         return true;
                     },
-                    /* caseSensitively= */ false)
-        );
+                    /* caseSensitively= */ false);
+            return null;
+        }).executeSynchronously();
 
         // 2. Embedded FXML markup: injected XML is not indexed, but Java text-block content
         //    is indexed as IN_PLAIN_TEXT (and Kotlin raw strings as IN_STRINGS), so we can
         //    use the word index to pre-filter to only the host files containing the property name.
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             Fxml2EmbeddedUtil.processAnnotatedClassesContainingWord(propertyName, project, globalScope, annotatedClass -> {
                 XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass);
                 if (xmlFile == null) return true;
                 collectMatchingAttributes(xmlFile, target, consumer);
                 return true;
-            })
-        );
+            });
+            return null;
+        }).executeSynchronously();
     }
 
     // -----------------------------------------------------------------------

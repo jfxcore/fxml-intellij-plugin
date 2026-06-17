@@ -55,18 +55,18 @@ public final class Fxml2EventHandlerMethodSearcher
         PsiMethod target = params.getMethod();
         SearchScope effectiveScope = params.getEffectiveSearchScope();
 
-        String methodName = ReadAction.compute(target::getName);
+        String methodName = ReadAction.nonBlocking(target::getName).executeSynchronously();
 
         if (!(effectiveScope instanceof GlobalSearchScope globalScope)) return true;
 
-        Project project = ReadAction.compute(target::getProject);
+        Project project = ReadAction.nonBlocking(target::getProject).executeSynchronously();
 
         // Standalone FXML files: pre-filter via the word index, then walk each candidate.
         // XML attribute values are indexed as IN_PLAIN_TEXT, so processAllFilesWithWordInText
         // finds files where the method name appears verbatim as content text.
         boolean[] shouldContinue = {true};
 
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             PsiSearchHelper.getInstance(project).processAllFilesWithWordInText(
                     methodName, globalScope,
                     file -> {
@@ -78,14 +78,15 @@ public final class Fxml2EventHandlerMethodSearcher
                         }
                         return true;
                     },
-                    /* caseSensitively= */ true)
-        );
+                    /* caseSensitively= */ true);
+            return null;
+        }).executeSynchronously();
 
         if (!shouldContinue[0]) return false;
 
         // Embedded FXML markup: injected XML is not indexed, but the host file's text
         // (Java text-block or Kotlin raw string) is indexed as plain text.
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             Fxml2EmbeddedUtil.processAnnotatedClassesContainingWord(
                     methodName, project, globalScope, annotatedClass -> {
                         XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass);
@@ -95,8 +96,9 @@ public final class Fxml2EventHandlerMethodSearcher
                             return false;
                         }
                         return true;
-                    })
-        );
+                    });
+            return null;
+        }).executeSynchronously();
 
         return shouldContinue[0];
     }

@@ -222,13 +222,13 @@ public final class Fxml2ClassReferenceIndex extends ScalarIndexExtension<String>
     public static @NotNull Collection<VirtualFile> getFilesImporting(
             @NotNull String importTarget,
             @NotNull GlobalSearchScope scope) {
-        return ReadAction.compute(() -> {
+        return ReadAction.<Collection<VirtualFile>>nonBlocking(() -> {
             try {
                 return FileBasedIndex.getInstance().getContainingFiles(KEY, importTarget, scope);
             } catch (IndexNotReadyException e) {
                 return Collections.emptyList();
             }
-        });
+        }).executeSynchronously();
     }
 
     // -----------------------------------------------------------------------

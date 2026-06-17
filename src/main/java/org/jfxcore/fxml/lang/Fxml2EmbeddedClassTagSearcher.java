@@ -70,20 +70,20 @@ public final class Fxml2EmbeddedClassTagSearcher
         // search for usages of that class in embedded FXML (the constructor is implicitly
         // called whenever the class is instantiated as a tag or markup extension).
         // NOTE: isConstructor() and getContainingClass() require a read action.
-        PsiClass psiClass = ReadAction.compute(() -> {
+        PsiClass psiClass = ReadAction.nonBlocking(() -> {
             if (target instanceof PsiMethod method && method.isConstructor()) {
                 return method.getContainingClass();
             } else if (target instanceof PsiClass cls) {
                 return cls;
             }
             return null;
-        });
+        }).executeSynchronously();
         if (psiClass == null) return true;
 
         SearchScope scope = params.getEffectiveSearchScope();
         if (!(scope instanceof GlobalSearchScope globalScope)) return true;
 
-        Project project = ReadAction.compute(target::getProject);
+        Project project = ReadAction.nonBlocking(target::getProject).executeSynchronously();
         collectInScope(psiClass, project, globalScope, consumer);
         return true;
     }
@@ -109,10 +109,10 @@ public final class Fxml2EmbeddedClassTagSearcher
         // separate word token (XML tag names are split at '<' and '.'), so an IN_PLAIN_TEXT
         // lookup on the Java file containing the text-block will reliably pre-filter to
         // only the host files that actually reference the class.
-        String simpleClassName = ReadAction.compute(psiClass::getName);
+        String simpleClassName = ReadAction.nonBlocking(psiClass::getName).executeSynchronously();
         if (simpleClassName == null) return;
 
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             Fxml2EmbeddedUtil.processAnnotatedClassesContainingWord(simpleClassName, project, globalScope, annotatedClass -> {
                 XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass);
                 if (xmlFile == null) return true;
@@ -150,7 +150,8 @@ public final class Fxml2EmbeddedClassTagSearcher
                     }
                 });
                 return true;
-            })
-        );
+            });
+            return null;
+        }).executeSynchronously();
     }
 }

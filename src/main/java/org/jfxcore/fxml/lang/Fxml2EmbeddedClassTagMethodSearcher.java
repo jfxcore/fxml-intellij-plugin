@@ -44,16 +44,16 @@ public final class Fxml2EmbeddedClassTagMethodSearcher
 
         PsiMethod method = params.getMethod();
 
-        boolean isConstructor = ReadAction.compute(method::isConstructor);
+        boolean isConstructor = ReadAction.nonBlocking(method::isConstructor).executeSynchronously();
         if (!isConstructor) return true;
 
-        PsiClass psiClass = ReadAction.compute(method::getContainingClass);
+        PsiClass psiClass = ReadAction.nonBlocking(method::getContainingClass).executeSynchronously();
         if (psiClass == null) return true;
 
         SearchScope effectiveScope = params.getEffectiveSearchScope();
         if (!(effectiveScope instanceof GlobalSearchScope globalScope)) return true;
 
-        Project project = ReadAction.compute(method::getProject);
+        Project project = ReadAction.nonBlocking(method::getProject).executeSynchronously();
         Fxml2EmbeddedClassTagSearcher.collectInScope(psiClass, project, globalScope, consumer);
         return true;
     }
