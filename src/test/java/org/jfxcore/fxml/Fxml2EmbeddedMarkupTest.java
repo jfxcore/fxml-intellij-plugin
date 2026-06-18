@@ -15,6 +15,7 @@ import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
@@ -22,13 +23,16 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
 import com.intellij.psi.PsiImportList;
 import com.intellij.psi.PsiImportStatement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiJavaFile;
+import com.intellij.psi.impl.source.tree.injected.InjectedLanguageEditorUtil;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.LocalSearchScope;
 import com.intellij.psi.search.searches.MethodReferencesSearch;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.util.PsiUtilBase;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
@@ -38,6 +42,7 @@ import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupManager;
 import com.intellij.testFramework.EdtTestUtil;
 import com.intellij.testFramework.InspectionsKt;
+import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl;
 import com.intellij.util.ui.UIUtil;
 import java.util.Collection;
 import java.util.Objects;
@@ -140,6 +145,38 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
             PsiClass cls = findMarkupClass();
             return cls != null ? Fxml2EmbeddedUtil.getInjectedXmlFile(cls) : null;
         });
+    }
+
+    /**
+     * Finds the single available registered intention matching {@code hint} at the caret,
+     * gathering intentions directly on the injected fragment.
+     *
+     * <p>Use this for registered {@code IntentionAction}s (whose availability is recomputed on
+     * the injected file). Annotator-attached quick fixes are cached on the host daemon's
+     * highlight infos and are found via {@code findSingleIntention}.
+     *
+     * @return the matching intention, or {@code null} if not exactly one starts with the hint
+     */
+    private IntentionAction findInjectedAddImportIntention() {
+        String hint = "Add import for class reference";
+        getFixture().doHighlighting();
+        Project project = getFixture().getProject();
+        Editor hostEditor = InjectedLanguageEditorUtil.getTopLevelEditor(getFixture().getEditor());
+
+        Editor injectedEditor = ReadAction.compute(() -> {
+            PsiFile hostFile = PsiUtilBase.getPsiFileInEditor(hostEditor, project);
+            return hostFile == null ? null
+                    : InjectedLanguageEditorUtil.getEditorForInjectedLanguageNoCommit(hostEditor, hostFile);
+        });
+        if (injectedEditor == null) return null;
+        PsiFile injectedFile = ReadAction.compute(() -> PsiUtilBase.getPsiFileInEditor(injectedEditor, project));
+        if (injectedFile == null) return null;
+
+        List<IntentionAction> matches =
+                CodeInsightTestFixtureImpl.getAvailableIntentions(injectedEditor, injectedFile).stream()
+                        .filter(a -> a.getText().startsWith(hint))
+                        .toList();
+        return matches.size() == 1 ? matches.getFirst() : null;
     }
 
     // -----------------------------------------------------------------------
@@ -1375,7 +1412,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
         getFixture().doHighlighting();
 
         // The intention should now be available at the caret position.
-        IntentionAction action = getFixture().findSingleIntention("Add import for class reference");
+        IntentionAction action = findInjectedAddImportIntention();
         assertNotNull(action,
                 "AddImportForClassReferenceIntention must be available inside embedded FXML "
                 + "when the caret is on an unimported FQN class name.");
@@ -1449,7 +1486,7 @@ class Fxml2EmbeddedMarkupTest extends Fxml2TestBase {
 
         getFixture().doHighlighting();
 
-        IntentionAction action = getFixture().findSingleIntention("Add import for class reference");
+        IntentionAction action = findInjectedAddImportIntention();
         assertNotNull(action,
                 "AddImportForClassReferenceIntention must be available for a project-source class "
                 + "used as a FQN element tag in embedded FXML.");
