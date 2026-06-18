@@ -14,7 +14,7 @@ import com.intellij.psi.xml.XmlFile;
 import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport;
+import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.psi.KtAnnotationEntry;
 import org.jetbrains.kotlin.psi.KtClassOrObject;
 import org.jetbrains.kotlin.psi.KtFile;
@@ -147,7 +147,7 @@ public final class Fxml2EmbeddedKotlinImportOptimizer implements ImportOptimizer
                         .collect(Collectors.toList());
                 restoreMissingImports(ktFile, codeAndMarkup);
                 List<PsiClass> psiClasses = markupClasses.stream()
-                        .map(cls -> KotlinAsJavaSupport.getInstance(project).getLightClass(cls))
+                        .map(LightClassUtilsKt::toLightClass)
                         .filter(Objects::nonNull)
                         .collect(Collectors.toList());
                 for (String fqn : finalMarkupOnly) {
@@ -159,7 +159,7 @@ public final class Fxml2EmbeddedKotlinImportOptimizer implements ImportOptimizer
             }
             if (preferCode) {
                 List<PsiClass> psiClasses = markupClasses.stream()
-                        .map(cls -> KotlinAsJavaSupport.getInstance(project).getLightClass(cls))
+                        .map(LightClassUtilsKt::toLightClass)
                         .filter(Objects::nonNull)
                         .collect(Collectors.toList());
                 Fxml2ImportPlacementInspectionHelper.moveAllMarkupImportsToKotlinCode(ktFile, psiClasses, project);
@@ -210,8 +210,7 @@ public final class Fxml2EmbeddedKotlinImportOptimizer implements ImportOptimizer
         List<String> needed = new ArrayList<>();
 
         for (KtClassOrObject ktClass : markupClasses) {
-            var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                    .getLightClass(ktClass);
+            var lightClass = LightClassUtilsKt.toLightClass(ktClass);
             if (lightClass == null) continue;
 
             XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(lightClass);
@@ -262,8 +261,7 @@ public final class Fxml2EmbeddedKotlinImportOptimizer implements ImportOptimizer
         GlobalSearchScope scope = ktFile.getResolveScope();
 
         for (KtClassOrObject ktClass : markupClasses) {
-            var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                    .getLightClass(ktClass);
+            var lightClass = LightClassUtilsKt.toLightClass(ktClass);
             if (lightClass == null) continue;
 
             // Try the injected XmlFile first (available when injection has been computed).

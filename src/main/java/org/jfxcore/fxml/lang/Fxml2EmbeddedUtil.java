@@ -25,7 +25,7 @@ import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.Processor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport;
+import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.asJava.classes.KtLightClass;
 import org.jetbrains.kotlin.asJava.elements.KtLightElementBase;
 import org.jetbrains.kotlin.psi.KtAnnotationEntry;
@@ -139,8 +139,7 @@ public final class Fxml2EmbeddedUtil {
                 KtClassOrObject ktClass =
                         PsiTreeUtil.getParentOfType(annotEntry, KtClassOrObject.class);
                 if (ktClass == null) return null;
-                return KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                        .getLightClass(ktClass);
+                return LightClassUtilsKt.toLightClass(ktClass);
             }
         } catch (NoClassDefFoundError ignored) {
             // Kotlin plugin not present at runtime, degrade gracefully

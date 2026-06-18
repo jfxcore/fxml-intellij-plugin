@@ -8,9 +8,7 @@ import com.intellij.lang.ImportOptimizer;
 import com.intellij.lang.LanguageImportStatements;
 import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.openapi.editor.Document;
-import org.ec4j.core.ResourceProperties;
-import org.editorconfig.Utils;
-import org.editorconfig.plugincomponents.EditorConfigPropertiesService;
+import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jfxcore.fxml.codeinsight.Fxml2ImportOptimizer;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
@@ -44,7 +42,6 @@ import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport;
 import org.jetbrains.kotlin.psi.KtAnnotationEntry;
 import org.jetbrains.kotlin.psi.KtClassOrObject;
 import org.jetbrains.kotlin.psi.KtFile;
@@ -232,9 +229,11 @@ public final class Fxml2EmbedMarkupUtil {
      *
      * <p>The XML indent size is determined as follows:
      * <ol>
-     *   <li>If {@code hostVirtualFile} is non-null and the EditorConfig plugin is available,
-     *       the effective indent size for a {@code .fxml} file in the host file's directory
-     *       is read from {@code EditorConfigPropertiesService} (synchronous).</li>
+     *   <li>If {@code hostVirtualFile} is non-null, {@link CodeStyle#getIndentOptions(Project,
+     *       VirtualFile)} is queried with a synthetic {@code .fxml} probe anchored to the host
+     *       file's directory. Registered {@code FileIndentOptionsProvider}s (including the
+     *       EditorConfig provider) are consulted, so any {@code *.fxml} or {@code *.{xml,fxml}}
+     *       EditorConfig rule is honored automatically.</li>
      *   <li>Otherwise, the project-level XML indent size from
      *       {@link CodeStyle#getSettings(Project)} is used.</li>
      * </ol>
@@ -344,10 +343,11 @@ public final class Fxml2EmbedMarkupUtil {
      *
      * <p>Strategy (in priority order):
      * <ol>
-     *   <li>If EditorConfig is enabled for the project and the host directory has an
-     *       {@code indent_size} entry matching {@code *.fxml} patterns, that value is used.
-     *       This is read synchronously from {@code EditorConfigPropertiesService} so it is
-     *       always up-to-date (no async warming required).</li>
+     *   <li>If {@code hostVirtualFile} is non-null, {@link CodeStyle#getIndentOptions(Project,
+     *       VirtualFile)} is queried with a synthetic {@code .fxml} probe anchored to the host
+     *       file's directory. Registered {@code FileIndentOptionsProvider}s (including
+     *       {@code EditorConfigIndentOptionsProvider}) are consulted in their declared order,
+     *       so any {@code *.fxml} / {@code *.{xml,fxml}} EditorConfig rule is honored.</li>
      *   <li>The project-level XML indent size from
      *       {@link CodeStyle#getSettings(Project)} is used as fallback.</li>
      * </ol>
@@ -371,35 +371,23 @@ public final class Fxml2EmbedMarkupUtil {
         VirtualFile hostDir = hostVirtualFile.getParent();
         if (hostDir == null) return fallback;
 
-        try {
-            // Respect the user's "Enable EditorConfig support" project setting.
-            if (!Utils.isEnabled(projectSettings)) return fallback;
-
-            // Create a virtual probe file with the host directory as its logical parent.
-            // EditorConfigPropertiesService.getProperties() uses file.path for glob
-            // matching and file.parent for .editorconfig traversal; both are overridden
-            // here so the service finds the real .editorconfig hierarchy and matches
-            // *.fxml / *.{xml,fxml} patterns against the probe's file name.
-            LightVirtualFile probe = new LightVirtualFile(
-                    "_fxml2_indent_probe.fxml", XMLLanguage.INSTANCE, "") {
-                @Override
-                public VirtualFile getParent() { return hostDir; }
-                @Override
-                public @NotNull String getPath() {
-                    return hostDir.getPath() + "/" + getName();
-                }
-            };
-
-            ResourceProperties props =
-                    EditorConfigPropertiesService.getInstance(project).getProperties(probe);
-            var indentProp = props.getProperties().get("indent_size");
-            if (indentProp != null && !indentProp.getSourceValue().isBlank()) {
-                return Integer.parseInt(indentProp.getSourceValue().trim());
+        // Create a virtual probe file with the host directory as its logical parent.
+        // CodeStyle.getIndentOptions delegates to registered FileIndentOptionsProviders;
+        // EditorConfigIndentOptionsProvider (order="first") matches *.editorconfig rules
+        // against the probe file name and traverses .editorconfig files from probe.parent.
+        LightVirtualFile probe = new LightVirtualFile(
+                "_fxml2_indent_probe.fxml", XMLLanguage.INSTANCE, "") {
+            @Override
+            public VirtualFile getParent() { return hostDir; }
+            @Override
+            public @NotNull String getPath() {
+                return hostDir.getPath() + "/" + getName();
             }
-        } catch (NumberFormatException ignored) {
-            // Malformed indent_size value: fall through to project default.
-        } catch (Exception | NoClassDefFoundError ignored) {
-            // EditorConfig plugin not available or unexpected error: fall through.
+        };
+
+        CommonCodeStyleSettings.IndentOptions opts = CodeStyle.getIndentOptions(project, probe);
+        if (opts != null && opts.INDENT_SIZE > 0) {
+            return opts.INDENT_SIZE;
         }
 
         return fallback;
@@ -928,8 +916,7 @@ public final class Fxml2EmbedMarkupUtil {
 
             KtClassOrObject ktClass = PsiTreeUtil.getParentOfType(annotEntry, KtClassOrObject.class);
             if (ktClass == null) return;
-            var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                    .getLightClass(ktClass);
+            var lightClass = LightClassUtilsKt.toLightClass(ktClass);
             if (lightClass == null) return;
             String fqn = lightClass.getQualifiedName();
             if (fqn == null) return;

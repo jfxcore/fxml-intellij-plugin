@@ -18,7 +18,7 @@ import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport;
+import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtClass;
 import org.jetbrains.kotlin.psi.KtClassInitializer;
@@ -151,7 +151,7 @@ public final class Fxml2InitializeComponentInspection extends LocalInspectionToo
 
 
     private static void checkKotlinClass(@NotNull KtClass ktClass, @NotNull ProblemsHolder holder) {
-        var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject()).getLightClass(ktClass);
+        var lightClass = LightClassUtilsKt.toLightClass(ktClass);
         if (lightClass == null) return;
         if (!isCodeBehindClass(lightClass, ktClass.getProject())) return;
         if (kotlinClassCallsInitializeComponent(ktClass)) return;

@@ -9,7 +9,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Unmodifiable;
-import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport;
+import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.psi.KtAnnotationEntry;
 import org.jetbrains.kotlin.psi.KtClassOrObject;
 import org.jetbrains.kotlin.psi.KtFile;
@@ -65,8 +65,7 @@ public final class Fxml2KotlinMarkupAnnotationInjector implements MultiHostInjec
         if (ktClass == null) return;
 
         // Resolve to a Java PsiClass to obtain the fully-qualified name
-        var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                .getLightClass(ktClass);
+        var lightClass = LightClassUtilsKt.toLightClass(ktClass);
         if (lightClass == null) return;
         String hostFqn = lightClass.getQualifiedName();
         if (hostFqn == null) return;

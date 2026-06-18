@@ -8,7 +8,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport;
+import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.psi.KtAnnotationEntry;
 import org.jetbrains.kotlin.psi.KtClassOrObject;
 import org.jetbrains.kotlin.psi.KtFile;
@@ -92,8 +92,7 @@ public final class Fxml2KotlinUnusedImportSuppressor implements InspectionSuppre
         String fqStr = fqName.asString().replace("`", "");
 
         for (KtClassOrObject ktClass : markupClasses) {
-            var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                    .getLightClass(ktClass);
+            var lightClass = LightClassUtilsKt.toLightClass(ktClass);
             if (lightClass == null) continue;
 
             XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(lightClass);
