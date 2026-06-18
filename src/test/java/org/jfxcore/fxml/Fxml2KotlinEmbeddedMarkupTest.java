@@ -308,7 +308,7 @@ class Fxml2KotlinEmbeddedMarkupTest extends Fxml2TestBase {
                 "package test\n"
                 + "import org.jfxcore.markup.ComponentView\n"
                 + "import javafx.scene.layout.*\n"
-                // No import for test.FxContextSamePkg — same-package class, no explicit import
+                // No import for test.FxContextSamePkg: same-package class, no explicit import
                 + "@ComponentView(\"\"\"\n"
                 + "    <StackPane>\n"
                 + "      <fx:context>\n"

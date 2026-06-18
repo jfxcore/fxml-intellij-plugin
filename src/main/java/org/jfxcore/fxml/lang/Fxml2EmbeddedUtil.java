@@ -361,29 +361,32 @@ public final class Fxml2EmbeddedUtil {
         Project project = containingClass.getProject();
 
         processAnnotatedClassesContainingWord(idName, project, scope, annotatedClass -> {
-            String annotatedFqn = ReadAction.compute(annotatedClass::getQualifiedName);
+            String annotatedFqn = ReadAction.nonBlocking(annotatedClass::getQualifiedName).executeSynchronously();
             if (annotatedFqn == null) return true;
 
-            boolean matches = ReadAction.compute(() ->
+            boolean matches = ReadAction.nonBlocking(() ->
                     annotatedFqn.equals(containingFqn)
-                    || InheritanceUtil.isInheritor(annotatedClass, containingFqn));
+                    || InheritanceUtil.isInheritor(annotatedClass, containingFqn)).executeSynchronously();
             if (!matches) return true;
 
-            XmlFile xmlFile = ReadAction.compute(() -> getInjectedXmlFile(annotatedClass));
+            XmlFile xmlFile = ReadAction.nonBlocking(() -> getInjectedXmlFile(annotatedClass)).executeSynchronously();
             if (xmlFile == null) return true;
 
-            ReadAction.run(() -> xmlFile.accept(new com.intellij.psi.XmlRecursiveElementVisitor() {
-                @Override
-                public void visitXmlAttribute(@NotNull com.intellij.psi.xml.XmlAttribute attr) {
-                    super.visitXmlAttribute(attr);
-                    if (!"id".equals(attr.getLocalName())) return;
-                    if (!org.jfxcore.fxml.resolve.Fxml2ImportResolver.FXML2_NAMESPACE
-                            .equals(attr.getNamespace())) return;
-                    if (!idName.equals(attr.getValue())) return;
-                    var valEl = attr.getValueElement();
-                    if (valEl != null) consumer.process(valEl);
-                }
-            }));
+            ReadAction.nonBlocking(() -> {
+                xmlFile.accept(new com.intellij.psi.XmlRecursiveElementVisitor() {
+                    @Override
+                    public void visitXmlAttribute(@NotNull com.intellij.psi.xml.XmlAttribute attr) {
+                        super.visitXmlAttribute(attr);
+                        if (!"id".equals(attr.getLocalName())) return;
+                        if (!org.jfxcore.fxml.resolve.Fxml2ImportResolver.FXML2_NAMESPACE
+                                .equals(attr.getNamespace())) return;
+                        if (!idName.equals(attr.getValue())) return;
+                        var valEl = attr.getValueElement();
+                        if (valEl != null) consumer.process(valEl);
+                    }
+                });
+                return null;
+            }).executeSynchronously();
             return true;
         });
     }

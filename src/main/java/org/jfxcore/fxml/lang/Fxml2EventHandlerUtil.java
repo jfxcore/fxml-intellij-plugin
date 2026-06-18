@@ -32,11 +32,11 @@ import org.jfxcore.fxml.resolve.Fxml2WellKnownClasses;
  *
  * <p>Used by:
  * <ul>
- *   <li>{@link org.jfxcore.fxml.annotator.Fxml2AttributeAnnotator} — validates that
+ *   <li>{@link org.jfxcore.fxml.annotator.Fxml2AttributeAnnotator}: validates that
  *       the referenced method exists and has a compatible signature.</li>
- *   <li>{@link Fxml2ReferenceContributor} — provides a Ctrl+click reference from the
+ *   <li>{@link Fxml2ReferenceContributor}: provides a Ctrl+click reference from the
  *       attribute value to the method declaration.</li>
- *   <li>{@link Fxml2EventHandlerMethodSearcher} — surfaces event-handler attribute
+ *   <li>{@link Fxml2EventHandlerMethodSearcher}: surfaces event-handler attribute
  *       values as usages when "Find Usages" is invoked on the Java method.</li>
  * </ul>
  */

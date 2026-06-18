@@ -48,32 +48,32 @@ public final class Fxml2FxIdFieldSearcher
         // declaration, getPrimaryElements() returns both the XmlAttributeValue and the
         // generated field. We must not process the XmlAttributeValue here or we would
         // re-report the declaration itself as a usage.
-        String memberName = ReadAction.compute(() -> switch (element) {
+        String memberName = ReadAction.nonBlocking(() -> switch (element) {
             case XmlAttributeValue ignored -> null;
             case PsiField f -> f.getName();
             case PsiMethod m when m.getParameterList().isEmpty() -> m.getName();
             default -> null;
-        });
+        }).executeSynchronously();
         if (memberName == null) return true;
 
-        PsiClass containingClass = ReadAction.compute(() -> {
+        PsiClass containingClass = ReadAction.nonBlocking(() -> {
             if (element instanceof PsiField f) return f.getContainingClass();
             if (element instanceof PsiMethod m) return m.getContainingClass();
             return null;
-        });
+        }).executeSynchronously();
         if (containingClass == null) return true;
 
-        String qualifiedName = ReadAction.compute(containingClass::getQualifiedName);
+        String qualifiedName = ReadAction.nonBlocking(containingClass::getQualifiedName).executeSynchronously();
         if (qualifiedName == null) return true;
 
-        Project project = ReadAction.compute(element::getProject);
+        Project project = ReadAction.nonBlocking(element::getProject).executeSynchronously();
         SearchScope searchScope = params.getEffectiveSearchScope();
         if (!(searchScope instanceof GlobalSearchScope globalScope)) return true;
 
         // processAllFilesWithWord: and everything it calls transitively: requires a
         // read action held for the entire duration. Wrap the whole call in one ReadAction
         // rather than piecemeal inner wrappers, which leave gaps between index accesses.
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             PsiSearchHelper.getInstance(project).processAllFilesWithWord(
                     memberName,
                     globalScope,
@@ -117,20 +117,22 @@ public final class Fxml2FxIdFieldSearcher
                         });
                         return true;
                     },
-                    false)
-        );
+                    false);
+            return null;
+        }).executeSynchronously();
 
         // Also search embedded FXML markup in @ComponentView-annotated classes.
         // Note: FxIdReferenceProvider is registered with inVirtualFile(ofType(Fxml2FileType)),
         // which does not match injected XML files.  So attrVal.getReferences() on an injected
         // XmlAttributeValue will never contain a Fxml2FxIdReference.  Create one directly.
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             Fxml2EmbeddedUtil.findFxIdInEmbedded(memberName, containingClass, globalScope,
                     attrVal -> {
                         consumer.process(new Fxml2FxIdReference(attrVal));
                         return false; // found it
-                    })
-        );
+                    });
+            return null;
+        }).executeSynchronously();
 
         return true;
     }

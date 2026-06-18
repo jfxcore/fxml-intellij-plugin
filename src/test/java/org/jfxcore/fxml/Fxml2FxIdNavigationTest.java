@@ -1,11 +1,20 @@
 package org.jfxcore.fxml;
 
 import com.intellij.find.findUsages.FindUsagesHandler;
+import com.intellij.find.usages.api.SearchTarget;
+import com.intellij.find.usages.api.Usage;
+import com.intellij.find.usages.api.UsageSearchParameters;
+import com.intellij.model.Symbol;
+import com.intellij.navigation.NavigatableSymbol;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.platform.backend.documentation.DocumentationSymbol;
+import com.intellij.platform.backend.navigation.NavigationTarget;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
 import com.intellij.psi.PsiReference;
+import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.SearchScope;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlAttribute;
@@ -18,6 +27,7 @@ import org.jfxcore.fxml.lang.Fxml2FxIdCodeBehindGotoHandler;
 import org.jfxcore.fxml.lang.Fxml2FxIdDeclarationProvider;
 import org.jfxcore.fxml.lang.Fxml2FxIdFindUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2FxIdReference;
+import org.jfxcore.fxml.lang.Fxml2FxIdUsageSearcher;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +36,7 @@ import org.junit.jupiter.api.TestInstance;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -54,7 +65,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Generated field declaration         FXML fx:id declaration
  * </pre>
  */
-@SuppressWarnings("UnstableApiUsage")
+@SuppressWarnings({"UnstableApiUsage", "OverrideOnly"})
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2FxIdNavigationTest extends Fxml2TestBase {
 
@@ -235,9 +246,15 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     /**
      * Ctrl+hover over the fx:id value must show documentation for the code-behind
      * {@link PsiField} (e.g. "Button myButton1"), not generic XML attribute documentation.
-     * The hover content is derived from the symbol's PSI element via
-     * {@code psiDocumentationTargets}, so the symbol must wrap the {@link PsiField}.
+     *
+     * <p>The symbol returned by {@link Fxml2FxIdDeclarationProvider} must implement both
+     * {@link NavigatableSymbol} and {@link DocumentationSymbol}:
+     * <ul>
+     *   <li>Navigation targets must be non-empty and each must have a non-null navigation request.</li>
+     *   <li>Documentation target must be non-null so ctrl-hover shows field docs.</li>
+     * </ul>
      */
+    @SuppressWarnings({"UnstableApiUsage"})
     @Test
     void declarationSymbolIsFieldForHoverDocumentation() {
         getFixture().configureByText("TestView.fxml",
@@ -248,27 +265,115 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
             assertNotNull(fxIdVal);
 
             var provider = new Fxml2FxIdDeclarationProvider();
-            var symbolService = com.intellij.model.psi.PsiSymbolService.getInstance();
 
             // Token-level call (how the platform calls during ctrl-hover).
             PsiElement token = fxIdVal.getFirstChild();
             assertNotNull(token, "XmlAttributeValue must have child tokens");
             var decls = provider.getDeclarations(token, 0);
             assertFalse(decls.isEmpty(), "Provider must return a declaration for the token");
-            PsiElement extracted = symbolService.extractElementFromSymbol(
-                    decls.iterator().next().getSymbol());
-            assertInstanceOf(PsiField.class, extracted,
-                    "Symbol must wrap the PsiField for hover docs, not "
-                    + (extracted == null ? "null" : extracted.getClass().getSimpleName()));
-            assertEquals("myButton1", ((PsiField) extracted).getName());
 
-            // XmlAttributeValue-level call.
+            Symbol symbol = decls.iterator().next().getSymbol();
+            assertNotNull(symbol, "Symbol must be non-null");
+
+            // The symbol must participate in the symbol-native navigation stack.
+            assertInstanceOf(NavigatableSymbol.class, symbol,
+                    "Symbol must implement NavigatableSymbol for Ctrl+click navigation");
+            Collection<? extends NavigationTarget> navTargets = ((NavigatableSymbol) symbol).getNavigationTargets(getFixture().getProject());
+            assertFalse(navTargets.isEmpty(),
+                    "Navigation targets must be non-empty");
+            for (NavigationTarget nt : navTargets) {
+                assertNotNull(nt.navigationRequest(), "Each navigation target must have a non-null navigation request");
+            }
+
+            // The symbol must provide documentation from the code-behind field.
+            assertInstanceOf(DocumentationSymbol.class, symbol,
+                    "Symbol must implement DocumentationSymbol for ctrl-hover documentation");
+            com.intellij.platform.backend.documentation.DocumentationTarget docTarget = ((DocumentationSymbol) symbol).getDocumentationTarget();
+            assertNotNull(docTarget,
+                    "DocumentationTarget must be non-null so ctrl-hover shows field docs");
+
+            // The target must derive its content from the code-behind field via the public
+            // documentation provider, not from generic XML attribute docs.
+            String hint = docTarget.computeDocumentationHint();
+            assertNotNull(hint, "Ctrl-hover hint must be computed from the code-behind field");
+            assertTrue(hint.contains("myButton1"),
+                    "Ctrl-hover hint must mention the field name, got: " + hint);
+
+            // XmlAttributeValue-level call must produce the same symbol contract.
             var declsFromAttrVal = provider.getDeclarations(fxIdVal, 1);
             assertFalse(declsFromAttrVal.isEmpty());
-            PsiElement extractedFromAttrVal = symbolService.extractElementFromSymbol(
-                    declsFromAttrVal.iterator().next().getSymbol());
-            assertInstanceOf(PsiField.class, extractedFromAttrVal,
-                    "Symbol from XmlAttributeValue-level call must also wrap PsiField");
+            Symbol symbolFromAttrVal = declsFromAttrVal.iterator().next().getSymbol();
+            assertInstanceOf(NavigatableSymbol.class, symbolFromAttrVal);
+            assertInstanceOf(DocumentationSymbol.class, symbolFromAttrVal);
+        });
+    }
+
+    /**
+     * The symbol-based usage searcher ({@link Fxml2FxIdUsageSearcher}) must find all three
+     * entries when invoked on the {@code fx:id} declaration symbol:
+     * the FXML binding use site, the Java code-behind use site, and the compiler-generated
+     * field declaration.
+     */
+    @SuppressWarnings({"UnstableApiUsage"})
+    @Test
+    void symbolBasedSearchFindsAllThreeUsages() {
+        getFixture().configureByText("TestView.fxml",
+                fxml(FXML_IMPORTS, FXML_BODY));
+
+        XmlAttributeValue fxIdVal = findFxIdValueElement();
+        assertNotNull(fxIdVal);
+
+        // Obtain the FxIdSymbol from the declaration provider.
+        Symbol symbol = ReadAction.compute(() -> {
+            var provider = new Fxml2FxIdDeclarationProvider();
+            var decls = provider.getDeclarations(fxIdVal, -1);
+            assertFalse(decls.isEmpty(), "Provider must return a declaration");
+            return decls.iterator().next().getSymbol();
+        });
+        assertInstanceOf(SearchTarget.class, symbol,
+                "FxIdSymbol must implement SearchTarget for symbol-based Show Usages");
+
+        var project = getFixture().getProject();
+        SearchScope scope = ReadAction.compute(
+                () -> GlobalSearchScope.allScope(project));
+
+        // Build a UsageSearchParameters wrapping the symbol.
+        SearchTarget searchTarget = (SearchTarget) symbol;
+        var params = new UsageSearchParameters() {
+            @Override public @org.jetbrains.annotations.NotNull SearchTarget getTarget()      { return searchTarget; }
+            @Override public @org.jetbrains.annotations.NotNull SearchScope getSearchScope() { return scope; }
+            @Override public @org.jetbrains.annotations.NotNull com.intellij.openapi.project.Project getProject()   { return project; }
+            @Override public boolean areValid() { return ReadAction.compute(() -> searchTarget.createPointer().dereference() != null); }
+        };
+
+        // Run the searcher.
+        Collection<? extends Usage> usages = ReadAction.compute(
+                () -> new Fxml2FxIdUsageSearcher().collectImmediateResults(params));
+
+        ReadAction.run(() -> {
+            String dump = usages.stream()
+                    .map(Objects::toString)
+                    .collect(java.util.stream.Collectors.joining("\n  ", "[\n  ", "\n]"));
+
+            assertFalse(usages.isEmpty(),
+                    "Symbol-based searcher must find usages.\n" + dump);
+
+            // FXML binding use site (same file, different range from the declaration).
+            assertTrue(usages.stream().anyMatch(u -> u instanceof com.intellij.find.usages.api.PsiUsage pu
+                            && pu.getFile().getName().endsWith(".fxml")
+                            && pu.getFile().equals(fxIdVal.getContainingFile())
+                            && !pu.getRange().intersects(fxIdVal.getTextRange())),
+                    "Searcher must include the FXML binding use site.\n" + dump);
+
+            // Java code-behind use site.
+            assertTrue(usages.stream().anyMatch(u -> u instanceof com.intellij.find.usages.api.PsiUsage pu
+                            && !pu.getFile().getName().endsWith(".fxml")),
+                    "Searcher must include the Java code-behind use.\n" + dump);
+
+            // Compiler-generated field declaration.
+            assertTrue(usages.stream().anyMatch(u -> u instanceof com.intellij.find.usages.api.PsiUsage pu
+                            && pu.getFile().getName().contains("TestViewBase")),
+                    "Searcher must include the generated field declaration in TestViewBase.\n" + dump);
         });
     }
 

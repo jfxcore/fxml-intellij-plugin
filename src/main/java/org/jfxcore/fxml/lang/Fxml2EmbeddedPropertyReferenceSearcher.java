@@ -47,15 +47,15 @@ public final class Fxml2EmbeddedPropertyReferenceSearcher
         PsiElement target = params.getElementToSearch();
         if (!(target instanceof IProperty property)) return true;
 
-        String key = ReadAction.compute(property::getKey);
+        String key = ReadAction.nonBlocking(property::getKey).executeSynchronously();
         if (key == null || key.isEmpty()) return true;
 
         SearchScope scope = params.getEffectiveSearchScope();
         if (!(scope instanceof GlobalSearchScope globalScope)) return true;
 
-        Project project = ReadAction.compute(target::getProject);
+        Project project = ReadAction.nonBlocking(target::getProject).executeSynchronously();
 
-        ReadAction.run(() ->
+        ReadAction.nonBlocking(() -> {
             Fxml2EmbeddedUtil.processAnnotatedClasses(project, globalScope, annotatedClass -> {
                 XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass);
                 if (xmlFile == null) return true;
@@ -78,8 +78,9 @@ public final class Fxml2EmbeddedPropertyReferenceSearcher
                     }
                 });
                 return true;
-            })
-        );
+            });
+            return null;
+        }).executeSynchronously();
 
         return true;
     }

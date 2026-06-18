@@ -48,17 +48,17 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
 
     @Override
     public boolean canFindUsages(@NotNull PsiElement element) {
-        return ReadAction.compute(() -> isFxIdValue(element) || isFxIdField(element));
+        return ReadAction.nonBlocking(() -> isFxIdValue(element) || isFxIdField(element)).executeSynchronously();
     }
 
     @Override
     public @Nullable FindUsagesHandler createFindUsagesHandler(
             @NotNull PsiElement element, boolean forHighlightUsages) {
-        XmlAttributeValue attrVal = ReadAction.compute(() -> {
+        XmlAttributeValue attrVal = ReadAction.nonBlocking(() -> {
             XmlAttributeValue fromDirect = toFxIdAttrVal(element);
             if (fromDirect != null) return fromDirect;
             return fxIdAttrValForField(element);
-        });
+        }).executeSynchronously();
         if (attrVal == null) return null;
         return new Fxml2FxIdFindUsagesHandler(attrVal);
     }
@@ -199,7 +199,7 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
          */
         @Override
         public PsiElement @NotNull [] getPrimaryElements() {
-            return ReadAction.compute(this::computePrimaryElements);
+            return ReadAction.nonBlocking(this::computePrimaryElements).executeSynchronously();
         }
 
         private PsiElement @NotNull [] computePrimaryElements() {
@@ -236,14 +236,12 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
         /**
          * For each primary element:
          * <ul>
-         *   <li>If it is the fx:id {@link XmlAttributeValue}: walk the FXML file explicitly
-         *       for binding-expression uses (which ReferencesSearch cannot discover by itself
-         *       since they resolve to LightFieldBuilders, not to the attrVal), then run the
-         *       standard search, filtering out the declaration self-entry.</li>
-         *   <li>If it is the generated {@link PsiField}: run the standard reference search
-         *       for code uses, then emit the field declaration itself as the final entry.
-         *       All PSI access is wrapped in read actions since this runs on a background
-         *       thread without a lock.</li>
+         *   <li>If it is the fx:id {@link XmlAttributeValue}: calls {@link Fxml2FxIdUsageCollector}
+         *       which handles binding-expression uses (FXML walk), code-behind field/method usages,
+         *       and the field declaration in a single pass.</li>
+         *   <li>If it is a {@link PsiField}: no-op: the collector already handled all field-related
+         *       usages during the {@link XmlAttributeValue} primary pass.</li>
+         *   <li>Otherwise (e.g. a no-arg method primary): runs the standard reference search.</li>
          * </ul>
          */
         @Override
@@ -252,58 +250,41 @@ public final class Fxml2FxIdFindUsagesHandlerFactory extends FindUsagesHandlerFa
                 @NotNull Processor<? super UsageInfo> processor,
                 @NotNull com.intellij.find.findUsages.FindUsagesOptions options) {
 
-            XmlAttributeValue declaration = ReadAction.compute(
-                    () -> (XmlAttributeValue) getPsiElement());
+            XmlAttributeValue declaration = ReadAction.nonBlocking(
+                    () -> (XmlAttributeValue) getPsiElement()).executeSynchronously();
 
-            boolean isAttrValPrimary = ReadAction.compute(
-                    () -> declaration.getManager().areElementsEquivalent(element, declaration));
+            boolean isAttrValPrimary = ReadAction.nonBlocking(
+                    () -> declaration.getManager().areElementsEquivalent(element, declaration)).executeSynchronously();
+
             if (isAttrValPrimary) {
-                boolean[] proceed = {true};
-                ReadAction.run(() -> {
-                    if (!(declaration.getContainingFile() instanceof XmlFile xmlFile)) return;
-                    xmlFile.accept(new XmlRecursiveElementVisitor() {
-                        @Override
-                        public void visitXmlAttributeValue(@NotNull XmlAttributeValue candidate) {
-                            super.visitXmlAttributeValue(candidate);
-                            if (candidate.getManager().areElementsEquivalent(candidate, declaration)) return;
-                            for (PsiReference ref : candidate.getReferences()) {
-                                if (ref instanceof Fxml2BindingSegmentReference segRef
-                                        && segRef.isReferenceTo(declaration)) {
-                                    if (!proceed[0]) return;
-                                    proceed[0] = processor.process(new UsageInfo(ref));
-                                }
-                            }
+                // The collector handles: binding-segment references, code-behind field usages,
+                // and the field declaration, all in one pass via the shared collector.
+                boolean[] ok = {true};
+                ok[0] = Fxml2FxIdUsageCollector.collect(
+                        declaration,
+                        options.searchScope,
+                        ref -> processor.process(new UsageInfo(ref)),
+                        el -> {
+                            UsageInfo info = ReadAction.nonBlocking(() -> new UsageInfo(el))
+                                    .executeSynchronously();
+                            return processor.process(info);
                         }
-                    });
-                });
-                if (!proceed[0]) return false;
+                );
+                return ok[0];
             }
 
-            if (element instanceof PsiField field) {
-                PsiElement nameId = ReadAction.compute(field::getNameIdentifier);
-                // Collect code uses first, then append the field declaration last.
-                boolean codeUsesOk = super.processElementUsages(element, usageInfo -> {
-                    PsiReference ref = ReadAction.compute(usageInfo::getReference);
-                    if (ref != null) {
-                        PsiElement refEl = ReadAction.compute(ref::getElement);
-                        boolean isDecl = ReadAction.compute(
-                                () -> declaration.getManager().areElementsEquivalent(refEl, declaration));
-                        if (isDecl) return true;
-                    }
-                    return processor.process(usageInfo);
-                }, options);
-                if (!codeUsesOk) return false;
-                // UsageInfo constructor calls getContainingFile() which requires the read lock.
-                UsageInfo fieldDeclUsage = ReadAction.compute(() -> new UsageInfo(nameId));
-                return processor.process(fieldDeclUsage);
+            if (element instanceof PsiField) {
+                // All field usages were already collected in the attrVal primary pass above.
+                return true;
             }
 
+            // Fallback for other primaries (e.g. no-arg method when no field exists).
             return super.processElementUsages(element, usageInfo -> {
-                PsiReference ref = ReadAction.compute(usageInfo::getReference);
+                PsiReference ref = ReadAction.nonBlocking(usageInfo::getReference).executeSynchronously();
                 if (ref != null) {
-                    PsiElement refEl = ReadAction.compute(ref::getElement);
-                    boolean isDecl = ReadAction.compute(
-                            () -> declaration.getManager().areElementsEquivalent(refEl, declaration));
+                    PsiElement refEl = ReadAction.nonBlocking(ref::getElement).executeSynchronously();
+                    boolean isDecl = ReadAction.nonBlocking(
+                            () -> declaration.getManager().areElementsEquivalent(refEl, declaration)).executeSynchronously();
                     if (isDecl) return true;
                 }
                 return processor.process(usageInfo);

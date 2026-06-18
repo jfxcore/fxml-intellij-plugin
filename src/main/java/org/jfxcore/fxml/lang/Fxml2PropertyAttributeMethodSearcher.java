@@ -38,8 +38,8 @@ public final class Fxml2PropertyAttributeMethodSearcher
         SearchScope effectiveScope = params.getEffectiveSearchScope();
         if (!(effectiveScope instanceof GlobalSearchScope globalScope)) return true;
 
-        String propertyName = ReadAction.compute(
-                () -> Fxml2PropertyNameUtil.propertyNameFromElement(method));
+        String propertyName = ReadAction.nonBlocking(
+                () -> Fxml2PropertyNameUtil.propertyNameFromElement(method)).executeSynchronously();
         if (propertyName == null) return true;
 
         Fxml2PropertyAttributeSearcher.collectInScope(method, propertyName, globalScope, consumer);

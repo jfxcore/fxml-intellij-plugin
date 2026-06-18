@@ -45,19 +45,22 @@ public final class Fxml2EmbeddedPropertyUsageProvider implements ImplicitPropert
         Fxml2EmbeddedUtil.processAnnotatedClasses(project, scope, annotatedClass -> {
             if (found[0]) return false;
 
-            XmlFile xmlFile = ReadAction.compute(() -> Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass));
+            XmlFile xmlFile = ReadAction.nonBlocking(() -> Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass)).executeSynchronously();
             if (xmlFile == null) return true;
 
-            ReadAction.run(() -> xmlFile.accept(new com.intellij.psi.XmlRecursiveElementVisitor() {
-                @Override
-                public void visitXmlAttributeValue(@NotNull XmlAttributeValue attrValue) {
-                    if (found[0]) return;
-                    String value = attrValue.getValue();
-                    if (isResourceKeyReference(value, key)) {
-                        found[0] = true;
+            ReadAction.nonBlocking(() -> {
+                xmlFile.accept(new com.intellij.psi.XmlRecursiveElementVisitor() {
+                    @Override
+                    public void visitXmlAttributeValue(@NotNull XmlAttributeValue attrValue) {
+                        if (found[0]) return;
+                        String value = attrValue.getValue();
+                        if (isResourceKeyReference(value, key)) {
+                            found[0] = true;
+                        }
                     }
-                }
-            }));
+                });
+                return null;
+            }).executeSynchronously();
             return true;
         });
 

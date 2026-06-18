@@ -3,17 +3,13 @@ package org.jfxcore.fxml.lang;
 import com.intellij.model.Symbol;
 import com.intellij.model.psi.PsiSymbolDeclaration;
 import com.intellij.model.psi.PsiSymbolDeclarationProvider;
-import com.intellij.model.psi.PsiSymbolService;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.ElementManipulators;
-import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiField;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
-import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 
 import java.util.Collection;
@@ -31,11 +27,10 @@ import java.util.List;
  * proper usages popup (with filter buttons, full-line context preview, and
  * grouping) rather than the bare "Choose Declaration" list.
  *
- * <p>The declared {@link Symbol} wraps the code-behind {@link PsiField} when available
- * (so that ctrl-hover shows proper field documentation), falling back to the
- * {@link XmlAttributeValue} itself.  {@link Fxml2FxIdFindUsagesHandlerFactory} is
- * registered to accept both the field and the attribute value so that the usages popup
- * works in either case.
+ * <p>The declared {@link Symbol} is an {@link FxIdSymbol} that navigates to the
+ * code-behind field (for proper hover documentation), provides documentation from
+ * the field quick-doc, and supports the symbol-based "Show Usages" path via
+ * {@link Fxml2FxIdUsageSearcher}.
  */
 @SuppressWarnings("UnstableApiUsage")
 public final class Fxml2FxIdDeclarationProvider implements PsiSymbolDeclarationProvider {
@@ -83,25 +78,6 @@ public final class Fxml2FxIdDeclarationProvider implements PsiSymbolDeclarationP
         return List.of(new FxIdDeclaration(attrVal, valueRange, attrVal));
     }
 
-    /**
-     * Returns the code-behind field corresponding to this {@code fx:id} value, or the
-     * {@link XmlAttributeValue} itself as fallback.
-     * <p>
-     * The field is used as the symbol element so that ctrl-hover shows proper field
-     * documentation ("Button myButton1") instead of generic XML attribute documentation.
-     * {@link Fxml2FxIdFindUsagesHandlerFactory} is registered to also accept {@link PsiField}
-     * elements that correspond to fx:id declarations, so the usages popup still works.
-     */
-    static @NotNull PsiElement resolveFieldOrFallback(@NotNull XmlAttributeValue attrVal) {
-        if (!(attrVal.getContainingFile() instanceof XmlFile xmlFile)) return attrVal;
-        String idName = attrVal.getValue();
-        if (idName.isBlank()) return attrVal;
-        PsiClass codeBehind = Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
-        if (codeBehind == null) return attrVal;
-        PsiField field = codeBehind.findFieldByName(idName, /* checkSuperClasses */ true);
-        return field != null ? field : attrVal;
-    }
-
     // -----------------------------------------------------------------------
 
     /**
@@ -122,15 +98,14 @@ public final class Fxml2FxIdDeclarationProvider implements PsiSymbolDeclarationP
         public @NotNull TextRange getRangeInDeclaringElement() { return rangeInDeclaringElement; }
 
         /**
-         * Returns a symbol wrapping the code-behind {@link PsiField} when available,
-         * falling back to the {@link XmlAttributeValue} itself.
-         * Using the field as the symbol element makes ctrl-hover show proper field
-         * documentation ("Button myButton1") rather than generic XML attribute docs.
+         * Returns an {@link FxIdSymbol} for this declaration.
+         * The symbol navigates to the code-behind field (for proper hover documentation),
+         * provides field quick-documentation, and participates in the symbol-based
+         * "Show Usages" path via {@link Fxml2FxIdUsageSearcher}.
          */
         @Override
         public @NotNull Symbol getSymbol() {
-            PsiElement symbolPsi = resolveFieldOrFallback(symbolElement);
-            return PsiSymbolService.getInstance().asSymbol(symbolPsi);
+            return FxIdSymbol.of(symbolElement);
         }
     }
 }

@@ -95,7 +95,7 @@ public final class Fxml2StandaloneImplicitUsageProvider implements ImplicitUsage
      *       resolves to this element (e.g. {@code formatter="$doubleFormatter"}), or</li>
      *   <li>a {@link Fxml2AttributeValueReference} that resolves to this element for Kotlin
      *       functions (e.g. {@code onAction="handleClick"} on an {@code EventHandler}-typed
-     *       property; Java methods are excluded — see class javadoc).</li>
+     *       property; Java methods are excluded, see class javadoc).</li>
      * </ul>
      *
      * <p>Uses the word index to locate candidate FXML files efficiently; only files that

@@ -429,6 +429,16 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2FxIdFindUsagesHandlerFactory"/>
 
         <!--
+            UsageSearcher: when IntelliJ's symbol-native "Show Usages" path is triggered for
+            an FxIdSymbol (e.g. Ctrl+click on an fx:id declaration), this searcher collects
+            all usages (binding-segment references, code-behind field usages, and the field
+            declaration) by delegating to Fxml2FxIdUsageCollector.  The same collector is
+            used by Fxml2FxIdFindUsagesHandlerFactory so both paths return identical results.
+        -->
+        <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
+                  implementationClass="org.jfxcore.fxml.lang.Fxml2FxIdUsageSearcher"/>
+
+        <!--
             RenameHandler: makes Shift+F6 available when the caret is on a property attribute
             name (e.g. formatter in <CustomLabel formatter="$fn"/>). Redirects the rename to
             the backing field so the dialog is pre-filled with the property name rather than
