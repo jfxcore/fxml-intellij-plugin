@@ -10,7 +10,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiJavaCodeReferenceElement;
 import com.intellij.psi.PsiReferenceList;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport;
+import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.psi.KtClass;
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression;
 import org.jetbrains.kotlin.psi.KtUserType;
@@ -96,8 +96,7 @@ public final class Fxml2AnnotationProcessingHintInspection extends LocalInspecti
     private static void checkKotlinUnresolvedBaseClass(
             @NotNull KtClass ktClass, @NotNull ProblemsHolder holder) {
 
-        var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                .getLightClass(ktClass);
+        var lightClass = LightClassUtilsKt.toLightClass(ktClass);
         if (lightClass == null) return;
         if (!lightClass.hasAnnotation(Fxml2EmbeddedUtil.MARKUP_ANNOTATION_FQN)) return;
 

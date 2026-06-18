@@ -19,7 +19,7 @@ import com.intellij.refactoring.RefactoringHelper;
 import com.intellij.usageView.UsageInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.KotlinAsJavaSupport;
+import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.psi.KtAnnotationEntry;
 import org.jetbrains.kotlin.psi.KtClassOrObject;
 import org.jetbrains.kotlin.psi.KtFile;
@@ -124,7 +124,7 @@ public final class Fxml2EmbeddedKotlinRefactoringHelper
                 if (preferMarkup) {
                     applyPreferMarkupToKotlinFile(ktFile, markupClasses, project);
                 } else if (preferCode) {
-                    List<PsiClass> psiClasses = toPsiClasses(markupClasses, project);
+                    List<PsiClass> psiClasses = toPsiClasses(markupClasses);
                     Fxml2ImportPlacementInspectionHelper.moveAllMarkupImportsToKotlinCode(
                             ktFile, psiClasses, project);
                 }
@@ -178,8 +178,7 @@ public final class Fxml2EmbeddedKotlinRefactoringHelper
         List<String> needed = new ArrayList<>();
 
         for (KtClassOrObject ktClass : markupClasses) {
-            var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                    .getLightClass(ktClass);
+            var lightClass = LightClassUtilsKt.toLightClass(ktClass);
             if (lightClass == null) continue;
 
             XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(lightClass);
@@ -215,8 +214,7 @@ public final class Fxml2EmbeddedKotlinRefactoringHelper
         GlobalSearchScope scope = ktFile.getResolveScope();
 
         for (KtClassOrObject ktClass : markupClasses) {
-            var lightClass = KotlinAsJavaSupport.getInstance(ktClass.getProject())
-                    .getLightClass(ktClass);
+            var lightClass = LightClassUtilsKt.toLightClass(ktClass);
             if (lightClass == null) continue;
 
             XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(lightClass);
@@ -357,7 +355,7 @@ public final class Fxml2EmbeddedKotlinRefactoringHelper
         }
 
         if (toConvert.isEmpty()) return;
-        List<PsiClass> psiClasses = toPsiClasses(markupClasses, project);
+        List<PsiClass> psiClasses = toPsiClasses(markupClasses);
 
         for (KtImportDirective directive : toConvert) {
             if (!directive.isValid()) continue;
@@ -371,11 +369,10 @@ public final class Fxml2EmbeddedKotlinRefactoringHelper
     }
 
     private static @NotNull List<PsiClass> toPsiClasses(
-            @NotNull List<KtClassOrObject> ktClasses,
-            @NotNull Project project) {
+            @NotNull List<KtClassOrObject> ktClasses) {
         List<PsiClass> result = new ArrayList<>(ktClasses.size());
         for (KtClassOrObject cls : ktClasses) {
-            PsiClass light = KotlinAsJavaSupport.getInstance(project).getLightClass(cls);
+            PsiClass light = LightClassUtilsKt.toLightClass(cls);
             if (light != null) result.add(light);
         }
         return result;
