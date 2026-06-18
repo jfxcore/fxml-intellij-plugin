@@ -2438,4 +2438,91 @@ class Fxml2CompletionTest extends Fxml2TestBase {
         assertTrue(names.contains("myBindingCtx"),
                 "Expected 'myBindingCtx' in fx:context=\"$...\" completions, got: " + names);
     }
+
+    // -----------------------------------------------------------------------
+    // Function-binding completion (static methods, class names, arguments)
+    // -----------------------------------------------------------------------
+
+    /**
+     * A document mirroring the documented {@code String.format} sample: a {@code VBox} root
+     * with no {@code fx:subclass}, so the default evaluation context is the root element type.
+     */
+    private static final String WIDTH_VIEW_HEADER = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <?import javafx.scene.control.Button?>
+            <?import javafx.scene.layout.VBox?>
+            <VBox xmlns="http://javafx.com/javafx"
+                  xmlns:fx="http://jfxcore.org/fxml/2.0">
+            """;
+
+    /**
+     * Inside a function-binding expression, a partial static-method name on a resolved class
+     * qualifier must be completable: {@code ${String.fo<caret>}} offers {@code format}.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingFunctionStaticMethodCompletion() {
+        getFixture().configureByText("FnStaticMethod.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"${String.fo<caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            String text = getFixture().getEditor().getDocument().getText();
+            assertTrue(text.contains("String.format"),
+                    "Expected 'String.format' to be auto-inserted, document: " + text);
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("format"),
+                "Expected static method 'format' in completions for '${String.fo}', got: " + names);
+    }
+
+    /**
+     * Inside a function-binding expression, a partial class name at the first path segment must be
+     * completable so a static call or constructor can be written: {@code ${Str<caret>}} offers
+     * {@code String}.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingFunctionClassNameCompletion() {
+        getFixture().configureByText("FnClassName.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"${Str<caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            String text = getFixture().getEditor().getDocument().getText();
+            assertTrue(text.contains("${String"),
+                    "Expected 'String' to be auto-inserted, document: " + text);
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("String"),
+                "Expected class 'String' in completions for '${Str}', got: " + names);
+    }
+
+    /**
+     * Inside a function-binding argument list, a partial path argument must be completed against the
+     * evaluation context: {@code ${String.format('Width: %.0f', wid<caret>)}} offers the root
+     * element's {@code width} property.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingFunctionArgumentCompletion() {
+        getFixture().configureByText("FnArgument.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"${String.format('Width: %.0f', wid<caret>)}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            String text = getFixture().getEditor().getDocument().getText();
+            assertTrue(text.contains("width"),
+                    "Expected 'width' to be auto-inserted, document: " + text);
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("width"),
+                "Expected property 'width' in argument completions, got: " + names);
+    }
 }
