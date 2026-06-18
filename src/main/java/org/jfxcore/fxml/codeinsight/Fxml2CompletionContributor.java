@@ -1221,6 +1221,14 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             Fxml2BindingExpressionParser.ParsedExpression expr =
                     Fxml2BindingExpressionParser.parseExpression(rawValue);
 
+            // Secondary-parameter completion (inverseMethod= / format= / converter=).  These
+            // parameters follow a ';' separator in a bidirectional binding (#{...}); since the
+            // raw value is truncated at the caret, a separator present here means the caret is in
+            // the parameter section.  The active parameter sub-expression is completed on its own.
+            if (completeSecondaryParam(rawValue, tag, xmlFile, result)) {
+                return;
+            }
+
             // For completion purposes, fall back to extracting the path even when the
             // expression is syntactically incomplete (e.g. "${}" or "${}").
             // We strip well-known prefixes and work with whatever partial path remains.
@@ -1233,6 +1241,61 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             }
 
             completeBindingPath(strippedPath, tag, xmlFile, targetPropType, result);
+        }
+
+        /** The secondary-parameter keywords accepted in a bidirectional ({@code #{...}}) binding. */
+        private static final List<String> SECONDARY_PARAM_NAMES =
+                List.of("inverseMethod", "format", "converter");
+
+        /**
+         * Completes the secondary-parameter section of a bidirectional binding expression
+         * ({@code #{value; inverseMethod=...}}, {@code #{value; format=...}},
+         * {@code #{value; converter=...}}), if the caret is within it.
+         *
+         * <p>The {@code rawValue} is truncated at the caret, so a {@code ';'} parameter separator
+         * present in it means the caret follows the primary binding path.  When no {@code '='} has
+         * been typed yet, the parameter <em>name</em> is completed (offering {@code inverseMethod},
+         * {@code format}, {@code converter}); otherwise the parameter <em>value</em>: a method path
+         * for {@code inverseMethod}, a property path for {@code format}/{@code converter}: is
+         * completed via {@link #completeBindingPath}, the same machinery that drives the primary path.
+         *
+         * @return {@code true} when the caret was inside the parameter section (completion handled)
+         */
+        private static boolean completeSecondaryParam(
+                @NotNull String rawValue,
+                @NotNull XmlTag tag,
+                @NotNull XmlFile xmlFile,
+                @NotNull CompletionResultSet result) {
+            // Only bidirectional (#{...} / {fx:Synchronize ...}) bindings carry these parameters.
+            if (!rawValue.startsWith("#{") && !rawValue.startsWith("{fx:Synchronize")) return false;
+
+            String inner = Fxml2BindingExpressionParser.extractPartialPath(rawValue);
+            if (inner == null) return false;
+            int semi = Fxml2BindingExpressionParser.findParamSeparatorSemicolon(inner);
+            if (semi < 0) return false;
+
+            String paramPart = inner.substring(semi + 1);
+            int eq = paramPart.indexOf('=');
+            if (eq < 0) {
+                // No '=' yet: the caret is in the parameter-name position.
+                String partial = paramPart.strip();
+                CompletionResultSet paramResult = result.withPrefixMatcher(
+                        new PlainPrefixMatcher(partial, true));
+                for (String name : SECONDARY_PARAM_NAMES) {
+                    if (name.startsWith(partial)) {
+                        paramResult.addElement(LookupElementBuilder.create(name + "=")
+                                .withPresentableText(name)
+                                .withIcon(AllIcons.Nodes.Parameter)
+                                .withTypeText("binding parameter"));
+                    }
+                }
+                return true;
+            }
+
+            // The parameter value is itself a binding sub-expression (method or property path).
+            String paramValue = paramPart.substring(eq + 1).stripLeading();
+            completeBindingPath(paramValue, tag, xmlFile, null, result);
+            return true;
         }
 
         /**

@@ -10,7 +10,7 @@ import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection;
-import org.jfxcore.fxml.lang.Fxml2ConversionParamNameReference;
+import org.jfxcore.fxml.lang.Fxml2BindingParamNameReference;
 import org.jfxcore.fxml.lang.Fxml2NamespaceUrlReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -163,7 +163,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
         ));
         ReadAction.run(() -> {
             String url = resolveConversionParamNameUrl("#{amount; format=format}", "format");
-            assertEquals(Fxml2ConversionParamNameReference.CONVERSION_DOCS_URL, url,
+            assertEquals(Fxml2BindingParamNameReference.CONVERSION_DOCS_URL, url,
                     "format param name should open conversion docs");
         });
     }
@@ -182,7 +182,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
         ));
         ReadAction.run(() -> {
             String url = resolveConversionParamNameUrl("#{amount; converter=converter}", "converter");
-            assertEquals(Fxml2ConversionParamNameReference.CONVERSION_DOCS_URL, url,
+            assertEquals(Fxml2BindingParamNameReference.CONVERSION_DOCS_URL, url,
                     "converter param name should open conversion docs");
         });
     }
@@ -240,7 +240,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
             return resolved instanceof Fxml2NamespaceUrlReference.UrlNavigationTarget t ? t : null;
         }
         for (PsiReference inner : multi.getReferences()) {
-            if (inner instanceof Fxml2ConversionParamNameReference) {
+            if (inner instanceof Fxml2BindingParamNameReference) {
                 PsiElement resolved = inner.resolve();
                 if (resolved instanceof Fxml2NamespaceUrlReference.UrlNavigationTarget t) return t;
             }

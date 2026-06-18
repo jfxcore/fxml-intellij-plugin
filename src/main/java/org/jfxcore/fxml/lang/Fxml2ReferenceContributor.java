@@ -1148,16 +1148,15 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
             }
 
-            // Secondary param path references (format= / converter=).
-            // "inverseMethod" is a function-call path, not a property path, so it is skipped here;
-            // the annotator handles it separately via annotateFunctionCallPath().
-            if (expr.hasParam() && !"inverseMethod".equals(expr.paramName())) {
+            // Secondary param references (inverseMethod= / format= / converter=).
+            if (expr.hasParam()) {
                 String paramName = expr.paramName();
                 int paramPathOffset = expr.paramPathOffset();
 
-                // Param name keyword reference: Ctrl+click on "format" or "converter" opens
-                // the string-conversion documentation page.
-                if (paramName != null && paramPathOffset >= 0) {
+                // Param name keyword reference: Ctrl+click on "inverseMethod", "format", or
+                // "converter" opens the documentation page describing that parameter.
+                String docsUrl = paramName != null ? Fxml2BindingParamNameReference.docUrlForParam(paramName) : null;
+                if (docsUrl != null && paramPathOffset >= 0) {
                     int eqPos = rawValue.lastIndexOf('=', paramPathOffset - 1);
                     if (eqPos > 0) {
                         String beforeEq = rawValue.substring(0, eqPos).stripTrailing();
@@ -1165,22 +1164,34 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                         int nameStart = nameEnd - paramName.length();
                         if (nameStart >= 0
                                 && rawValue.regionMatches(nameStart, paramName, 0, paramName.length())) {
-                            refs.add(new Fxml2ConversionParamNameReference(
+                            refs.add(new Fxml2BindingParamNameReference(
                                     attrVal,
-                                    new TextRange(1 + nameStart, 1 + nameStart + paramName.length())));
+                                    new TextRange(1 + nameStart, 1 + nameStart + paramName.length()),
+                                    docsUrl));
                         }
                     }
                 }
 
                 String paramPath = expr.paramPath();
                 if (paramPath != null && !paramPath.isBlank() && paramPathOffset >= 0) {
-                    // Use OBSERVE kind so the resolver prefers xProperty() over setter, matching
-                    // the navigation behavior of other read-access binding paths.
-                    List<Fxml2BindingPathResolver.Segment> paramSegments =
-                            Fxml2BindingPathResolver.resolve(
-                                    paramPath, startClass, scope,
-                                    Fxml2BindingNotationReference.Kind.OBSERVE, xmlFile);
-                    emitPathSegmentRefs(refs, attrVal, paramSegments, 1 + paramPathOffset, paramPath);
+                    if ("inverseMethod".equals(paramName)) {
+                        // The inverseMethod value is a method (or constructor) path resolved like a
+                        // function name: its last segment is a method, not a property.  The segments
+                        // carry their own offsets relative to the param path, so emit them scattered.
+                        List<Fxml2BindingPathResolver.Segment> nameSegs =
+                                Fxml2BindingPathResolver.resolveFunctionName(
+                                        paramPath, startClass, scope, expr.kind(), xmlFile);
+                        emitScatteredSegmentRefs(refs, attrVal, nameSegs, 1 + paramPathOffset);
+                    } else {
+                        // format= / converter= are property paths.  Use OBSERVE kind so the resolver
+                        // prefers xProperty() over setter, matching the navigation behavior of other
+                        // read-access binding paths.
+                        List<Fxml2BindingPathResolver.Segment> paramSegments =
+                                Fxml2BindingPathResolver.resolve(
+                                        paramPath, startClass, scope,
+                                        Fxml2BindingNotationReference.Kind.OBSERVE, xmlFile);
+                        emitPathSegmentRefs(refs, attrVal, paramSegments, 1 + paramPathOffset, paramPath);
+                    }
                 }
             }
 

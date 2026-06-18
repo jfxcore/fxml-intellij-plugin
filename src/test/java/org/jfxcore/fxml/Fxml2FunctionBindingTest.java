@@ -1,12 +1,20 @@
 package org.jfxcore.fxml;
 
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiReference;
+import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
+import com.intellij.psi.xml.XmlFile;
+import com.intellij.psi.xml.XmlTag;
 import org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection;
+import org.jfxcore.fxml.lang.Fxml2BindingParamNameReference;
 import org.jfxcore.fxml.lang.Fxml2BindingSegmentReference;
+import org.jfxcore.fxml.lang.Fxml2NamespaceUrlReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -56,6 +64,13 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
                 package test;
                 public class Helper {
                     public String shout(String s) { return s.toUpperCase(); }
+                }
+                """);
+        getFixture().addClass("""
+                package test;
+                public class Conv {
+                    public static String toText(double d) { return Double.toString(d); }
+                    public static double fromText(String s) { return Double.parseDouble(s); }
                 }
                 """);
         getFixture().addClass("""
@@ -614,6 +629,151 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // inverseMethod= parameter navigation and documentation
+    // -----------------------------------------------------------------------
+
+    /**
+     * Ctrl+click on the method name of an {@code inverseMethod=} parameter
+     * ({@code parseDouble}) must navigate to the corresponding method, the same way the
+     * primary function-name path resolves its method segment.
+     */
+    @Test
+    void ctrlClickOnInverseMethodNameResolvesToMethod() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{formatDouble(value); inverseMethod=parse<caret>Double}"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        PsiMethod method = assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'parseDouble' inverse method should resolve to a method");
+        assertEquals("parseDouble", method.getName());
+        assertNotNull(method.getContainingClass());
+        assertEquals("test.TestView", method.getContainingClass().getQualifiedName());
+    }
+
+    /**
+     * Every segment of a qualified {@code inverseMethod=} path must be navigable: the class
+     * qualifier ({@code Double}) navigates to the class, and the method name
+     * ({@code parseDouble}) navigates to the static method, mirroring the sample
+     * {@code #{Double.toString(value); inverseMethod=Double.parseDouble}}.
+     */
+    @Test
+    void ctrlClickOnQualifiedInverseMethodClassResolvesToClass() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{Double.toString(value); inverseMethod=Doub<caret>le.parseDouble}"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        PsiClass cls = assertInstanceOf(PsiClass.class, target,
+                "Ctrl+click on 'Double' qualifier should resolve to the class");
+        assertEquals("java.lang.Double", cls.getQualifiedName());
+    }
+
+    /**
+     * Ctrl+click on the static method name of a qualified {@code inverseMethod=} path
+     * ({@code Double.parseDouble}) must navigate to the JDK method.
+     */
+    @Test
+    void ctrlClickOnQualifiedInverseMethodNameResolvesToMethod() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{Double.toString(value); inverseMethod=Double.parse<caret>Double}"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        PsiMethod method = assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'parseDouble' should resolve to the JDK method");
+        assertEquals("parseDouble", method.getName());
+        assertNotNull(method.getContainingClass());
+        assertEquals("java.lang.Double", method.getContainingClass().getQualifiedName());
+    }
+
+    /**
+     * A fully-resolved qualified inverse method path ({@code Double.parseDouble}) must produce
+     * no error, and the JDK {@code Double} class needs no {@code <?import?>}.
+     */
+    @Test
+    void qualifiedInverseMethodProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{Double.toString(value); inverseMethod=Double.parseDouble}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Ctrl+click on the {@code inverseMethod} keyword opens the bidirectional-function-binding
+     * section of the function-expressions documentation page.
+     */
+    @Test
+    void ctrlClick_onInverseMethodParamName_opensFunctionDocs() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{formatDouble(value); inverseMethod=parseDouble}"/>
+                """
+        ));
+        ReadAction.run(() -> {
+            String url = resolveParamNameUrl();
+            assertEquals(Fxml2BindingParamNameReference.INVERSE_METHOD_DOCS_URL, url,
+                    "inverseMethod param name should open the function-expression docs");
+        });
+    }
+
+    /**
+     * A class imported solely to be referenced as a qualifier of an {@code inverseMethod=}
+     * path (e.g. {@code Conv} in {@code inverseMethod=Conv.fromText}) must not be reported as
+     * an unused import.
+     */
+    @Test
+    void inverseMethodClassImportIsNotFlaggedAsUnused() {
+        getFixture().enableInspections(new org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection());
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField\ntest.Conv",
+                """
+                  <TextField text="#{formatDouble(value); inverseMethod=Conv.fromText}"/>
+                """
+        ));
+        getFixture().checkHighlighting(true, false, false);
+    }
+
+    /**
+     * When the class qualifier of an {@code inverseMethod=} path is not imported, the
+     * "cannot be resolved" error must offer an "Add import" quick fix that inserts the missing
+     * {@code <?import?>} processing instruction.
+     */
+    @Test
+    void unresolvedInverseMethodClassOffersAddImportFix() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{formatDouble(value); inverseMethod=Co<caret>nv.fromText}"/>
+                """
+        ));
+        getFixture().doHighlighting();
+        var fixes = getFixture().getAllQuickFixes();
+        assertTrue(fixes.stream().anyMatch(
+                        f -> f.getText().contains("Add import") && f.getText().contains("Conv")),
+                "Expected 'Add import for Conv' quick fix, but got: "
+                        + fixes.stream().map(com.intellij.codeInsight.intention.IntentionAction::getText).toList());
+
+        getFixture().launchAction(fixes.stream()
+                .filter(f -> f.getText().contains("Add import") && f.getText().contains("Conv"))
+                .findFirst()
+                .orElseThrow());
+        String result = getFixture().getEditor().getDocument().getText();
+        assertTrue(result.contains("<?import test.Conv?>"),
+                "Expected Conv import to be added, but got: " + result);
+    }
+
+    // -----------------------------------------------------------------------
     // Argument resolution and error reporting
     // -----------------------------------------------------------------------
 
@@ -760,5 +920,52 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
             }
             return null;
         });
+    }
+
+    /**
+     * Resolves the reference at the position of a secondary-parameter keyword (before its
+     * {@code =} separator) to the documentation URL reported by its
+     * {@link Fxml2NamespaceUrlReference.UrlNavigationTarget}.
+     */
+    private String resolveParamNameUrl() {
+        String paramName = "inverseMethod";
+        XmlFile xmlFile = (XmlFile) getFixture().getFile();
+        XmlAttributeValue attrVal = null;
+        for (XmlTag tag : PsiTreeUtil.findChildrenOfType(xmlFile, XmlTag.class)) {
+            XmlAttribute attr = tag.getAttribute("text");
+            if (attr != null && attr.getValue() != null && attr.getValue().contains(paramName + "=")) {
+                attrVal = attr.getValueElement();
+                break;
+            }
+        }
+        assertNotNull(attrVal, "text attribute with param '" + paramName + "' not found");
+
+        String attrText = attrVal.getText();
+        int semicolonPos = attrText.indexOf(';');
+        assertTrue(semicolonPos > 0, "No ';' separator in " + attrText);
+        int paramNamePos = attrText.indexOf(paramName, semicolonPos);
+        assertTrue(paramNamePos > 0, "Param name '" + paramName + "' not found after ';' in " + attrText);
+
+        int midOffset = paramNamePos + paramName.length() / 2;
+        PsiReference ref = attrVal.findReferenceAt(midOffset);
+        assertNotNull(ref, "No reference at param name '" + paramName + "' in " + attrText);
+
+        Fxml2NamespaceUrlReference.UrlNavigationTarget urlTarget = findParamNameUrlTarget(ref);
+        assertNotNull(urlTarget, "No param-name URL reference found at '" + paramName + "' in " + attrText);
+        return urlTarget.getName();
+    }
+
+    private static Fxml2NamespaceUrlReference.UrlNavigationTarget findParamNameUrlTarget(PsiReference ref) {
+        if (!(ref instanceof PsiMultiReference multi)) {
+            PsiElement resolved = ref.resolve();
+            return resolved instanceof Fxml2NamespaceUrlReference.UrlNavigationTarget t ? t : null;
+        }
+        for (PsiReference inner : multi.getReferences()) {
+            if (inner instanceof Fxml2BindingParamNameReference) {
+                PsiElement resolved = inner.resolve();
+                if (resolved instanceof Fxml2NamespaceUrlReference.UrlNavigationTarget t) return t;
+            }
+        }
+        return null;
     }
 }

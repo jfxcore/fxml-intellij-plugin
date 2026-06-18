@@ -577,31 +577,13 @@ public final class Fxml2BindingExpressionParser {
             // Strip optional "source=" keyword (the default property of all binding intrinsics).
             String argsForPath = args.startsWith("source=") ? args.substring(7).trim() : args;
 
-            // For fx:Synchronize, strip optional "; format=X" or "; converter=X" suffix.
-            // The semicolon separates the main path from secondary parameters.
-            String paramName = null;
-            String paramPath = null;
-            int paramPathOffset = -1;
-            int semicolon = argsForPath.indexOf(';');
-            String primaryPath;
-            if (semicolon >= 0) {
-                primaryPath = argsForPath.substring(0, semicolon).trim();
-                String paramPart = argsForPath.substring(semicolon + 1).trim();
-                // paramPart is "format=X" or "converter=X"
-                int eq = paramPart.indexOf('=');
-                if (eq > 0) {
-                    paramName = paramPart.substring(0, eq).trim();
-                    paramPath = paramPart.substring(eq + 1).trim();
-                    if (!paramPath.isEmpty()) {
-                        // Search for paramPath only after the '=' sign to avoid matching it
-                        // as a substring of paramName (e.g. "conv" inside "converter").
-                        int eqInValue = value.indexOf('=', value.indexOf(';'));
-                        paramPathOffset = value.indexOf(paramPath, eqInValue + 1);
-                    }
-                }
-            } else {
-                primaryPath = argsForPath;
-            }
+            // For fx:Synchronize, strip an optional secondary-parameter suffix
+            // ("; format=X", "; converter=X", or "; inverseMethod=X").
+            ParamSuffix suffix = splitParamSuffix(value, argsForPath);
+            String primaryPath = suffix.primaryPath();
+            String paramName = suffix.paramName();
+            String paramPath = suffix.paramPath();
+            int paramPathOffset = suffix.paramPathOffset();
 
             if (primaryPath.isEmpty()) {
                 // keyword is always a known binding keyword at this point (unknown ones caught above)
@@ -702,7 +684,7 @@ public final class Fxml2BindingExpressionParser {
      * We scan for {@code &} and skip forward to the matching {@code ;} to avoid treating
      * entity-internal semicolons as the binding-parameter separator.
      */
-    private static int findParamSeparatorSemicolon(@NotNull String s) {
+    public static int findParamSeparatorSemicolon(@NotNull String s) {
         int i = 0;
         while (i < s.length()) {
             char c = s.charAt(i);
@@ -726,11 +708,57 @@ public final class Fxml2BindingExpressionParser {
     }
 
     /**
+     * The result of splitting a binding expression's inner content on the secondary-parameter
+     * separator {@code ';'}: the primary binding path, plus an optional {@code name=path} parameter
+     * ({@code format}, {@code converter}, or {@code inverseMethod}).
+     *
+     * @param primaryPath     the binding path before any {@code ';'} separator
+     * @param paramName       the secondary-parameter name, or {@code null} if absent
+     * @param paramPath       the secondary-parameter path value, or {@code null} if absent
+     * @param paramPathOffset offset of {@code paramPath} within the raw value, or {@code -1} if absent
+     */
+    private record ParamSuffix(
+            @NotNull String primaryPath,
+            @Nullable String paramName,
+            @Nullable String paramPath,
+            int paramPathOffset) {}
+
+    /**
+     * Splits {@code content} (the inner text of a binding expression, with any {@code source=}
+     * keyword already stripped) on the first secondary-parameter separator {@code ';'} that is not
+     * part of an XML entity reference.  When a {@code name=path} parameter follows, returns its name
+     * and path together with the path's offset within {@code value}; otherwise the parameter fields
+     * are absent.
+     */
+    private static @NotNull ParamSuffix splitParamSuffix(@NotNull String value, @NotNull String content) {
+        int semicolon = findParamSeparatorSemicolon(content);
+        if (semicolon < 0) {
+            return new ParamSuffix(content, null, null, -1);
+        }
+        String primaryPath = content.substring(0, semicolon).trim();
+        String paramPart = content.substring(semicolon + 1).trim();
+        int eq = paramPart.indexOf('=');
+        if (eq <= 0) {
+            return new ParamSuffix(primaryPath, null, null, -1);
+        }
+        String paramName = paramPart.substring(0, eq).trim();
+        String paramPath = paramPart.substring(eq + 1).trim();
+        int paramPathOffset = -1;
+        if (!paramPath.isEmpty()) {
+            // Search for paramPath only after the '=' sign to avoid matching it as a substring of
+            // paramName (e.g. "conv" inside "converter").
+            int eqInValue = value.indexOf('=', value.indexOf(';'));
+            paramPathOffset = value.indexOf(paramPath, eqInValue + 1);
+        }
+        return new ParamSuffix(primaryPath, paramName, paramPath, paramPathOffset);
+    }
+
+    /**
      * Parses a braced compact notation of the form {@code <prefix>path}}, where the prefix
      * is {@code prefixLength} characters long and the value must end with {@code }}.
      * Strips a leading {@code source=} keyword if present (same as the markup-extension syntax).
-     * Also handles optional {@code ; format=X} or {@code ; converter=X} suffix for
-     * {@code fx:Synchronize} string-conversion parameters.
+     * Also handles an optional secondary-parameter suffix ({@code ; format=X}, {@code ; converter=X},
+     * or {@code ; inverseMethod=X}) for {@code fx:Synchronize} bindings.
      */
     private static @NotNull Object parseBraced(
             @NotNull String value,
@@ -748,32 +776,13 @@ public final class Fxml2BindingExpressionParser {
         if (withoutPathKeyword.isEmpty()) {
             return new MissingBindingPath(kindToIntrinsicName(kind));
         }
-        // Strip optional "; format=X" or "; converter=X" suffix.
-        // The ';' separator must NOT be inside an XML entity reference (&lt; &gt; etc.),
-        // which also end with ';'.  We find the first ';' that is not preceded by an
-        // & + word-chars entity-name prefix (i.e. not part of &xxx;).
-        String paramName = null;
-        String paramPath = null;
-        int paramPathOffset = -1;
-        int semicolon = findParamSeparatorSemicolon(withoutPathKeyword);
-        String primaryPath;
-        if (semicolon >= 0) {
-            primaryPath = withoutPathKeyword.substring(0, semicolon).trim();
-            String paramPart = withoutPathKeyword.substring(semicolon + 1).trim();
-            int eq = paramPart.indexOf('=');
-            if (eq > 0) {
-                paramName = paramPart.substring(0, eq).trim();
-                paramPath = paramPart.substring(eq + 1).trim();
-                if (!paramPath.isEmpty()) {
-                    // Search for paramPath only after the '=' sign to avoid matching it
-                    // as a substring of paramName (e.g. "conv" inside "converter").
-                    int eqInValue = value.indexOf('=', value.indexOf(';'));
-                    paramPathOffset = value.indexOf(paramPath, eqInValue + 1);
-                }
-            }
-        } else {
-            primaryPath = withoutPathKeyword;
-        }
+        // Strip an optional secondary-parameter suffix ("; format=X", "; converter=X",
+        // or "; inverseMethod=X").
+        ParamSuffix suffix = splitParamSuffix(value, withoutPathKeyword);
+        String primaryPath = suffix.primaryPath();
+        String paramName = suffix.paramName();
+        String paramPath = suffix.paramPath();
+        int paramPathOffset = suffix.paramPathOffset();
         if (primaryPath.isEmpty()) {
             return new MissingBindingPath(kindToIntrinsicName(kind));
         }
