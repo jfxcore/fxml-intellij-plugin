@@ -1,33 +1,5 @@
 <html lang="en">
 <body>
-Creates a standalone FXML file from the markup embedded in a
-<code>@ComponentView</code> annotation on a Java or Kotlin class, and removes
-the annotation.
-<p>
-The action is available when the caret is on or inside the
-<code>@ComponentView</code> annotation (but not inside the annotation value
-string), provided that:
-</p>
-<ul>
-  <li>no sibling <code>&lt;ClassName&gt;.fxml</code> file already exists.</li>
-</ul>
-<p>
-A confirmation dialog is shown before any changes are made. On confirmation:
-</p>
-<ul>
-  <li>A new FXML file named after the class (e.g. <code>MyView.fxml</code>) is
-      created in the same directory as the Java or Kotlin source file.</li>
-  <li>The embedded markup is written to the FXML file with <code>xmlns</code>
-      namespace declarations and <code>fx:subclass</code> restored on the root
-      element.</li>
-  <li>Java or Kotlin import statements (excluding <code>ComponentView</code>
-      itself) are converted to <code>&lt;?import?&gt;</code> processing
-      instructions in the FXML file.</li>
-  <li>The <code>@ComponentView</code> annotation is removed from the class
-      declaration.</li>
-  <li>The <code>import org.jfxcore.markup.ComponentView</code> statement is
-      removed if no other <code>@ComponentView</code> annotation remains in the
-      file.</li>
-</ul>
+<p>Extracts embedded <code>@ComponentView</code> markup to a standalone FXML file.</p>
 </body>
 </html>

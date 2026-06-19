@@ -1,33 +1,5 @@
 <html lang="en">
 <body>
-Embeds an FXML file's markup directly into the code-behind class as a
-<code>@ComponentView</code> annotation and deletes the standalone FXML file.
-<p>
-The action is available when the caret is on the root element tag name, the
-<code>fx:subclass</code> attribute name, or the <code>fx:subclass</code> attribute value,
-provided that:
-</p>
-<ul>
-  <li>a code-behind sibling (<code>.java</code> or <code>.kt</code>) already exists
-      next to the FXML file.</li>
-</ul>
-<p>
-A confirmation dialog is shown before any changes are made. On confirmation:
-</p>
-<ul>
-  <li>The root element's markup (without <code>xmlns:*</code> and <code>fx:subclass</code>
-      attributes) is inserted as a Java text-block or Kotlin multi-dollar-string
-      <code>@ComponentView("""...""")</code> annotation before the class declaration.</li>
-  <li>The FXML <code><?import?></code> processing instructions are added as
-      Java or Kotlin import statements in the code-behind file, so the IDE's language
-      injector can resolve all class references inside the embedded markup.</li>
-  <li>The FXML source file is deleted.</li>
-</ul>
-<p>
-In Kotlin, a <code>$$"""..."""</code> multi-dollar string literal is used so that
-the <code>$</code> character used in FXML binding shortcuts (e.g.
-<code>$vm.message</code>) is treated as a literal rather than a template-interpolation
-prefix.
-</p>
+<p>Embeds standalone FXML markup into the code-behind class as a <code>@ComponentView</code> annotation.</p>
 </body>
 </html>

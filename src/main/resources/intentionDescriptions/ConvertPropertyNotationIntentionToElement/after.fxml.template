@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.Button?>
+
 <Button xmlns="http://javafx.com/javafx" xmlns:fx="http://jfxcore.org/fxml/2.0" disabled="false">
     <text>Hello</text>
     <prefWidth><fx:Observe source="myWidth"/></prefWidth>
