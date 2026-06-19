@@ -2550,6 +2550,27 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     }
 
     /**
+     * A non-bidirectional binding ({@code ${...}}, {@code fx:Observe}) accepts no secondary
+     * parameters, so after the {@code ';'} separator no parameter keywords are offered.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void observeBindingOffersNoSecondaryParamKeywords() {
+        getFixture().configureByText("NoParamName.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button prefWidth=\"${width; <caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        List<String> names = items == null ? List.of() : displayNames(items);
+        assertFalse(names.contains("inverseMethod"),
+                "fx:Observe must not offer 'inverseMethod', got: " + names);
+        assertFalse(names.contains("format"),
+                "fx:Observe must not offer 'format', got: " + names);
+        assertFalse(names.contains("converter"),
+                "fx:Observe must not offer 'converter', got: " + names);
+    }
+
+    /**
      * The value of an {@code inverseMethod=} parameter must be completed as a method path:
      * {@code #{Double.toString(width); inverseMethod=Double.parse<caret>}} offers the
      * static {@code parseDouble} method of {@code java.lang.Double}.

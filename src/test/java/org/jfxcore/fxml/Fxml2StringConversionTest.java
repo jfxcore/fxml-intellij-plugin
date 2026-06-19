@@ -146,6 +146,40 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // Conflicting parameters
+    // -----------------------------------------------------------------------
+
+    /**
+     * {@code format}, {@code converter}, and {@code inverseMethod} are mutually exclusive on an
+     * {@code fx:Synchronize} binding.  When two are present, the second is flagged.
+     */
+    @Test
+    void conflictingFormatAndConverterParamsReportsConflict() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{amount; format=format; <error descr="converter and format cannot be used at the same time">converter</error>=converter}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * An unrecognized secondary-parameter name on an {@code fx:Synchronize} binding is reported as
+     * unresolved (the valid names are {@code format}, {@code converter}, {@code inverseMethod}).
+     */
+    @Test
+    void unknownSecondaryParamNameOnSynchronizeIsReported() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{amount; <error descr="'bogus' in fx:Synchronize cannot be resolved">bogus</error>=Double.toString}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
     // Ctrl+click on format=/converter= param names: online docs navigation
     // -----------------------------------------------------------------------
 

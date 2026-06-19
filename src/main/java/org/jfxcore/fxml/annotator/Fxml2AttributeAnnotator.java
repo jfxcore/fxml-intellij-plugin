@@ -654,34 +654,113 @@ public final class Fxml2AttributeAnnotator implements Annotator {
     }
 
     /**
-     * Validates the secondary parameter path of a binding expression.
-     *
-     * <p>For {@code inverseMethod}, the value is a method path (no argument list) resolved like a
-     * function name.  For {@code format}/{@code converter}, the value is a property path.
+     * Returns {@code true} when the expression carries an explicit {@code inverseMethod=} secondary
+     * parameter.  Used to suppress the "method must be invertible" diagnostic, since an explicit
+     * inverse method supplies what the {@code @InverseMethod} annotation otherwise would.
      */
-    private static void annotateSecondaryParam(
+    private static boolean hasInverseMethodParam(
+            @NotNull Fxml2BindingExpressionParser.ParsedExpression expr) {
+        for (Fxml2BindingExpressionParser.SecondaryParam param : expr.params()) {
+            if ("inverseMethod".equals(param.name())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Validates every secondary parameter of a binding expression: the parameter name, the parameter
+     * value path, and any conflicts between parameters.
+     *
+     * <p>A name that is not valid for the binding kind is reported as unresolved (compiler:
+     * {@code PROPERTY_NOT_FOUND}).  Among the names that conflict for the kind (for
+     * {@code fx:Synchronize}: {@code format}, {@code converter}, {@code inverseMethod}), the second
+     * and later occurrences are reported (compiler: {@code CONFLICTING_PROPERTIES}).
+     *
+     * <p>Each value path is resolved regardless of whether its name is valid: {@code format} and
+     * {@code converter} are property paths; {@code inverseMethod} and every unrecognized name are
+     * resolved like a function name (the value's last segment is a method or constructor).
+     */
+    private static void annotateSecondaryParams(
             @NotNull XmlAttributeValue attrVal,
             @NotNull Fxml2BindingExpressionParser.ParsedExpression expr,
             @NotNull PsiClass startClass,
             @NotNull XmlFile xmlFile,
             @NotNull AnnotationHolder holder) {
-        String paramPath = expr.paramPath();
-        int paramPathOffset = expr.paramPathOffset();
-        if (paramPath == null || paramPath.isBlank() || paramPathOffset < 0) return;
         GlobalSearchScope scope = xmlFile.getResolveScope();
+        Set<String> valid = Fxml2BindingExpressionParser.validSecondaryParams(expr.kind());
+        Set<String> conflicting = Fxml2BindingExpressionParser.conflictingSecondaryParams(expr.kind());
+        int valueStart = attrVal.getTextRange().getStartOffset();
+        String existingConflicting = null;
 
-        // "inverseMethod" param: the value is a method path (bare name, qualified static, or an
-        // instance path), with no argument list.
-        if ("inverseMethod".equals(expr.paramName())) {
-            var nameSegs = Fxml2BindingPathResolver.resolveFunctionName(
-                    paramPath, startClass, scope, Kind.SYNCHRONIZE, xmlFile);
-            reportPathSegments(attrVal, nameSegs, startClass, 1 + paramPathOffset, xmlFile, holder);
+        for (Fxml2BindingExpressionParser.SecondaryParam param : expr.params()) {
+            String name = param.name();
+            boolean nameValid = valid.contains(name);
+
+            // Name validation: an unrecognized name cannot be resolved against the intrinsic.
+            if (!nameValid && param.nameOffset() >= 0) {
+                int nameStart = valueStart + 1 + param.nameOffset();
+                holder.newAnnotation(HighlightSeverity.ERROR,
+                                "'" + name + "' in "
+                                        + Fxml2BindingExpressionParser.kindToIntrinsicName(expr.kind())
+                                        + " cannot be resolved")
+                        .range(new TextRange(nameStart, nameStart + name.length()))
+                        .create();
+            } else if (nameValid && conflicting.contains(name) && param.nameOffset() >= 0) {
+                // Conflict validation: only the second (and later) conflicting parameter is flagged.
+                if (existingConflicting == null) {
+                    existingConflicting = name;
+                } else {
+                    int nameStart = valueStart + 1 + param.nameOffset();
+                    holder.newAnnotation(HighlightSeverity.ERROR,
+                                    name + " and " + existingConflicting
+                                            + " cannot be used at the same time")
+                            .range(new TextRange(nameStart, nameStart + name.length()))
+                            .create();
+                }
+            }
+
+            // Value-path validation (independent of name validity).
+            String paramPath = param.path();
+            int paramPathOffset = param.pathOffset();
+            if (paramPath.isBlank() || paramPathOffset < 0) continue;
+
+            annotateSecondaryParamValue(
+                    attrVal, paramPath, paramPathOffset, startClass, scope, expr.kind(), xmlFile, holder);
+        }
+    }
+
+    /**
+     * Validates the value path of a secondary parameter without hard-coding which parameters take a
+     * property versus a method.  A parameter value may be either a property path (e.g. for
+     * {@code format} / {@code converter}, pointing to a {@code Format} / {@code StringConverter}
+     * instance) or a method/constructor path (e.g. for {@code inverseMethod}).  Both interpretations
+     * are attempted: whichever fully resolves is reported.  When neither resolves, the
+     * method/constructor interpretation is reported, since it yields the more useful diagnostics
+     * (including the add-import fix for an unresolved class qualifier).
+     */
+    private static void annotateSecondaryParamValue(
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull String paramPath,
+            int paramPathOffset,
+            @NotNull PsiClass startClass,
+            @NotNull GlobalSearchScope scope,
+            @NotNull Kind kind,
+            @NotNull XmlFile xmlFile,
+            @NotNull AnnotationHolder holder) {
+        var propertySegs = Fxml2BindingPathResolver.resolve(paramPath, startClass, scope, null, xmlFile);
+        if (isFullyResolved(propertySegs)) {
+            reportPathSegments(attrVal, propertySegs, startClass, 1 + paramPathOffset, xmlFile, holder);
             return;
         }
+        var methodSegs = Fxml2BindingPathResolver.resolveFunctionName(paramPath, startClass, scope, kind, xmlFile);
+        // Report the method interpretation when it fully resolves, and otherwise as the fallback for
+        // its richer diagnostics.
+        reportPathSegments(attrVal, methodSegs, startClass, 1 + paramPathOffset, xmlFile, holder);
+    }
 
-        // Other params (format, converter): treat as a property path.
-        var segments = Fxml2BindingPathResolver.resolve(paramPath, startClass, scope, null, xmlFile);
-        reportPathSegments(attrVal, segments, startClass, 1 + paramPathOffset, xmlFile, holder);
+    /** Returns {@code true} when {@code segments} is non-empty and every segment resolved. */
+    private static boolean isFullyResolved(
+            @NotNull java.util.List<Fxml2BindingPathResolver.Segment> segments) {
+        return !segments.isEmpty() && segments.stream().allMatch(Fxml2BindingPathResolver.Segment::isResolved);
     }
 
     /**
@@ -1381,13 +1460,13 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             if (expr.kind() == Kind.SYNCHRONIZE || expr.kind() == Kind.SYNCHRONIZE_CONTENT) {
                 annotateBidirectionalArgumentCount(attrVal, path, holder, pathBase);
                 String funcPath = path.substring(0, parenIdx);
-                if (!expr.hasParam() || !"inverseMethod".equals(expr.paramName())) {
+                if (!hasInverseMethodParam(expr)) {
                     annotateInverseMethodRequired(attrVal, funcPath, startClass, xmlFile, holder, pathBase);
                 }
             }
-            // Also validate the secondary param (inverseMethod=, format=, converter=) if present
+            // Also validate the secondary params (inverseMethod=, format=, converter=, ...) if present
             if (expr.hasParam()) {
-                annotateSecondaryParam(attrVal, expr, startClass, xmlFile, holder);
+                annotateSecondaryParams(attrVal, expr, startClass, xmlFile, holder);
             }
             return;
         }
@@ -1400,9 +1479,9 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         int base = 1 + expr.strippedPathOffset() + (selector != null ? selector.selectorLength() : 0);
         boolean allResolved = reportPathSegments(attrVal, segments, startClass, base, xmlFile, holder);
 
-        // Validate secondary param (inverseMethod=, format=, converter=) if present
+        // Validate secondary params (inverseMethod=, format=, converter=, ...) if present
         if (expr.hasParam()) {
-            annotateSecondaryParam(attrVal, expr, startClass, xmlFile, holder);
+            annotateSecondaryParams(attrVal, expr, startClass, xmlFile, holder);
         }
 
         // For EVALUATE ($field) single-segment bindings: check that the resolved source type

@@ -1148,49 +1148,44 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
             }
 
-            // Secondary param references (inverseMethod= / format= / converter=).
-            if (expr.hasParam()) {
-                String paramName = expr.paramName();
-                int paramPathOffset = expr.paramPathOffset();
+            // Secondary param references (e.g. inverseMethod= / format= / converter=).
+            for (Fxml2BindingExpressionParser.SecondaryParam param : expr.params()) {
+                String paramName = param.name();
+                int nameOffset = param.nameOffset();
+                int paramPathOffset = param.pathOffset();
+                boolean valid = Fxml2BindingExpressionParser
+                        .validSecondaryParams(expr.kind()).contains(paramName);
 
-                // Param name keyword reference: Ctrl+click on "inverseMethod", "format", or
-                // "converter" opens the documentation page describing that parameter.
-                String docsUrl = paramName != null ? Fxml2BindingParamNameReference.docUrlForParam(paramName) : null;
-                if (docsUrl != null && paramPathOffset >= 0) {
-                    int eqPos = rawValue.lastIndexOf('=', paramPathOffset - 1);
-                    if (eqPos > 0) {
-                        String beforeEq = rawValue.substring(0, eqPos).stripTrailing();
-                        int nameEnd = beforeEq.length();
-                        int nameStart = nameEnd - paramName.length();
-                        if (nameStart >= 0
-                                && rawValue.regionMatches(nameStart, paramName, 0, paramName.length())) {
-                            refs.add(new Fxml2BindingParamNameReference(
-                                    attrVal,
-                                    new TextRange(1 + nameStart, 1 + nameStart + paramName.length()),
-                                    docsUrl));
-                        }
-                    }
+                // Param name keyword reference: Ctrl+click on a recognized parameter name opens the
+                // documentation page describing it.  Names that are not valid for this binding kind
+                // get no doc reference (the annotator reports them as unresolved instead).
+                String docsUrl = Fxml2BindingParamNameReference.docUrlForParam(paramName);
+                if (valid && docsUrl != null && nameOffset >= 0) {
+                    refs.add(new Fxml2BindingParamNameReference(
+                            attrVal,
+                            new TextRange(1 + nameOffset, 1 + nameOffset + paramName.length()),
+                            docsUrl));
                 }
 
-                String paramPath = expr.paramPath();
-                if (paramPath != null && !paramPath.isBlank() && paramPathOffset >= 0) {
-                    if ("inverseMethod".equals(paramName)) {
-                        // The inverseMethod value is a method (or constructor) path resolved like a
-                        // function name: its last segment is a method, not a property.  The segments
-                        // carry their own offsets relative to the param path, so emit them scattered.
-                        List<Fxml2BindingPathResolver.Segment> nameSegs =
+                String paramPath = param.path();
+                if (!paramPath.isBlank() && paramPathOffset >= 0) {
+                    // A parameter value may be a property path (e.g. format= / converter=) or a
+                    // method/constructor path (e.g. inverseMethod=); attempt both without hard-coding
+                    // which name takes which.  Prefer the property interpretation when it fully
+                    // resolves (using OBSERVE kind so the resolver prefers xProperty() over setter,
+                    // matching the navigation of other read-access binding paths); otherwise navigate
+                    // the value as a function name (its segments carry their own offsets).
+                    List<Fxml2BindingPathResolver.Segment> propertySegs =
+                            Fxml2BindingPathResolver.resolve(
+                                    paramPath, startClass, scope,
+                                    Fxml2BindingNotationReference.Kind.OBSERVE, xmlFile);
+                    if (isFullyResolved(propertySegs)) {
+                        emitPathSegmentRefs(refs, attrVal, propertySegs, 1 + paramPathOffset, paramPath);
+                    } else {
+                        List<Fxml2BindingPathResolver.Segment> methodSegs =
                                 Fxml2BindingPathResolver.resolveFunctionName(
                                         paramPath, startClass, scope, expr.kind(), xmlFile);
-                        emitScatteredSegmentRefs(refs, attrVal, nameSegs, 1 + paramPathOffset);
-                    } else {
-                        // format= / converter= are property paths.  Use OBSERVE kind so the resolver
-                        // prefers xProperty() over setter, matching the navigation behavior of other
-                        // read-access binding paths.
-                        List<Fxml2BindingPathResolver.Segment> paramSegments =
-                                Fxml2BindingPathResolver.resolve(
-                                        paramPath, startClass, scope,
-                                        Fxml2BindingNotationReference.Kind.OBSERVE, xmlFile);
-                        emitPathSegmentRefs(refs, attrVal, paramSegments, 1 + paramPathOffset, paramPath);
+                        emitScatteredSegmentRefs(refs, attrVal, methodSegs, 1 + paramPathOffset);
                     }
                 }
             }
@@ -2683,6 +2678,13 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 cursor += path.startsWith("::", cursor) ? 2 : 1;
             }
         }
+    }
+
+    /** Returns {@code true} when {@code segments} is non-empty and every segment resolved. */
+    private static boolean isFullyResolved(
+            @NotNull List<Fxml2BindingPathResolver.Segment> segments) {
+        return !segments.isEmpty()
+                && segments.stream().allMatch(Fxml2BindingPathResolver.Segment::isResolved);
     }
 
     /**

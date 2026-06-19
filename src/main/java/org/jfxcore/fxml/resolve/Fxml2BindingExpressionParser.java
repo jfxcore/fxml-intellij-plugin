@@ -1,7 +1,12 @@
 package org.jfxcore.fxml.resolve;
 
+import org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Extracts the binding path string from the various FXML binding expression syntaxes
@@ -210,34 +215,49 @@ public final class Fxml2BindingExpressionParser {
     }
 
     /**
+     * A secondary parameter of a binding expression: the {@code name=path} clause that follows the
+     * primary binding path after a {@code ';'} separator (e.g. {@code format=path.to.format} in
+     * {@code #{value; format=path.to.format}}).  A binding expression may carry any number of these;
+     * which names are valid depends on the binding kind (see {@link #validSecondaryParams}).
+     *
+     * @param name       the parameter name (e.g. {@code "format"}); may be any identifier, including
+     *                   one that is not valid for the binding kind
+     * @param nameOffset offset of {@code name} within the raw value (quotes excluded, 0-based)
+     * @param path       the parameter's path value (e.g. {@code "path.to.format"}); may be empty
+     * @param pathOffset offset of {@code path} within the raw value, or {@code -1} when {@code path}
+     *                   is empty
+     */
+    public record SecondaryParam(
+            @NotNull String name,
+            int nameOffset,
+            @NotNull String path,
+            int pathOffset) {}
+
+    /**
      * Represents a successfully parsed binding expression.
      *
      * @param path         the raw path string (e.g. {@code "vm.field"})
      * @param pathOffset   offset of {@code path} within the raw value (quotes excluded, 0-based)
      * @param prefixLength length of the notation prefix within the raw value
      * @param kind         the binding kind (maps to the JavaFX method)
-     * @param paramName    optional secondary parameter name, e.g. {@code "format"} or
-     *                     {@code "converter"} for {@code fx:Synchronize}; {@code null} if absent
-     * @param paramPath    the path value of the secondary parameter; {@code null} if absent
-     * @param paramPathOffset offset of {@code paramPath} within the raw value; {@code -1} if absent
+     * @param params       the secondary parameters ({@code name=path} clauses after the primary
+     *                     path); empty when none are present
      */
     public record ParsedExpression(
             @NotNull String path,
             int pathOffset,
             int prefixLength,
-            @NotNull org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind kind,
-            @Nullable String paramName,
-            @Nullable String paramPath,
-            int paramPathOffset) {
+            @NotNull Kind kind,
+            @NotNull List<SecondaryParam> params) {
 
-        /** Convenience constructor without secondary parameter. */
+        /** Convenience constructor without secondary parameters. */
         public ParsedExpression(@NotNull String path, int pathOffset, int prefixLength,
-                                @NotNull org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind kind) {
-            this(path, pathOffset, prefixLength, kind, null, null, -1);
+                                @NotNull Kind kind) {
+            this(path, pathOffset, prefixLength, kind, List.of());
         }
 
-        /** {@code true} if this expression carries a {@code format=} or {@code converter=} parameter. */
-        public boolean hasParam() { return paramName != null && paramPath != null; }
+        /** {@code true} if this expression carries at least one secondary parameter. */
+        public boolean hasParam() { return !params.isEmpty(); }
 
         /**
          * Returns the path with any leading boolean operator ({@code !} or {@code !!}) stripped,
@@ -577,13 +597,11 @@ public final class Fxml2BindingExpressionParser {
             // Strip optional "source=" keyword (the default property of all binding intrinsics).
             String argsForPath = args.startsWith("source=") ? args.substring(7).trim() : args;
 
-            // For fx:Synchronize, strip an optional secondary-parameter suffix
-            // ("; format=X", "; converter=X", or "; inverseMethod=X").
-            ParamSuffix suffix = splitParamSuffix(value, argsForPath);
-            String primaryPath = suffix.primaryPath();
-            String paramName = suffix.paramName();
-            String paramPath = suffix.paramPath();
-            int paramPathOffset = suffix.paramPathOffset();
+            // Strip an optional list of secondary-parameter clauses ("; name=X; name2=Y; ...").
+            // Validity of each name depends on the binding kind; the parser records them verbatim.
+            SplitResult split = splitParams(value, argsForPath);
+            String primaryPath = split.primaryPath();
+            List<SecondaryParam> params = split.params();
 
             if (primaryPath.isEmpty()) {
                 // keyword is always a known binding keyword at this point (unknown ones caught above)
@@ -607,8 +625,7 @@ public final class Fxml2BindingExpressionParser {
                 return new MissingBindingPath(keyword);
             }
             int pathOffset = value.indexOf(primaryPath, prefixLength + 1);
-            return new ParsedExpression(primaryPath, pathOffset, prefixLength, kind,
-                    paramName, paramPath, paramPathOffset);
+            return new ParsedExpression(primaryPath, pathOffset, prefixLength, kind, params);
         }
 
 
@@ -634,26 +651,58 @@ public final class Fxml2BindingExpressionParser {
      * start with a recognized binding prefix.
      */
     public static @Nullable String extractPartialPath(@NotNull String value) {
-        String path;
-        if (value.startsWith("${.."))          path = value.substring(4);
-        else if (value.startsWith("#{.."))     path = value.substring(4);
-        else if (value.startsWith(">{.."))     path = value.substring(4);
-        else if (value.startsWith("$.."))      path = value.substring(3);
-        else if (value.startsWith("${"))       path = value.substring(2);
-        else if (value.startsWith("#{"))       path = value.substring(2);
-        else if (value.startsWith(">{"))       path = value.substring(2);
-        else if (value.startsWith("{fx:Observe "))    path = value.substring("{fx:Observe ".length());
-        else if (value.startsWith("{fx:Evaluate "))   path = value.substring("{fx:Evaluate ".length());
-        else if (value.startsWith("{fx:Push "))       path = value.substring("{fx:Push ".length());
-        else if (value.startsWith("{fx:Synchronize ")) path = value.substring("{fx:Synchronize ".length());
-        else if (value.startsWith("$"))        path = value.substring(1);
-        else return null;
+        NotationPrefix prefix = matchNotationPrefix(value);
+        if (prefix == null) return null;
 
+        String path = value.substring(prefix.text().length());
         if (path.endsWith("}")) path = path.substring(0, path.length() - 1);
         path = path.trim();
         if (path.startsWith("!!"))      path = path.substring(2).trim();
         else if (path.startsWith("!")) path = path.substring(1).trim();
         return path;
+    }
+
+    /**
+     * Returns the binding {@link Kind} implied by the notation prefix of a (possibly incomplete)
+     * value, or {@code null} when the value does not start with a recognized binding prefix.
+     * Intended for completion, where the value may be truncated at the caret.
+     */
+    public static @Nullable Kind notationKind(@NotNull String value) {
+        NotationPrefix prefix = matchNotationPrefix(value);
+        return prefix != null ? prefix.kind() : null;
+    }
+
+    /**
+     * A recognized binding-notation prefix and the {@link Kind} it implies, e.g. {@code "${"} ->
+     * {@code OBSERVE} or {@code "{fx:Synchronize "} -> {@code SYNCHRONIZE}.
+     */
+    private record NotationPrefix(@NotNull String text, @NotNull Kind kind) {}
+
+    /**
+     * The recognized binding-notation prefixes, ordered most-specific first so that a longer prefix
+     * (e.g. {@code "${.."}, {@code "$.."}) is matched before a shorter one it contains
+     * ({@code "${"}, {@code "$"}).  The bare {@code "$"} (fx:Evaluate compact) must be last.
+     */
+    private static final List<NotationPrefix> NOTATION_PREFIXES = List.of(
+            new NotationPrefix("${..", Kind.OBSERVE_CONTENT),
+            new NotationPrefix("#{..", Kind.SYNCHRONIZE_CONTENT),
+            new NotationPrefix(">{..", Kind.PUSH_CONTENT),
+            new NotationPrefix("$..",  Kind.EVALUATE_CONTENT),
+            new NotationPrefix("${",   Kind.OBSERVE),
+            new NotationPrefix("#{",   Kind.SYNCHRONIZE),
+            new NotationPrefix(">{",   Kind.PUSH),
+            new NotationPrefix("{fx:Observe ",     Kind.OBSERVE),
+            new NotationPrefix("{fx:Evaluate ",    Kind.EVALUATE),
+            new NotationPrefix("{fx:Push ",        Kind.PUSH),
+            new NotationPrefix("{fx:Synchronize ", Kind.SYNCHRONIZE),
+            new NotationPrefix("$",    Kind.EVALUATE));
+
+    /** Returns the first {@link NotationPrefix} that {@code value} starts with, or {@code null}. */
+    private static @Nullable NotationPrefix matchNotationPrefix(@NotNull String value) {
+        for (NotationPrefix prefix : NOTATION_PREFIXES) {
+            if (value.startsWith(prefix.text())) return prefix;
+        }
+        return null;
     }
 
     /**
@@ -709,56 +758,119 @@ public final class Fxml2BindingExpressionParser {
 
     /**
      * The result of splitting a binding expression's inner content on the secondary-parameter
-     * separator {@code ';'}: the primary binding path, plus an optional {@code name=path} parameter
-     * ({@code format}, {@code converter}, or {@code inverseMethod}).
+     * separator {@code ';'}: the primary binding path, plus the list of {@code name=path} parameter
+     * clauses that follow it.
      *
-     * @param primaryPath     the binding path before any {@code ';'} separator
-     * @param paramName       the secondary-parameter name, or {@code null} if absent
-     * @param paramPath       the secondary-parameter path value, or {@code null} if absent
-     * @param paramPathOffset offset of {@code paramPath} within the raw value, or {@code -1} if absent
+     * @param primaryPath the binding path before the first {@code ';'} separator
+     * @param params      the secondary parameters; empty when none are present
      */
-    private record ParamSuffix(
-            @NotNull String primaryPath,
-            @Nullable String paramName,
-            @Nullable String paramPath,
-            int paramPathOffset) {}
+    private record SplitResult(@NotNull String primaryPath, @NotNull List<SecondaryParam> params) {}
 
     /**
      * Splits {@code content} (the inner text of a binding expression, with any {@code source=}
-     * keyword already stripped) on the first secondary-parameter separator {@code ';'} that is not
-     * part of an XML entity reference.  When a {@code name=path} parameter follows, returns its name
-     * and path together with the path's offset within {@code value}; otherwise the parameter fields
-     * are absent.
+     * keyword already stripped) on every secondary-parameter separator {@code ';'} that is not part
+     * of an XML entity reference.  The text before the first separator is the primary path; each
+     * following {@code name=path} clause becomes a {@link SecondaryParam} whose {@code name} and
+     * {@code path} offsets are located within {@code value} (the raw attribute value).
+     *
+     * <p>Names are recorded verbatim, including names that are not valid for the binding kind: name
+     * validity is decided downstream so that the value path still resolves even when the name is
+     * misspelled or nonexistent.  A clause without an {@code '='} is ignored.
      */
-    private static @NotNull ParamSuffix splitParamSuffix(@NotNull String value, @NotNull String content) {
-        int semicolon = findParamSeparatorSemicolon(content);
-        if (semicolon < 0) {
-            return new ParamSuffix(content, null, null, -1);
+    private static @NotNull SplitResult splitParams(@NotNull String value, @NotNull String content) {
+        List<String> segments = splitOnParamSeparators(content);
+        String primaryPath = segments.getFirst().trim();
+        if (segments.size() == 1) {
+            return new SplitResult(primaryPath, List.of());
         }
-        String primaryPath = content.substring(0, semicolon).trim();
-        String paramPart = content.substring(semicolon + 1).trim();
-        int eq = paramPart.indexOf('=');
-        if (eq <= 0) {
-            return new ParamSuffix(primaryPath, null, null, -1);
+
+        List<SecondaryParam> params = new ArrayList<>();
+        // Search cursor within the raw value.  Start it at the first parameter separator so that a
+        // primary path which happens to equal a parameter name is not mistaken for that name.
+        int firstSep = findParamSeparatorSemicolon(value);
+        int cursor = firstSep >= 0 ? firstSep + 1 : 0;
+        for (int i = 1; i < segments.size(); i++) {
+            String segment = segments.get(i);
+            int eq = segment.indexOf('=');
+            if (eq <= 0) {
+                continue; // not a "name=path" clause
+            }
+            String name = segment.substring(0, eq).trim();
+            String path = segment.substring(eq + 1).trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            int nameOffset = value.indexOf(name, cursor);
+            if (nameOffset < 0) {
+                continue;
+            }
+            int eqInValue = value.indexOf('=', nameOffset + name.length());
+            int pathOffset = -1;
+            if (!path.isEmpty() && eqInValue >= 0) {
+                // Search for the path only after the '=' sign to avoid matching it as a substring of
+                // the name (e.g. "conv" inside "converter").
+                pathOffset = value.indexOf(path, eqInValue + 1);
+            }
+            params.add(new SecondaryParam(name, nameOffset, path, pathOffset));
+            cursor = pathOffset >= 0 ? pathOffset + path.length()
+                    : eqInValue >= 0 ? eqInValue + 1 : nameOffset + name.length();
         }
-        String paramName = paramPart.substring(0, eq).trim();
-        String paramPath = paramPart.substring(eq + 1).trim();
-        int paramPathOffset = -1;
-        if (!paramPath.isEmpty()) {
-            // Search for paramPath only after the '=' sign to avoid matching it as a substring of
-            // paramName (e.g. "conv" inside "converter").
-            int eqInValue = value.indexOf('=', value.indexOf(';'));
-            paramPathOffset = value.indexOf(paramPath, eqInValue + 1);
+        return new SplitResult(primaryPath, params);
+    }
+
+    /**
+     * Splits {@code content} into segments separated by {@code ';'} characters that are not part of
+     * an XML entity reference (using {@link #findParamSeparatorSemicolon}).  The first segment is the
+     * primary path; subsequent segments are the secondary-parameter clauses.  Segments are returned
+     * untrimmed.
+     */
+    private static @NotNull List<String> splitOnParamSeparators(@NotNull String content) {
+        List<String> segments = new ArrayList<>();
+        int start = 0;
+        while (true) {
+            int rel = findParamSeparatorSemicolon(content.substring(start));
+            if (rel < 0) {
+                segments.add(content.substring(start));
+                return segments;
+            }
+            int semicolon = start + rel;
+            segments.add(content.substring(start, semicolon));
+            start = semicolon + 1;
         }
-        return new ParamSuffix(primaryPath, paramName, paramPath, paramPathOffset);
+    }
+
+    /**
+     * The secondary-parameter names that are valid for the given binding {@code kind}.
+     *
+     * <p>Only the bidirectional {@code fx:Synchronize} binding accepts secondary parameters
+     * ({@code format}, {@code converter}, {@code inverseMethod}); every other binding kind accepts
+     * none.  This mirrors the intrinsic-property declarations of the fxml-compiler and is the single
+     * source of truth used to validate and to complete parameter names.
+     */
+    public static @NotNull Set<String> validSecondaryParams(@NotNull Kind kind) {
+        return switch (kind) {
+            case SYNCHRONIZE, SYNCHRONIZE_CONTENT -> Set.of("format", "converter", "inverseMethod");
+            default -> Set.of();
+        };
+    }
+
+    /**
+     * The secondary-parameter names that cannot be used together for the given binding {@code kind}.
+     * For {@code fx:Synchronize}, {@code format}, {@code converter}, and {@code inverseMethod} are
+     * mutually exclusive.
+     */
+    public static @NotNull Set<String> conflictingSecondaryParams(@NotNull Kind kind) {
+        return switch (kind) {
+            case SYNCHRONIZE, SYNCHRONIZE_CONTENT -> Set.of("format", "converter", "inverseMethod");
+            default -> Set.of();
+        };
     }
 
     /**
      * Parses a braced compact notation of the form {@code <prefix>path}}, where the prefix
      * is {@code prefixLength} characters long and the value must end with {@code }}.
      * Strips a leading {@code source=} keyword if present (same as the markup-extension syntax).
-     * Also handles an optional secondary-parameter suffix ({@code ; format=X}, {@code ; converter=X},
-     * or {@code ; inverseMethod=X}) for {@code fx:Synchronize} bindings.
+     * Also splits off an optional list of secondary-parameter clauses ({@code ; name=X; name2=Y}).
      */
     private static @NotNull Object parseBraced(
             @NotNull String value,
@@ -776,13 +888,10 @@ public final class Fxml2BindingExpressionParser {
         if (withoutPathKeyword.isEmpty()) {
             return new MissingBindingPath(kindToIntrinsicName(kind));
         }
-        // Strip an optional secondary-parameter suffix ("; format=X", "; converter=X",
-        // or "; inverseMethod=X").
-        ParamSuffix suffix = splitParamSuffix(value, withoutPathKeyword);
-        String primaryPath = suffix.primaryPath();
-        String paramName = suffix.paramName();
-        String paramPath = suffix.paramPath();
-        int paramPathOffset = suffix.paramPathOffset();
+        // Strip an optional list of secondary-parameter clauses ("; name=X; name2=Y; ...").
+        SplitResult split = splitParams(value, withoutPathKeyword);
+        String primaryPath = split.primaryPath();
+        List<SecondaryParam> params = split.params();
         if (primaryPath.isEmpty()) {
             return new MissingBindingPath(kindToIntrinsicName(kind));
         }
@@ -791,16 +900,15 @@ public final class Fxml2BindingExpressionParser {
             return new ParseError("Identifier expected", 0, value.length());
         }
         int pathIdx = value.indexOf(primaryPath, prefixLength);
-        return new ParsedExpression(primaryPath, pathIdx, prefixLength, kind,
-                paramName, paramPath, paramPathOffset);
+        return new ParsedExpression(primaryPath, pathIdx, prefixLength, kind, params);
     }
 
     /**
      * Maps a binding {@link org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind}
      * to its canonical {@code fx:} intrinsic keyword name.
      */
-    private static @NotNull String kindToIntrinsicName(
-            @NotNull org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind kind) {
+    public static @NotNull String kindToIntrinsicName(
+            @NotNull Kind kind) {
         return switch (kind) {
             case EVALUATE, EVALUATE_CONTENT   -> "fx:Evaluate";
             case OBSERVE,  OBSERVE_CONTENT    -> "fx:Observe";

@@ -337,6 +337,54 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
     }
 
     /**
+     * A secondary-parameter name that is not valid for the binding kind is reported as unresolved,
+     * but its value path is still resolved.  Here the non-bidirectional {@code fx:Observe} binding
+     * ({@code ${...}}) does not accept any secondary parameter, so {@code xy} is flagged; the value
+     * {@code Double.parseDouble} (a static method) still resolves and produces no error.
+     */
+    @Test
+    void unknownSecondaryParamNameIsReportedButValueStillResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="${Double.toString(value); <error descr="'xy' in fx:Observe cannot be resolved">xy</error>=Double.parseDouble}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A secondary-parameter value is resolved as either a property path or a method path, without
+     * hard-coding which parameter names take which.  Here the value {@code label} is a property
+     * (not a method), so it resolves even though the parameter name {@code xy} is unrecognized.
+     */
+    @Test
+    void unknownSecondaryParamWithPropertyValueResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="${Double.toString(value); <error descr="'xy' in fx:Observe cannot be resolved">xy</error>=label}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * When the value of an unrecognized secondary parameter cannot be resolved, both the name and
+     * the value are flagged independently.
+     */
+    @Test
+    void unknownSecondaryParamReportsNameAndUnresolvableValue() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="${Double.toString(value); <error descr="'xy' in fx:Observe cannot be resolved">xy</error>=<error descr="'nope' in test.TestView cannot be resolved">nope</error>}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
      * Bidirectional function binding without {@code inverseMethod=} and without
      * {@code @org.jfxcore.markup.InverseMethod} on the method produces a
      * {@code METHOD_NOT_INVERTIBLE} error.
@@ -626,6 +674,25 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
         PsiMethod method = assertInstanceOf(PsiMethod.class, target,
                 "Ctrl+click on 'width' should resolve to its accessor on the root element type");
         assertEquals("widthProperty", method.getName());
+    }
+
+    /**
+     * Ctrl+click on a secondary-parameter value that is a property (rather than a method) must
+     * navigate to that property's accessor, even when the parameter name is unrecognized: the value
+     * is resolved as a property or a method path without hard-coding which names take which.
+     */
+    @Test
+    void ctrlClickOnUnknownParamPropertyValueResolvesToAccessor() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="${Double.toString(value); xy=la<caret>bel}"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        PsiMethod method = assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on the property value 'label' should resolve to its accessor");
+        assertEquals("labelProperty", method.getName());
     }
 
     // -----------------------------------------------------------------------

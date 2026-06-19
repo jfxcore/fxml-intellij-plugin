@@ -52,6 +52,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.descriptors.Fxml2PropertyAttributeDescriptor;
 import org.jfxcore.fxml.descriptors.Fxml2StaticPropertyAttributeDescriptor;
+import org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind;
 import org.jfxcore.fxml.lang.Fxml2ImportUtil;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
@@ -1221,10 +1222,10 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             Fxml2BindingExpressionParser.ParsedExpression expr =
                     Fxml2BindingExpressionParser.parseExpression(rawValue);
 
-            // Secondary-parameter completion (inverseMethod= / format= / converter=).  These
-            // parameters follow a ';' separator in a bidirectional binding (#{...}); since the
-            // raw value is truncated at the caret, a separator present here means the caret is in
-            // the parameter section.  The active parameter sub-expression is completed on its own.
+            // Secondary-parameter completion (e.g. inverseMethod= / format= / converter=).  These
+            // parameters follow a ';' separator after the primary binding path; since the raw value
+            // is truncated at the caret, a separator present here means the caret is in the
+            // parameter section.  The active parameter sub-expression is completed on its own.
             if (completeSecondaryParam(rawValue, tag, xmlFile, result)) {
                 return;
             }
@@ -1243,21 +1244,18 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             completeBindingPath(strippedPath, tag, xmlFile, targetPropType, result);
         }
 
-        /** The secondary-parameter keywords accepted in a bidirectional ({@code #{...}}) binding. */
-        private static final List<String> SECONDARY_PARAM_NAMES =
-                List.of("inverseMethod", "format", "converter");
-
         /**
-         * Completes the secondary-parameter section of a bidirectional binding expression
-         * ({@code #{value; inverseMethod=...}}, {@code #{value; format=...}},
-         * {@code #{value; converter=...}}), if the caret is within it.
+         * Completes the secondary-parameter section of a binding expression
+         * ({@code #{value; inverseMethod=...}}, {@code #{value; format=...}}, ...), if the caret is
+         * within it.
          *
          * <p>The {@code rawValue} is truncated at the caret, so a {@code ';'} parameter separator
-         * present in it means the caret follows the primary binding path.  When no {@code '='} has
-         * been typed yet, the parameter <em>name</em> is completed (offering {@code inverseMethod},
-         * {@code format}, {@code converter}); otherwise the parameter <em>value</em>: a method path
-         * for {@code inverseMethod}, a property path for {@code format}/{@code converter}: is
-         * completed via {@link #completeBindingPath}, the same machinery that drives the primary path.
+         * present in it means the caret follows the primary binding path; the caret is in the
+         * <em>last</em> parameter clause.  When no {@code '='} has been typed yet, the parameter
+         * <em>name</em> is completed, offering the names valid for the binding kind (see
+         * {@link Fxml2BindingExpressionParser#validSecondaryParams}); otherwise the parameter
+         * <em>value</em> is completed via {@link #completeBindingPath}, the same machinery that
+         * drives the primary path.
          *
          * @return {@code true} when the caret was inside the parameter section (completion handled)
          */
@@ -1266,22 +1264,25 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 @NotNull XmlTag tag,
                 @NotNull XmlFile xmlFile,
                 @NotNull CompletionResultSet result) {
-            // Only bidirectional (#{...} / {fx:Synchronize ...}) bindings carry these parameters.
-            if (!rawValue.startsWith("#{") && !rawValue.startsWith("{fx:Synchronize")) return false;
+            // Secondary parameters are only carried by the braced / markup-extension binding forms.
+            Kind kind = Fxml2BindingExpressionParser.notationKind(rawValue);
+            if (kind == null) return false;
 
             String inner = Fxml2BindingExpressionParser.extractPartialPath(rawValue);
             if (inner == null) return false;
-            int semi = Fxml2BindingExpressionParser.findParamSeparatorSemicolon(inner);
+            // The caret is in the last parameter clause: find the last parameter separator.
+            int semi = lastParamSeparatorSemicolon(inner);
             if (semi < 0) return false;
 
             String paramPart = inner.substring(semi + 1);
             int eq = paramPart.indexOf('=');
             if (eq < 0) {
-                // No '=' yet: the caret is in the parameter-name position.
+                // No '=' yet: the caret is in the parameter-name position.  Offer the names valid
+                // for this binding kind (none for kinds that accept no secondary parameters).
                 String partial = paramPart.strip();
                 CompletionResultSet paramResult = result.withPrefixMatcher(
                         new PlainPrefixMatcher(partial, true));
-                for (String name : SECONDARY_PARAM_NAMES) {
+                for (String name : Fxml2BindingExpressionParser.validSecondaryParams(kind)) {
                     if (name.startsWith(partial)) {
                         paramResult.addElement(LookupElementBuilder.create(name + "=")
                                 .withPresentableText(name)
@@ -1296,6 +1297,21 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             String paramValue = paramPart.substring(eq + 1).stripLeading();
             completeBindingPath(paramValue, tag, xmlFile, null, result);
             return true;
+        }
+
+        /**
+         * Returns the index of the last secondary-parameter separator {@code ';'} in {@code s} that
+         * is not part of an XML entity reference, or {@code -1} if none.
+         */
+        private static int lastParamSeparatorSemicolon(@NotNull String s) {
+            int last = -1;
+            int from = 0;
+            while (true) {
+                int rel = Fxml2BindingExpressionParser.findParamSeparatorSemicolon(s.substring(from));
+                if (rel < 0) return last;
+                last = from + rel;
+                from = last + 1;
+            }
         }
 
         /**
