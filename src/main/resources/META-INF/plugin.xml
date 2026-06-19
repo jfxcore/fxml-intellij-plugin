@@ -17,16 +17,6 @@
          com.intellij.properties is always bundled with IntelliJ IDEA. -->
     <depends>com.intellij.properties</depends>
 
-    <!--
-        The bundled JavaFX plugin (com.intellij.javafx) maps the "fxml" extension to the XML
-        file type via a static <fileType> entry.  Our FileTypeDetector runs during content-based
-        detection (after extension-based lookup) and returns Fxml2FileType for files that carry
-        the JFXcore namespace, overriding the generic XML association for those files only.
-        Plain FXML files are not affected: our detector returns null for them.
-        We list the bundled plugin as optional so the FXML plugin also works in environments
-        where com.intellij.javafx is absent.
-    -->
-    <depends optional="true" config-file="fxml2-with-javafx.xml">org.jetbrains.plugins.javaFX</depends>
     <depends optional="true" config-file="fxml2-with-kotlin.xml">org.jetbrains.kotlin</depends>
 
     <!-- Declare K1+K2 Kotlin plugin mode compatibility. Must be in the main descriptor
@@ -265,8 +255,8 @@
                 to the resource bundle entry and the property is not marked as unused.
               - FileReference(s) for @path (ClassPathResource) so that Ctrl+click
                 navigates to the referenced classpath resource file.
-            Both are added for embedded FXML (@ComponentView) and standalone .fxmlx files;
-            standalone .fxml files are already handled by the bundled JavaFX plugin.
+            Both are added for embedded FXML (@ComponentView) and standalone FXML/2 files
+            (.fxml and .fxmlx alike).
         -->
         <psi.referenceContributor language="XML"
                                   implementation="org.jfxcore.fxml.lang.Fxml2ReferenceContributor"/>
@@ -1049,14 +1039,11 @@
     </extensions>
 
     <actions resource-bundle="messages.Fxml2Bundle">
-        <!--
-            NewFxml2File action: registered without a group here.
-            When the bundled JavaFX plugin is present, fxml2-with-javafx.xml adds it to
-            JavaFxCreateActions right after the existing FXML File entry in NewGroup.
-        -->
         <action id="NewFxml2File"
                 class="org.jfxcore.fxml.actions.CreateFxml2FileAction"
-                icon="AllIcons.FileTypes.Xml"/>
+                icon="AllIcons.FileTypes.Xml">
+            <add-to-group group-id="NewGroup" anchor="after" relative-to-action="NewDir"/>
+        </action>
 
         <!--
             Override the platform's CommentByLineComment (Ctrl+/) and CommentByBlockComment

@@ -32,10 +32,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *       {@link com.intellij.lang.properties.references.PropertyReference}).</li>
  * </ul>
  *
- * <p>For standalone {@code .fxml} files, the bundled JavaFX plugin's
- * {@code FxmlReferencesContributor} already provides file references.  The tests for
- * standalone {@code .fxml} therefore verify that the FXML/2 plugin does not produce
- * <em>duplicate</em> file references.
+ * <p>The same file references are contributed for standalone FXML/2 files, regardless of
+ * whether they use the {@code .fxml} or {@code .fxmlx} extension.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
@@ -239,18 +237,12 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
     }
 
     /**
-     * A {@code @path} value in a standalone {@code .fxml} FXML file must NOT receive
-     * extra {@link FileReference}(s) from the FXML/2 plugin beyond what the bundled JavaFX
-     * plugin's {@code FxmlReferencesContributor} already provides.  The FXML/2 plugin must
-     * not produce duplicates.
-     *
-     * <p>Note: The bundled JavaFX plugin may contribute zero or one set of file references
-     * to a FXML {@code .fxml} file (it depends on the file-type detection order).  What
-     * this test verifies is that the FXML/2 plugin itself adds at most one additional set
-     * (i.e. the total count stays reasonable: not a duplicate explosion).
+     * A {@code @path} value in a standalone {@code .fxml} FXML/2 file receives
+     * {@link FileReference}(s) from the FXML/2 plugin so that Ctrl+click navigates to the
+     * referenced classpath resource file.
      */
     @Test
-    void atPathInStandaloneFxmlDoesNotProduceDuplicateFileReferences() {
+    void atPathInStandaloneFxmlProducesFileReferences() {
         getFixture().addFileToProject("icons/standalone.png", "PNG");
 
         // Add a minimal code-behind so the .fxml file is valid FXML.
@@ -278,19 +270,15 @@ class Fxml2ClassPathResourceFileReferenceTest extends Fxml2TestBase {
             }
             assertNotNull(attrVal, "Could not find text='@/icons/standalone.png' in StandaloneView.fxml");
 
-            // Count FileReference instances coming from the FXML/2 plugin on the attribute.
-            // The bundled JavaFX plugin may add its own set; we verify the FXML/2 plugin
-            // doesn't add an independent second set on top.
-            // Specifically: the FXML/2 plugin should contribute 0 FileReferences for .fxml files.
+            // The FXML/2 plugin contributes one FileReference per path segment so that the
+            // referenced classpath resource is navigable. For "/icons/standalone.png" that is
+            // one reference per segment, never a doubled set.
             long fxml2PluginFileRefs = Arrays.stream(attrVal.getReferences())
                     .filter(r -> r instanceof FileReference)
                     .count();
-            // We can't easily distinguish references by contributor, but the total should be
-            // at most one set (<= path-segment-count, not doubled).
-            // A simple sanity check: no more than 10 file references for a 3-segment path.
-            assertTrue(fxml2PluginFileRefs <= 10,
-                    "Unexpected explosion of FileReferences for standalone .fxml: "
-                    + fxml2PluginFileRefs + " found; suspected duplicate contributions");
+            assertTrue(fxml2PluginFileRefs >= 1 && fxml2PluginFileRefs <= 10,
+                    "FXML/2 plugin must contribute navigable FileReferences for standalone .fxml; "
+                    + "found " + fxml2PluginFileRefs);
         });
     }
 

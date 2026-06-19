@@ -85,16 +85,15 @@ class Fxml2ParserTest extends Fxml2TestBase {
 
     /**
      * Compiler: Unknown_Namespace_Fails (unit test): an unknown XML namespace prefix is an error.
-     * The compiler emits UNKNOWN_NAMESPACE; IntelliJ's XML validator emits its own diagnostics
-     * for the unbound namespace prefix: "Attribute not allowed" on the attribute name, and
-     * "Property is read-only" on the full attribute.
+     * The compiler emits UNKNOWN_NAMESPACE; the plugin reports the unbound-prefix attribute as an
+     * unresolvable property on the enclosing element.
      */
     @Test
     void unknownNamespacePrefixProducesError() {
         getFixture().configureByText("TestView.fxml", """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <?import javafx.scene.layout.*?>
-                <GridPane xmlns="http://javafx.com/javafx" <error descr="Property 'foo:prefWidth' is read-only"><error descr="Attribute foo:prefWidth is not allowed here">foo:prefWidth</error>="10"</error>/>
+                <GridPane xmlns="http://javafx.com/javafx" xmlns:fx="http://jfxcore.org/fxml/2.0" <error descr="'foo:prefWidth' in javafx.scene.layout.GridPane cannot be resolved">foo:prefWidth</error>="10"/>
                 """);
         getFixture().checkHighlighting(false, false, false);
     }

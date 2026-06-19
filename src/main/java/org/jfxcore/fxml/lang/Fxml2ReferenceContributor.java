@@ -6,7 +6,6 @@ import com.intellij.codeInspection.LocalQuickFixProvider;
 import com.intellij.lang.properties.references.PropertyReference;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.XmlPatterns;
 import com.intellij.psi.JavaPsiFacade;
@@ -281,8 +280,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      *       {@link com.intellij.lang.properties.references.PropertyReference} spanning the
      *       positional default argument (resource key) so that Ctrl+click navigates to the
      *       resource bundle entry and the property is not flagged as unused in
-     *       {@code .properties} files.  Applied to all FXML file types, since the bundled
-     *       JavaFX plugin only handles the {@code %key} prefix shorthand (not long forms).</li>
+     *       {@code .properties} files.  Applied to all FXML/2 file types.</li>
      * </ul>
      *
      * <p>The class-name reference is soft so that IntelliJ does not emit an additional
@@ -364,8 +362,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                         // add a PropertyReference for the positional default argument (the resource key).
                         // This enables Ctrl+click navigation to the resource bundle entry and prevents
                         // the key from being flagged as unused in .properties files.
-                        // The bundled JavaFX plugin only handles %key (StaticResource prefix shorthand),
-                        // NOT long-form {DynamicResource key} or {StaticResource key} invocations.
                         if (isResourceKeyExtension(extClass)) {
                             String resourceKey = extractPositionalDefaultArg(paramsPart);
                             if (resourceKey != null) {
@@ -403,14 +399,10 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      *   <li>For {@code %key} (StaticResource): a
      *       {@link com.intellij.lang.properties.references.PropertyReference} spanning the
      *       key text, so that Ctrl+click navigates to the resource bundle entry and the
-     *       property is not flagged as unused in {@code .properties} files.
-     *       Not added for standalone {@code .fxml} files: the bundled JavaFX plugin's
-     *       {@code FxmlResourceReferencesContributor} already provides this there.</li>
+     *       property is not flagged as unused in {@code .properties} files.</li>
      *   <li>For {@code @path} (ClassPathResource): {@link com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference}
      *       instances spanning the path text, so that Ctrl+click navigates to the
-     *       referenced classpath resource file.
-     *       Not added for standalone {@code .fxml} files: the bundled JavaFX plugin's
-     *       {@code FxmlReferencesContributor} already provides this there.</li>
+     *       referenced classpath resource file.</li>
      * </ul>
      */
     private static final class PrefixShorthandReferenceProvider extends PsiReferenceProvider {
@@ -473,11 +465,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             // (name + @DefaultProperty) is applied; otherwise the simple-name heuristic is used
             // as a fallback so that the built-in StaticResource still works even when its
             // compile-time class is absent from the fixture or cannot be indexed.
-            // Standalone .fxml files whose % prefix maps to the built-in StaticResource are
-            // already handled by the bundled JavaFX plugin's FxmlResourceReferencesContributor;
-            // adding a second reference there is not needed.
-            if (needsPluginResourceReferences(xmlFile)
-                    && !pse.defaultArg().isEmpty()
+            if (!pse.defaultArg().isEmpty()
                     && isPrefixMappedToResourceKeyExtension(pse.mappedClass(), extClass)) {
                 int keyStart = 1 + pse.defaultArgOffset(); // +1 for opening quote in attrVal text
                 refs.add(new PropertyReference(
@@ -487,10 +475,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
             // For ClassPathResource (@path notation), add FileReference instances so that
             // Ctrl+click navigates to the referenced classpath resource file.
-            // Standalone .fxml files are already handled by the bundled JavaFX plugin's
-            // FxmlReferencesContributor; adding a second reference there is not needed.
-            if (needsPluginResourceReferences(xmlFile)
-                    && CLASSPATH_RESOURCE_FQN.equals(pse.mappedClass())
+            if (CLASSPATH_RESOURCE_FQN.equals(pse.mappedClass())
                     && !pse.defaultArg().isEmpty()) {
                 String path = pse.defaultArg();
                 int pathStart = 1 + pse.defaultArgOffset(); // +1 for opening quote in attrVal text
@@ -516,25 +501,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
     // -----------------------------------------------------------------------
     // Markup extension reference helpers
     // -----------------------------------------------------------------------
-
-    /**
-     * Returns {@code true} when the FXML/2 plugin must add resource references for the given
-     * file, i.e., the bundled JavaFX plugin's reference contributors do NOT already handle it.
-     *
-     * <p>Returns {@code true} for:
-     * <ul>
-     *   <li>Embedded FXML (injected language fragments: no real VirtualFile extension)</li>
-     *   <li>Standalone {@code .fxmlx} files (not handled by the bundled JavaFX plugin)</li>
-     * </ul>
-     *
-     * <p>Returns {@code false} for standalone {@code .fxml} files where the bundled JavaFX
-     * plugin's reference contributors already fire, so duplicate references must not be added.
-     */
-    private static boolean needsPluginResourceReferences(@NotNull XmlFile xmlFile) {
-        if (Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile)) return true;
-        VirtualFile vf = xmlFile.getVirtualFile();
-        return vf == null || !"fxml".equalsIgnoreCase(vf.getExtension());
-    }
 
     /**
      * Resolves a known built-in resource extension class ({@code DynamicResource},

@@ -28,7 +28,6 @@ repositories {
 dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2025.2.6")
-        bundledPlugin("org.jetbrains.plugins.javaFX")
         bundledPlugin("com.intellij.java")
         bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("org.editorconfig.editorconfigjetbrains")

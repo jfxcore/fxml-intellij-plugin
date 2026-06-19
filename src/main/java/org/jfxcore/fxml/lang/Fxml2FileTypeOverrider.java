@@ -15,19 +15,19 @@ import java.nio.charset.StandardCharsets;
  * returning {@link Fxml2FileType#INSTANCE} for them.
  *
  * <h3>Why a FileTypeOverrider instead of a FileTypeDetector?</h3>
- * <p>The bundled JavaFX plugin registers {@code .fxml} as an extension for the XML file type via a
+ * <p>The {@code .fxml} extension may be mapped to the XML file type by another plugin through a
  * static {@code <fileType name="XML" extensions="fxml"/>} entry. The IntelliJ platform only runs
  * content-based {@code FileTypeDetector}s when the extension lookup returns <em>null</em> or
- * {@code DetectedByContentFileType}. Since the static XML mapping always wins the extension lookup,
- * detectors are never invoked for {@code .fxml} files.
+ * {@code DetectedByContentFileType}. A static XML mapping wins the extension lookup, so detectors
+ * are never invoked for {@code .fxml} files in that case.
  * <p>{@code FileTypeOverrider} is consulted <em>before</em> any extension or content lookup, so it
- * can claim JFXcore files regardless of what the bundled plugin registered.
+ * can claim JFXcore files regardless of any such static registration.
  *
  * <h3>Detection strategy</h3>
  * <p>We read the first {@value #MAX_HEADER_BYTES} bytes of the file and look for the FXML/2
  * namespace URI {@code http://jfxcore.org/fxml/2.0}, which is the definitive marker of an
  * FXML/2 document.  Plain FXML files (which use {@code xmlns:fx="http://javafx.com/fxml"})
- * do not carry this URI and continue to be handled by the bundled JavaFX plugin.
+ * do not carry this URI and are left to the platform's normal detection pipeline.
  */
 public final class Fxml2FileTypeOverrider implements FileTypeOverrider {
 
