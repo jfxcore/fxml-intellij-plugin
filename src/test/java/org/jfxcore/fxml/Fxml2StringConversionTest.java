@@ -10,7 +10,7 @@ import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection;
-import org.jfxcore.fxml.lang.Fxml2ConversionParamNameReference;
+import org.jfxcore.fxml.lang.Fxml2BindingParamNameReference;
 import org.jfxcore.fxml.lang.Fxml2NamespaceUrlReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -146,6 +146,40 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // Conflicting parameters
+    // -----------------------------------------------------------------------
+
+    /**
+     * {@code format}, {@code converter}, and {@code inverseMethod} are mutually exclusive on an
+     * {@code fx:Synchronize} binding.  When two are present, the second is flagged.
+     */
+    @Test
+    void conflictingFormatAndConverterParamsReportsConflict() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{amount; format=format; <error descr="converter and format cannot be used at the same time">converter</error>=converter}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * An unrecognized secondary-parameter name on an {@code fx:Synchronize} binding is reported as
+     * unresolved (the valid names are {@code format}, {@code converter}, {@code inverseMethod}).
+     */
+    @Test
+    void unknownSecondaryParamNameOnSynchronizeIsReported() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.TextField",
+                """
+                  <TextField text="#{amount; <error descr="'bogus' in fx:Synchronize cannot be resolved">bogus</error>=Double.toString}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
     // Ctrl+click on format=/converter= param names: online docs navigation
     // -----------------------------------------------------------------------
 
@@ -163,7 +197,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
         ));
         ReadAction.run(() -> {
             String url = resolveConversionParamNameUrl("#{amount; format=format}", "format");
-            assertEquals(Fxml2ConversionParamNameReference.CONVERSION_DOCS_URL, url,
+            assertEquals(Fxml2BindingParamNameReference.CONVERSION_DOCS_URL, url,
                     "format param name should open conversion docs");
         });
     }
@@ -182,7 +216,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
         ));
         ReadAction.run(() -> {
             String url = resolveConversionParamNameUrl("#{amount; converter=converter}", "converter");
-            assertEquals(Fxml2ConversionParamNameReference.CONVERSION_DOCS_URL, url,
+            assertEquals(Fxml2BindingParamNameReference.CONVERSION_DOCS_URL, url,
                     "converter param name should open conversion docs");
         });
     }
@@ -240,7 +274,7 @@ class Fxml2StringConversionTest extends Fxml2TestBase {
             return resolved instanceof Fxml2NamespaceUrlReference.UrlNavigationTarget t ? t : null;
         }
         for (PsiReference inner : multi.getReferences()) {
-            if (inner instanceof Fxml2ConversionParamNameReference) {
+            if (inner instanceof Fxml2BindingParamNameReference) {
                 PsiElement resolved = inner.resolve();
                 if (resolved instanceof Fxml2NamespaceUrlReference.UrlNavigationTarget t) return t;
             }

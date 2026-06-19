@@ -2525,4 +2525,72 @@ class Fxml2CompletionTest extends Fxml2TestBase {
         assertTrue(names.contains("width"),
                 "Expected property 'width' in argument completions, got: " + names);
     }
+
+    /**
+     * Inside a bidirectional binding, after the {@code ';'} separator with no {@code '='} typed
+     * yet, the secondary-parameter keywords must be offered:
+     * {@code #{width; <caret>}} offers {@code inverseMethod}, {@code format}, {@code converter}.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bidirectionalParamNameCompletion() {
+        getFixture().configureByText("ParamName.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"#{width; <caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        assertNotNull(items, "Expected secondary-parameter keyword completions");
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("inverseMethod"),
+                "Expected 'inverseMethod' parameter keyword, got: " + names);
+        assertTrue(names.contains("format"),
+                "Expected 'format' parameter keyword, got: " + names);
+        assertTrue(names.contains("converter"),
+                "Expected 'converter' parameter keyword, got: " + names);
+    }
+
+    /**
+     * A non-bidirectional binding ({@code ${...}}, {@code fx:Observe}) accepts no secondary
+     * parameters, so after the {@code ';'} separator no parameter keywords are offered.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void observeBindingOffersNoSecondaryParamKeywords() {
+        getFixture().configureByText("NoParamName.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button prefWidth=\"${width; <caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        List<String> names = items == null ? List.of() : displayNames(items);
+        assertFalse(names.contains("inverseMethod"),
+                "fx:Observe must not offer 'inverseMethod', got: " + names);
+        assertFalse(names.contains("format"),
+                "fx:Observe must not offer 'format', got: " + names);
+        assertFalse(names.contains("converter"),
+                "fx:Observe must not offer 'converter', got: " + names);
+    }
+
+    /**
+     * The value of an {@code inverseMethod=} parameter must be completed as a method path:
+     * {@code #{Double.toString(width); inverseMethod=Double.parse<caret>}} offers the
+     * static {@code parseDouble} method of {@code java.lang.Double}.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void inverseMethodValueCompletion() {
+        getFixture().configureByText("InverseMethodValue.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"#{Double.toString(width); inverseMethod=Double.parse<caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            String text = getFixture().getEditor().getDocument().getText();
+            assertTrue(text.contains("parseDouble"),
+                    "Expected 'parseDouble' to be auto-inserted, document: " + text);
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("parseDouble"),
+                "Expected static method 'parseDouble' in inverseMethod completions, got: " + names);
+    }
 }

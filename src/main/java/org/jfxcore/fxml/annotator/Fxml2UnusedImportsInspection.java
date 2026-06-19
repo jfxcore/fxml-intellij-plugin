@@ -339,11 +339,12 @@ public final class Fxml2UnusedImportsInspection extends XmlSuppressableInspectio
 
         // Walk all dot-separated prefixes; any segment followed by more segments that
         // resolves as a class is a class reference. Applied to both the primary path and
-        // the secondary parameter path (converter= or format=).
+        // each secondary parameter value path (e.g. converter=, format=, inverseMethod=).
         collectClassNamesFromExpressionPath(path, names, xmlFile);
-        String paramPath = expr.paramPath();
-        if (expr.hasParam() && paramPath != null) {
-            collectClassNamesFromExpressionPath(paramPath, names, xmlFile);
+        for (Fxml2BindingExpressionParser.SecondaryParam param : expr.params()) {
+            if (!param.path().isBlank()) {
+                collectClassNamesFromExpressionPath(param.path(), names, xmlFile);
+            }
         }
     }
 
