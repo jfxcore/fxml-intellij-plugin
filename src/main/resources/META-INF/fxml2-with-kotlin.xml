@@ -97,7 +97,7 @@
         -->
         <intentionAction>
             <language>kotlin</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <bundleName>messages.Fxml2Bundle</bundleName>
             <className>org.jfxcore.fxml.actions.Fxml2OptimizeImportsActionKotlin</className>
         </intentionAction>

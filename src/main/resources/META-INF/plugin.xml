@@ -736,7 +736,7 @@
         -->
         <intentionAction>
             <language>XML</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.CreateCodeBehindIntention</className>
         </intentionAction>
 
@@ -750,7 +750,7 @@
         -->
         <intentionAction>
             <language>XML</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.EmbedMarkupInCodeBehindIntention</className>
         </intentionAction>
 
@@ -766,12 +766,12 @@
         -->
         <intentionAction>
             <language>JAVA</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.CreateFxmlFileIntentionJava</className>
         </intentionAction>
         <intentionAction>
             <language>kotlin</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.CreateFxmlFileIntentionKotlin</className>
         </intentionAction>
 
@@ -787,7 +787,7 @@
         -->
         <intentionAction>
             <language>JAVA</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.Fxml2OptimizeImportsActionJava</className>
         </intentionAction>
 
@@ -799,19 +799,19 @@
         -->
         <intentionAction>
             <language>XML</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.AddImportForClassReferenceIntention</className>
             <skipBeforeAfter>true</skipBeforeAfter>
         </intentionAction>
         <intentionAction>
             <language>XML</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.ConvertPropertyNotationIntention$ToElement</className>
             <skipBeforeAfter>true</skipBeforeAfter>
         </intentionAction>
         <intentionAction>
             <language>XML</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.ConvertPropertyNotationIntention$ToAttribute</className>
             <skipBeforeAfter>true</skipBeforeAfter>
         </intentionAction>
@@ -824,13 +824,13 @@
         -->
         <intentionAction>
             <language>XML</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.ConvertBindingNotationIntention$ToLongForm</className>
             <skipBeforeAfter>true</skipBeforeAfter>
         </intentionAction>
         <intentionAction>
             <language>XML</language>
-            <categoryKey>inspection.group.name</categoryKey>
+            <categoryKey>intention.category.name</categoryKey>
             <className>org.jfxcore.fxml.actions.ConvertBindingNotationIntention$ToShortForm</className>
             <skipBeforeAfter>true</skipBeforeAfter>
         </intentionAction>
