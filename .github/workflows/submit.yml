@@ -16,7 +16,7 @@ jobs:
       - uses: gradle/actions/wrapper-validation@v6
 
   build:
-    name: Build and publish
+    name: Build and test
     needs: validation
     runs-on: ubuntu-latest
     steps:
