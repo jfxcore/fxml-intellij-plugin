@@ -446,10 +446,12 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                     } else {
                         ownerName = prevType != null ? prevType.getQualifiedName() : "?";
                     }
-                    holder.newAnnotation(HighlightSeverity.ERROR,
+                    var builder = holder.newAnnotation(HighlightSeverity.ERROR,
                             "'" + segName + "' in " + ownerName + " cannot be resolved")
-                            .range(new TextRange(docStart, docEnd))
-                            .create();
+                            .range(new TextRange(docStart, docEnd));
+                    Fxml2AddImportFix importFix = addImportFixForClassSegment(segName, xmlFile);
+                    if (importFix != null) builder = builder.withFix(importFix);
+                    builder.create();
                 }
                 prevResolved = false;
                 prevType = null;
@@ -479,6 +481,31 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             }
         }
         return allResolved;
+    }
+
+    /**
+     * Returns an "Add import for '{@code segName}'" quick fix when an unresolved binding-path
+     * segment denotes a class reference whose import is missing: the function-name (constructor
+     * or static-method qualifier) of a function expression such as {@code ${Color(...)}}, or a
+     * static-field class qualifier such as {@code Foo} in {@code ${Foo.BAR}}.
+     *
+     * <p>Returns {@code null} unless {@code segName} is a simple (un-dotted) identifier starting
+     * with an uppercase letter and at least one importable candidate class exists; this keeps the
+     * fix from appearing on ordinary unresolved instance-property segments, which are lowercase.
+     */
+    private static @org.jetbrains.annotations.Nullable Fxml2AddImportFix addImportFixForClassSegment(
+            @NotNull String segName, @NotNull XmlFile xmlFile) {
+        if (segName.isEmpty() || segName.indexOf('.') >= 0) return null;
+        if (!Character.isJavaIdentifierStart(segName.charAt(0)) || !Character.isUpperCase(segName.charAt(0))) {
+            return null;
+        }
+        for (int i = 1; i < segName.length(); i++) {
+            if (!Character.isJavaIdentifierPart(segName.charAt(i))) return null;
+        }
+        // checkUnusable=false: the class is referenced as a constructor/static qualifier, not a
+        // directly-instantiable FXML tag, so abstract classes and interfaces remain valid candidates.
+        if (Fxml2AddImportFix.findCandidates(segName, xmlFile, false).isEmpty()) return null;
+        return new Fxml2AddImportFix(segName, /* checkUnusable= */ false);
     }
 
     /**

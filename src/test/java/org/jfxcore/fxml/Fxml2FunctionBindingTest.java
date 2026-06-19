@@ -14,6 +14,7 @@ import org.junit.jupiter.api.TestInstance;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for function-binding syntax in FXML binding expressions.
@@ -153,6 +154,52 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
                 """
         ));
         getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A class imported solely to be used as the constructor of a function-binding
+     * expression (e.g. {@code ${Color(...)}}) must not be reported as an unused import.
+     * The constructor name counts as a use of the corresponding import.
+     */
+    @Test
+    void constructorClassImportUsedOnlyInFunctionExpressionIsNotFlaggedAsUnused() {
+        getFixture().enableInspections(new org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection());
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\njavafx.scene.paint.Color",
+                """
+                  <Label textFill="${Color(0.5, 0.5, 0.5, 1.0)}"/>
+                """
+        ));
+        getFixture().checkHighlighting(true, false, false);
+    }
+
+    /**
+     * When the constructor class of a function-binding expression is not imported, the
+     * "'X' ... cannot be resolved" error must offer an "Add import for 'X'" quick fix that
+     * inserts the missing {@code <?import?>} processing instruction.
+     */
+    @Test
+    void unresolvedConstructorClassInFunctionExpressionOffersAddImportFix() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label textFill="${Co<caret>lor(0.5, 0.5, 0.5, 1.0)}"/>
+                """
+        ));
+        getFixture().doHighlighting();
+        var fixes = getFixture().getAllQuickFixes();
+        assertTrue(fixes.stream().anyMatch(
+                        f -> f.getText().contains("Add import") && f.getText().contains("Color")),
+                "Expected 'Add import for Color' quick fix, but got: "
+                        + fixes.stream().map(com.intellij.codeInsight.intention.IntentionAction::getText).toList());
+
+        getFixture().launchAction(fixes.stream()
+                .filter(f -> f.getText().contains("Add import") && f.getText().contains("Color"))
+                .findFirst()
+                .orElseThrow());
+        String result = getFixture().getEditor().getDocument().getText();
+        assertTrue(result.contains("<?import javafx.scene.paint.Color?>"),
+                "Expected Color import to be added, but got: " + result);
     }
 
     // -----------------------------------------------------------------------

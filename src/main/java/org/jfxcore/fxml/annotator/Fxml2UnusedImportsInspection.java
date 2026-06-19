@@ -27,6 +27,7 @@ import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
+import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
@@ -339,10 +340,46 @@ public final class Fxml2UnusedImportsInspection extends XmlSuppressableInspectio
         // Walk all dot-separated prefixes; any segment followed by more segments that
         // resolves as a class is a class reference. Applied to both the primary path and
         // the secondary parameter path (converter= or format=).
-        collectClassNamesFromPath(path, names, xmlFile);
+        collectClassNamesFromExpressionPath(path, names, xmlFile);
         String paramPath = expr.paramPath();
         if (expr.hasParam() && paramPath != null) {
-            collectClassNamesFromPath(paramPath, names, xmlFile);
+            collectClassNamesFromExpressionPath(paramPath, names, xmlFile);
+        }
+    }
+
+    /**
+     * Collects class-name references from a binding path that may be a function-call
+     * expression (e.g. {@code Color(red, green, blue, 1)} or {@code String.format(fmt, x)}).
+     *
+     * <p>The function name preceding the {@code (} contributes a class reference: a bare
+     * name is a constructor class (e.g. {@code Color}); a dotted name is a static-method
+     * qualifier (e.g. {@code String} in {@code String.format}). Each path-valued or nested
+     * function-call argument is scanned recursively. Non-function paths are handled by
+     * {@link #collectClassNamesFromPath}.
+     */
+    private static void collectClassNamesFromExpressionPath(String path, Set<String> names, XmlFile xmlFile) {
+        int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
+        if (parenIdx <= 0) {
+            collectClassNamesFromPath(path, names, xmlFile);
+            return;
+        }
+
+        String funcPath = path.substring(0, parenIdx).trim();
+        if (funcPath.indexOf('.') < 0) {
+            // Bare name: constructor class reference (e.g. Color(...)).
+            if (isResolvableClass(funcPath, xmlFile)) {
+                names.add(simpleNameOf(funcPath));
+            }
+        } else {
+            // Dotted name: static-method class qualifier (e.g. String.format).
+            collectClassNamesFromPath(funcPath, names, xmlFile);
+        }
+
+        for (Fxml2BindingPathResolver.FunctionArgument arg : Fxml2BindingPathResolver.functionArguments(path)) {
+            switch (Fxml2BindingPathResolver.classifyArgument(arg.text())) {
+                case LITERAL -> { /* no class reference */ }
+                case NESTED_CALL, PATH -> collectClassNamesFromExpressionPath(arg.text(), names, xmlFile);
+            }
         }
     }
 
