@@ -1,12 +1,15 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
+import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
 import java.time.Duration
 
 plugins {
-    id("org.jetbrains.intellij.platform") version "2.11.0"
+    id("org.jetbrains.intellij.platform") version "2.16.0"
     java
 }
 
 group = "org.jfxcore"
-version = "0.1.0-SNAPSHOT"
+version = project.findProperty("TAG_VERSION") ?: "1.0-SNAPSHOT"
 
 java {
     toolchain {
@@ -33,8 +36,8 @@ dependencies {
         pluginVerifier()
         zipSigner()
 
-        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
-        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java)
+        testFramework(TestFrameworkType.Platform)
+        testFramework(TestFrameworkType.Plugin.Java)
     }
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
@@ -81,13 +84,13 @@ intellijPlatform {
     }
 
     signing {
-        certificateChainFile = file("certificate/chain.crt")
-        privateKeyFile = file("certificate/private.pem")
-        password = providers.environmentVariable("PRIVATE_KEY_PASSWORD")
+        certificateChain = providers.gradleProperty("certificateChain")
+        privateKey = providers.gradleProperty("signingKey")
+        password = providers.gradleProperty("signingPassword")
     }
 
     publishing {
-        token = providers.environmentVariable("PUBLISH_TOKEN")
+        token = providers.gradleProperty("publishingToken")
     }
 
     pluginVerification {
@@ -113,12 +116,12 @@ tasks.test {
     jvmArgs("-Xshare:off", "-Xmx4g")
 }
 
-// Disable CodeWithMe in the sandbox — it produces irrelevant preload warnings at startup.
-tasks.named<org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask>("prepareSandbox") {
+// Disable CodeWithMe in the sandbox, it produces irrelevant preload warnings at startup.
+tasks.named<PrepareSandboxTask>("prepareSandbox") {
     disabledPlugins.add("com.jetbrains.codeWithMe")
 }
 
-tasks.named<org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask>("runIde") {
+tasks.named<RunIdeTask>("runIde") {
     // Always rebuild so the sandbox jar never runs stale code.
     dependsOn("buildPlugin")
     jvmArgumentProviders += CommandLineArgumentProvider {
