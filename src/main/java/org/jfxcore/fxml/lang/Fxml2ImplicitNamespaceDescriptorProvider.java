@@ -29,7 +29,7 @@ public final class Fxml2ImplicitNamespaceDescriptorProvider implements ImplicitN
         // Recognize any FXML namespace variant (JavaFX default or FXML/2 intrinsics),
         // accepting versioned/trailing-slash forms.
         if (!Fxml2ImportResolver.isFxmlNamespace(ns)) return null;
-        // Only activate for FXML/2 files; leave classic FXML files to the JavaFX plugin.
+        // Only activate for FXML/2 files; classic FXML files are out of scope.
         if (file instanceof XmlFile xmlFile && !Fxml2FileType.isFxml2(xmlFile)) {
             return null;
         }

@@ -38,9 +38,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>The property is not reported as "unused" by the properties plugin.</li>
  * </ul>
  *
- * <p>Standalone {@code .fxml} files are already handled by the bundled JavaFX plugin's
- * {@code FxmlResourceReferencesContributor}; these tests therefore focus exclusively on
- * the embedded case.
+ * <p>The same reference is contributed for standalone FXML/2 files, regardless of whether
+ * they use the {@code .fxml} or {@code .fxmlx} extension.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
@@ -457,13 +456,12 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
     }
 
     /**
-     * A {@code %key} value in a standalone {@code .fxml} FXML file must NOT receive
-     * a second {@link PropertyReferenceBase} from the FXML/2 plugin: the bundled JavaFX
-     * plugin's {@code FxmlResourceReferencesContributor} already handles those files.
-     * The FXML/2 plugin must not produce duplicates.
+     * A {@code %key} value in a standalone {@code .fxml} FXML/2 file receives exactly one
+     * {@link PropertyReferenceBase} from the FXML/2 plugin, so that Ctrl+click navigates to
+     * the resource bundle entry and the key is not flagged as unused.
      */
     @Test
-    void percentKeyInStandaloneFxmlDoesNotProduceDuplicatePropertyReference() {
+    void percentKeyInStandaloneFxmlProducesPropertyReference() {
         getFixture().addFileToProject("test/standalone.properties", "label.text=Standalone");
 
         // Add a minimal code-behind so the .fxml file is valid FXML.
@@ -491,14 +489,12 @@ class Fxml2StaticResourcePropertyReferenceTest extends Fxml2TestBase {
             }
             assertNotNull(attrVal, "Could not find text='%label.text' in StandaloneView.fxml");
 
-            // Count PropertyReferenceBase instances on the attribute.
-            // The FXML/2 plugin adds zero for standalone .fxml files; the JavaFX plugin may add one.
-            // Either way the total must be <= 1 (no duplicates from the FXML/2 plugin).
+            // The FXML/2 plugin contributes exactly one PropertyReference for the %key value.
             long count = java.util.Arrays.stream(attrVal.getReferences())
                     .filter(r -> r instanceof PropertyReferenceBase)
                     .count();
-            assertTrue(count <= 1,
-                    "FXML/2 plugin must not produce a duplicate PropertyReference for standalone .fxml; "
+            assertEquals(1, count,
+                    "FXML/2 plugin must produce exactly one PropertyReference for standalone .fxml; "
                     + "found " + count + " PropertyReferenceBase instance(s)");
         });
     }
