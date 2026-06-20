@@ -286,8 +286,19 @@ public final class Fxml2BindingExpressionParser {
      * @param message     human-readable error message
      * @param errorOffset offset within the raw value (quotes excluded) where the error is located
      * @param errorLength length of the erroneous token (1 for a missing/unexpected single char)
+     * @param recoverableBraced {@code true} when the only defect is a not-yet-typed closing brace
+     *                          on an otherwise braced binding notation, so a lenient re-parse with
+     *                          a synthetic brace can still yield navigable references
      */
-    public record ParseError(@NotNull String message, int errorOffset, int errorLength) {}
+    public record ParseError(@NotNull String message, int errorOffset, int errorLength,
+                             boolean recoverableBraced) {
+        public ParseError(@NotNull String message, int errorOffset, int errorLength) {
+            this(message, errorOffset, errorLength, false);
+        }
+    }
+
+    /** Error message produced for an unterminated braced binding notation (no closing {@code }}). */
+    private static final String MISSING_CLOSING_BRACE = "'}' expected";
 
     /**
      * Represents a missing binding path: returned when a binding expression requires a path
@@ -522,7 +533,7 @@ public final class Fxml2BindingExpressionParser {
         // {fx:Evaluate source}, {fx:Observe source}, {fx:Push source}, {fx:Synchronize source}, etc.
         if (value.startsWith("{")) {
             if (!value.endsWith("}")) {
-                return new ParseError("'}' expected", value.length(), 0);
+                return new ParseError(MISSING_CLOSING_BRACE, value.length(), 0, true);
             }
             String inner = value.substring(1, value.length() - 1).trim();
             int ws = indexOfWhitespace(inner);
@@ -639,6 +650,39 @@ public final class Fxml2BindingExpressionParser {
     public static @Nullable ParsedExpression parseExpression(@NotNull String value) {
         Object result = parse(value);
         return result instanceof ParsedExpression pe ? pe : null;
+    }
+
+    /**
+     * Like {@link #parseExpression(String)} but tolerant of a not-yet-typed closing brace, so
+     * that the already-complete leading segments of a binding expression still produce navigable
+     * references while the user is mid-edit. For example, a half-typed observe binding
+     * <code>${String.fo</code> with no closing brace yet, or a function call
+     * <code>${String.format('foo', value</code> with neither a closing parenthesis nor brace.
+     *
+     * <p>When the value uses a braced notation (<code>${</code>, <code>&gt;{</code>,
+     * <code>#{</code>, or a <code>{fx:...}</code> keyword form) but does not end with a closing
+     * brace, a synthetic closing brace is appended before parsing. Because the brace is appended
+     * at the very end, every offset within the {@link ParsedExpression} stays valid for the
+     * original, unbraced text. The missing-brace diagnostic is produced separately by the
+     * annotator via the strict {@link #parse(String)} path, so navigation and validation stay
+     * independent.
+     *
+     * @return a {@link ParsedExpression}, or {@code null} if the value is not a (possibly partial)
+     *         binding expression
+     */
+    public static @Nullable ParsedExpression parseExpressionLenient(@NotNull String value) {
+        Object result = parse(value);
+        if (result instanceof ParsedExpression pe) {
+            return pe;
+        }
+        // A still-being-typed braced expression fails strict parsing with a missing-brace error.
+        // Retry once with a synthetic closing brace so the already-complete leading segments still
+        // produce navigable references. The brace is appended at the very end, so every offset in
+        // the result stays valid for the original, unbraced text.
+        if (result instanceof ParseError error && error.recoverableBraced()) {
+            return parseExpression(value + "}");
+        }
+        return null;
     }
 
     /**
@@ -877,7 +921,7 @@ public final class Fxml2BindingExpressionParser {
             int prefixLength,
             @NotNull org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind kind) {
         if (!value.endsWith("}")) {
-            return new ParseError("'}' expected", value.length(), 0);
+            return new ParseError(MISSING_CLOSING_BRACE, value.length(), 0, true);
         }
         String rawPath = value.substring(prefixLength, value.length() - 1).trim();
         if (rawPath.isEmpty()) {

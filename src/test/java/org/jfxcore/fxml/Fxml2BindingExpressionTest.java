@@ -1,6 +1,8 @@
 package org.jfxcore.fxml;
 
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Timeout;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -711,6 +714,27 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // Compact push binding (>{...}) navigation
+    // -----------------------------------------------------------------------
+
+    /**
+     * Ctrl+click on a path segment inside a compact push binding ({@code >{message}}) must
+     * navigate to the property accessor method.
+     */
+    @Test
+    void ctrlClickOnPathSegmentOfPushBindingResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text=">{mes<caret>sage}"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'message' in a >{...} binding should resolve to the property accessor");
+    }
+
+    // -----------------------------------------------------------------------
     // Incomplete binding expressions: missing closing '}'
     // -----------------------------------------------------------------------
 
@@ -742,5 +766,128 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 """
         ));
         getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Navigation on partially-typed (unterminated) binding expressions
+    // -----------------------------------------------------------------------
+
+    /**
+     * A compact observe binding ({@code ${...}}) with no closing brace must still resolve
+     * its already-complete path segment for Ctrl+click navigation.
+     */
+    @Test
+    void ctrlClickOnPathSegmentOfUnterminatedObserveBindingResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${mes<caret>sage"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'message' in an unterminated ${...} binding should resolve to the property accessor");
+    }
+
+    /**
+     * A compact bidirectional binding ({@code #{...}}) with no closing brace must still
+     * resolve its already-complete path segment for Ctrl+click navigation.
+     */
+    @Test
+    void ctrlClickOnPathSegmentOfUnterminatedSynchronizeBindingResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="#{mes<caret>sage"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'message' in an unterminated #{...} binding should resolve to the property accessor");
+    }
+
+    /**
+     * A compact push binding ({@code >{...}}) with no closing brace must still resolve
+     * its already-complete path segment for Ctrl+click navigation.
+     */
+    @Test
+    void ctrlClickOnPathSegmentOfUnterminatedPushBindingResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text=">{mes<caret>sage"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'message' in an unterminated >{...} binding should resolve to the property accessor");
+    }
+
+    /**
+     * A keyword observe binding ({@code {fx:Observe ...}}) with no closing brace must
+     * still resolve its already-complete path segment for Ctrl+click navigation.
+     */
+    @Test
+    void ctrlClickOnPathSegmentOfUnterminatedFxObserveBindingResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="{fx:Observe mes<caret>sage"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'message' in an unterminated {fx:Observe ...} binding should resolve to the property accessor");
+    }
+
+    /**
+     * A keyword synchronize binding ({@code {fx:Synchronize ...}}) with no closing brace
+     * must still resolve its already-complete path segment for Ctrl+click navigation.
+     */
+    @Test
+    void ctrlClickOnPathSegmentOfUnterminatedFxSynchronizeBindingResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="{fx:Synchronize mes<caret>sage"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'message' in an unterminated {fx:Synchronize ...} binding should resolve to the property accessor");
+    }
+
+    /**
+     * A keyword evaluate binding ({@code {fx:Evaluate ...}}) with no closing brace must
+     * still resolve its already-complete path segment for Ctrl+click navigation.
+     */
+    @Test
+    void ctrlClickOnPathSegmentOfUnterminatedFxEvaluateBindingResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="{fx:Evaluate mes<caret>sage"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'message' in an unterminated {fx:Evaluate ...} binding should resolve to the property accessor");
+    }
+
+    /**
+     * A keyword push binding ({@code {fx:Push ...}}) with no closing brace must still
+     * resolve its already-complete path segment for Ctrl+click navigation.
+     */
+    @Test
+    void ctrlClickOnPathSegmentOfUnterminatedFxPushBindingResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="{fx:Push mes<caret>sage"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertInstanceOf(PsiMethod.class, target,
+                "Ctrl+click on 'message' in an unterminated {fx:Push ...} binding should resolve to the property accessor");
     }
 }

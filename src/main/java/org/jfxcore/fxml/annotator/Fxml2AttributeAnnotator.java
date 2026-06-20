@@ -1331,7 +1331,10 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 Fxml2ImportResolver.parsePrefixMappings(xmlFile));
         switch (parsed) {
             case null -> { return; }
-            case Fxml2BindingExpressionParser.ParseError(String message, int errorOffset, int errorLength) -> {
+            case Fxml2BindingExpressionParser.ParseError error -> {
+                String message = error.message();
+                int errorOffset = error.errorOffset();
+                int errorLength = error.errorLength();
                 TextRange attrRange = attrVal.getTextRange();
                 int docBase = attrRange.getStartOffset() + 1; // +1 to skip opening quote
                 // When the error covers the entire value (offset=0, length=value.length()),

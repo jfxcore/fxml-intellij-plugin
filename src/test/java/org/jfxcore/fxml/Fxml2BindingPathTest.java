@@ -559,28 +559,6 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
         });
     }
 
-    /**
-     * Finds the first {@link Fxml2BindingSegmentReference} at the caret that resolves to a
-     * non-null element. Skips {@code Fxml2ExpressionReference} (always-null blocker) and
-     * {@code LiteralValueReferenceProvider} references (which resolve to property setters).
-     */
-    private PsiElement resolveSegmentAtCaret() {
-        return ReadAction.compute(() -> {
-            int offset = getFixture().getCaretOffset();
-            XmlAttributeValue attrVal = com.intellij.psi.util.PsiTreeUtil.findElementOfClassAtOffset(
-                    getFixture().getFile(), offset, XmlAttributeValue.class, false);
-            if (attrVal == null) return null;
-            int relOffset = offset - attrVal.getTextRange().getStartOffset();
-            for (PsiReference ref : attrVal.getReferences()) {
-                if (!(ref instanceof Fxml2BindingSegmentReference)) continue;
-                if (ref.getRangeInElement().containsOffset(relOffset)) {
-                    return ref.resolve();
-                }
-            }
-            return null;
-        });
-    }
-
     // -----------------------------------------------------------------------
     // AddImportForClassReferenceIntention
     // -----------------------------------------------------------------------
