@@ -1233,6 +1233,10 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 "Expected 'USE_COMPUTED_SIZE' in completions, got: " + names);
         assertTrue(names.contains("USE_PREF_SIZE"),
                 "Expected 'USE_PREF_SIZE' in completions, got: " + names);
+        assertTrue(names.contains("Infinity"),
+                "Expected 'Infinity' (shorthand for POSITIVE_INFINITY) in completions, got: " + names);
+        assertTrue(names.contains("-Infinity"),
+                "Expected '-Infinity' (shorthand for NEGATIVE_INFINITY) in completions, got: " + names);
     }
 
     /**

@@ -295,7 +295,12 @@ public final class Fxml2AttributeValueResolver {
         if (containsUnresolvedTypeParameter(propType)) return Result.STRING;
 
         String typeName = propType.getCanonicalText();
-        if (isPrimitive(typeName)) return parsePrimitive(typeName, value.trim());
+        if (isPrimitive(typeName)) {
+            PsiField specialField = resolveFloatingPointSpecialLiteral(
+                    typeName, value.trim(), ownerClass.getProject(), scope);
+            if (specialField != null) return new Result(specialField, true);
+            return parsePrimitive(typeName, value.trim());
+        }
         if ("java.lang.String".equals(typeName) || "String".equals(typeName)) return Result.STRING;
         // Read-only collection properties (e.g. ObservableList<String> styleClass) with no setter:
         // accept any comma-separated string values: item type validation done below if resolvable.
@@ -460,7 +465,12 @@ public final class Fxml2AttributeValueResolver {
         }
 
         String typeName = propType.getCanonicalText();
-        if (isPrimitive(typeName)) return parsePrimitive(typeName, value.trim());
+        if (isPrimitive(typeName)) {
+            PsiField specialField = resolveFloatingPointSpecialLiteral(
+                    typeName, value.trim(), declaringClass.getProject(), declaringClass.getResolveScope());
+            if (specialField != null) return new Result(specialField, true);
+            return parsePrimitive(typeName, value.trim());
+        }
         if ("java.lang.String".equals(typeName)) return Result.STRING;
 
         PsiClass propClass = PsiUtil.resolveClassInType(propType);
@@ -820,6 +830,35 @@ public final class Fxml2AttributeValueResolver {
         String pb = boxedFqn(p);
         String fb = boxedFqn(f);
         return (pb != null && pb.equals(f)) || (fb != null && fb.equals(p)) || p.equals(f);
+    }
+
+    /**
+     * Maps the Java floating-point special literal strings {@code "Infinity"} and
+     * {@code "-Infinity"} to the corresponding constant fields on {@code Double} or
+     * {@code Float}, so that attribute values using these strings can offer navigation
+     * to {@code POSITIVE_INFINITY} or {@code NEGATIVE_INFINITY}.
+     *
+     * <p>{@code "NaN"} is not handled here because it matches the actual field name
+     * {@code Double.NaN}/{@code Float.NaN} and is already resolved by the static-field
+     * lookup in {@link #resolve}.
+     *
+     * @return the matching field, or {@code null} if {@code value} is not a special literal
+     *         or the class cannot be found
+     */
+    private static @Nullable PsiField resolveFloatingPointSpecialLiteral(
+            @NotNull String typeName, @NotNull String value,
+            @NotNull com.intellij.openapi.project.Project project,
+            @NotNull GlobalSearchScope scope) {
+        String fieldName = switch (value) {
+            case "Infinity"  -> "POSITIVE_INFINITY";
+            case "-Infinity" -> "NEGATIVE_INFINITY";
+            default          -> null;
+        };
+        if (fieldName == null) return null;
+        String className = ("float".equals(typeName) || "java.lang.Float".equals(typeName))
+                ? "java.lang.Float" : "java.lang.Double";
+        PsiClass cls = JavaPsiFacade.getInstance(project).findClass(className, scope);
+        return cls != null ? cls.findFieldByName(fieldName, false) : null;
     }
 
     /**

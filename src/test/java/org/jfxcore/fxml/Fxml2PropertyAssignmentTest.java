@@ -1,10 +1,20 @@
 package org.jfxcore.fxml;
 
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiField;
+import com.intellij.psi.PsiReference;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.xml.XmlAttributeValue;
+import com.intellij.psi.xml.XmlTag;
 import org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection;
+import org.jfxcore.fxml.lang.Fxml2AttributeValueReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
@@ -167,6 +177,69 @@ class Fxml2PropertyAssignmentTest extends Fxml2TestBase {
                 """
         ));
         getFixture().checkHighlighting(false, false, false);
+    }
+
+    @Test
+    void infinityAttributeValueNavigatesToPositiveInfinity() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Button",
+                """
+                  <Button prefWidth="Infinity"/>
+                """
+        ));
+        ReadAction.run(() -> {
+            XmlAttributeValue attrVal = findAttrValue("Infinity");
+            assertNotNull(attrVal, "Could not find prefWidth=\"Infinity\" attribute value");
+            PsiReference ref = findAttributeValueRef(attrVal);
+            assertNotNull(ref, "Expected a Fxml2AttributeValueReference on 'Infinity'");
+            PsiElement resolved = ref.resolve();
+            assertNotNull(resolved, "'Infinity' should resolve to Double.POSITIVE_INFINITY");
+            assertInstanceOf(PsiField.class, resolved);
+            PsiField field = (PsiField) resolved;
+            assertEquals("POSITIVE_INFINITY", field.getName());
+            assertNotNull(field.getContainingClass());
+            assertEquals("java.lang.Double", field.getContainingClass().getQualifiedName());
+        });
+    }
+
+    @Test
+    void negativeInfinityAttributeValueNavigatesToNegativeInfinity() {
+        getFixture().configureByText("TestView2.fxml", fxml(
+                "javafx.scene.control.Button",
+                """
+                  <Button prefWidth="-Infinity"/>
+                """
+        ));
+        ReadAction.run(() -> {
+            XmlAttributeValue attrVal = findAttrValue("-Infinity");
+            assertNotNull(attrVal, "Could not find prefWidth=\"-Infinity\" attribute value");
+            PsiReference ref = findAttributeValueRef(attrVal);
+            assertNotNull(ref, "Expected a Fxml2AttributeValueReference on '-Infinity'");
+            PsiElement resolved = ref.resolve();
+            assertNotNull(resolved, "'-Infinity' should resolve to Double.NEGATIVE_INFINITY");
+            assertInstanceOf(PsiField.class, resolved);
+            PsiField field = (PsiField) resolved;
+            assertEquals("NEGATIVE_INFINITY", field.getName());
+            assertNotNull(field.getContainingClass());
+            assertEquals("java.lang.Double", field.getContainingClass().getQualifiedName());
+        });
+    }
+
+    private XmlAttributeValue findAttrValue(String value) {
+        for (XmlTag tag : PsiTreeUtil.findChildrenOfType(getFixture().getFile(), XmlTag.class)) {
+            for (var attr : tag.getAttributes()) {
+                XmlAttributeValue v = attr.getValueElement();
+                if (v != null && value.equals(v.getValue())) return v;
+            }
+        }
+        return null;
+    }
+
+    private static PsiReference findAttributeValueRef(XmlAttributeValue attrVal) {
+        for (PsiReference ref : attrVal.getReferences()) {
+            if (ref instanceof Fxml2AttributeValueReference) return ref;
+        }
+        return null;
     }
 
     @Test

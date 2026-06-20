@@ -1958,6 +1958,33 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                             .withTypeText("boolean"));
                 }
 
+                // For double/float, add "Infinity" and "-Infinity" as shorthand completions
+                // that navigate to the POSITIVE_INFINITY / NEGATIVE_INFINITY constant.
+                boolean isDoubleType = "double".equals(canonicalType) || "java.lang.Double".equals(canonicalType);
+                boolean isFloatType  = "float".equals(canonicalType)  || "java.lang.Float".equals(canonicalType);
+                if (isDoubleType || isFloatType) {
+                    String fpBoxedName = isDoubleType ? "java.lang.Double" : "java.lang.Float";
+                    String fpClassName = isDoubleType ? "Double" : "Float";
+                    PsiClass fpClass = JavaPsiFacade.getInstance(ownerClass.getProject())
+                            .findClass(fpBoxedName, ownerClass.getResolveScope());
+                    if (fpClass != null) {
+                        PsiField posInf = fpClass.findFieldByName("POSITIVE_INFINITY", false);
+                        PsiField negInf = fpClass.findFieldByName("NEGATIVE_INFINITY", false);
+                        if (posInf != null) {
+                            result.addElement(LookupElementBuilder.create(posInf, "Infinity")
+                                    .withIcon(AllIcons.Nodes.Field)
+                                    .withTypeText(canonicalType)
+                                    .withTailText(" (" + fpClassName + ".POSITIVE_INFINITY)", true));
+                        }
+                        if (negInf != null) {
+                            result.addElement(LookupElementBuilder.create(negInf, "-Infinity")
+                                    .withIcon(AllIcons.Nodes.Field)
+                                    .withTypeText(canonicalType)
+                                    .withTailText(" (" + fpClassName + ".NEGATIVE_INFINITY)", true));
+                        }
+                    }
+                }
+
                 // Use a display-type name for the lookup element (e.g. "double" for primitives).
                 String typeText = propClass != null
                         ? java.util.Objects.requireNonNullElse(propClass.getName(), propType.getPresentableText())
