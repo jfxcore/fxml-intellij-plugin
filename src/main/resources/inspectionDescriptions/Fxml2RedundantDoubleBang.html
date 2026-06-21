@@ -1,16 +1,15 @@
 <html lang="en">
 <body>
-Reports a redundant <code>!!</code> (BOOLIFY) operator in an FXML binding expression
-when the resolved type of the bound path is <code>Boolean</code>.
+Reports a redundant <code>!!</code> operator in an FXML binding expression
+when the resolved type of the bound path is the boolean type.
 <p>
-The FXML compiler treats <code>!!</code> on a <code>Boolean</code>-typed observable as a
-compile-time no-op: the observable is passed directly to the target property without any
-<code>BooleanBindings</code> wrapping.  The <code>!!</code> prefix is therefore unnecessary
-and can be safely removed.
+The FXML compiler treats <code>!!</code> on a boolean-typed observable as a compile-time no-op:
+the observable is passed directly to the target property; the <code>!!</code> operator is therefore
+unnecessary and can be safely removed.
 <p>
-For <code>Number</code> types <code>!!</code> maps to <code>BooleanBindings.isNotZero</code>,
-and for other reference types to <code>BooleanBindings.isNotNull</code>; neither of those
-is a no-op, so no warning is produced in those cases.
+For numeric primitive types, <code>!!</code> converts the source type to <code>true</code> if the value
+is non-zero. For reference types, <code>!!</code> converts the source type to <code>true</code> if the
+value is non-null. Neither of those is a no-op, so no warning is produced in those cases.
 <p>
 <b>Example (flagged):</b>
 <pre><code>disable="${!!active}"  <!-- active is a BooleanProperty --></code></pre>
