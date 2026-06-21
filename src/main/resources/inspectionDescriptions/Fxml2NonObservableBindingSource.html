@@ -5,9 +5,7 @@ expressions where <b>no segment</b> in the binding path resolves to a
 <code>javafx.beans.value.ObservableValue</code>.
 <p>
 When the entire path consists of plain fields or Java-Beans getters that do not return an
-<code>ObservableValue</code>, the FXML compiler rejects the binding with
-<code>INVALID_UNIDIRECTIONAL_BINDING_SOURCE</code> or
-<code>INVALID_BIDIRECTIONAL_BINDING_SOURCE</code>.
+<code>ObservableValue</code>, the FXML compiler rejects the binding.
 <p>
 A quick-fix is offered to downgrade the binding to a one-time evaluate binding
 (<code>$path</code>).
