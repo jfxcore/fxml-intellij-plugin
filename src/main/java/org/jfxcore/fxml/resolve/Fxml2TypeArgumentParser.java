@@ -83,12 +83,35 @@ public final class Fxml2TypeArgumentParser {
      * left untouched.
      */
     public static @NotNull String rawName(@NotNull String typeArg) {
-        for (int i = 0; i < typeArg.length(); i++) {
-            if (bracketAt(typeArg, i) > 0) {
-                return typeArg.substring(0, i).stripTrailing();
-            }
+        int open = indexOfOpeningBracket(typeArg, 0);
+        return open < 0 ? typeArg : typeArg.substring(0, open).stripTrailing();
+    }
+
+    /**
+     * Finds the first opening bracket of a type-argument list at or after {@code fromIndex},
+     * in either the literal ({@code <}) or the escaped ({@code &lt;}) form.
+     *
+     * <p>Also serves callers that only need to strip a type witness, such as
+     * {@code observableArrayList<String>} in {@code fx:factory} or {@code get<String>} in a
+     * binding path.
+     *
+     * @return the offset of the bracket, or {@code -1} if there is none
+     */
+    public static int indexOfOpeningBracket(@NotNull String text, int fromIndex) {
+        for (int i = Math.max(0, fromIndex); i < text.length(); i++) {
+            if (bracketAt(text, i) > 0) return i;
         }
-        return typeArg;
+        return -1;
+    }
+
+    /**
+     * Returns the length of the opening bracket at {@code index}: {@code 1} for {@code <},
+     * {@code 4} for {@code &lt;}, and {@code 0} when there is no opening bracket there.
+     * Adding it to {@code index} yields the offset of the first type argument.
+     */
+    public static int openingBracketLength(@NotNull String text, int index) {
+        if (index < 0 || index >= text.length() || bracketAt(text, index) <= 0) return 0;
+        return bracketLength(text, index);
     }
 
     /**

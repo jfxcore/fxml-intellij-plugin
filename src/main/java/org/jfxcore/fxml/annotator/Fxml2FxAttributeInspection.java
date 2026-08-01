@@ -364,10 +364,8 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                 if (factoryValue != null && !factoryValue.isBlank()) {
                     String methodName = factoryValue.trim();
                     // Strip type witness: "observableArrayList<String>" -> "observableArrayList"
-                    // Also handle XML-entity-encoded form "&lt;" in case getValue() is not fully decoded
-                    int angleIdx = methodName.indexOf('<');
-                    if (angleIdx < 0) angleIdx = methodName.indexOf('&'); // &lt; form
-                    if (angleIdx > 0) methodName = methodName.substring(0, angleIdx).trim();
+                    // (handles the literal '<' and the XML-entity-encoded "&lt;" form)
+                    methodName = Fxml2TypeArgumentParser.rawName(methodName);
                     boolean found = false;
                     for (PsiMethod m : tagClass.findMethodsByName(methodName, true)) {
                         if (m.hasModifierProperty(PsiModifier.STATIC)

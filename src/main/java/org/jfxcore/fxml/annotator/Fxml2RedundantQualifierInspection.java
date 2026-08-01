@@ -184,14 +184,9 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
         if (afterName >= rawValue.length()) return;
 
         // Accept both literal '<' and XML-escaped '&lt;' forms.
-        int contentStart;
-        if (rawValue.charAt(afterName) == '<') {
-            contentStart = afterName + 1;
-        } else if (rawValue.startsWith("&lt;", afterName)) {
-            contentStart = afterName + 4;
-        } else {
-            return; // no type arguments
-        }
+        int openBracketLen = Fxml2TypeArgumentParser.openingBracketLength(rawValue, afterName);
+        if (openBracketLen == 0) return; // no type arguments
+        int contentStart = afterName + openBracketLen;
 
         int closeOffset = Fxml2TypeArgumentParser.findClosingBracket(rawValue, contentStart);
         if (closeOffset < 0) return;

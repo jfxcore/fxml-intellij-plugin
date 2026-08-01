@@ -587,8 +587,8 @@ public final class Fxml2TypeArgumentInferrer {
         // Reject any constructs we don't statically support (function calls, attached
         // property groups, type witnesses, observable selectors).  Source 2 inference
         // is opt-in for simple dotted paths.
-        if (remainingPath.contains("(") || remainingPath.contains("<")
-                || remainingPath.contains("&lt;") || remainingPath.contains("::")) {
+        if (remainingPath.contains("(") || remainingPath.contains("::")
+                || Fxml2TypeArgumentParser.indexOfOpeningBracket(remainingPath, 0) >= 0) {
             return null;
         }
 

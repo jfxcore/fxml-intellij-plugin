@@ -128,17 +128,12 @@ public final class Fxml2AttributeValueResolver {
         if (argClass == null) return null;
 
         // Locate the argument's own type-argument list, in literal or escaped form.
-        int open = text.indexOf('<', rawName.length());
-        int openLen = 1;
-        if (open < 0) {
-            open = text.indexOf("&lt;", rawName.length());
-            openLen = 4;
-        }
+        int open = Fxml2TypeArgumentParser.indexOfOpeningBracket(text, rawName.length());
         if (open < 0) {
             return facade.getElementFactory().createType(argClass);
         }
 
-        int contentStart = open + openLen;
+        int contentStart = open + Fxml2TypeArgumentParser.openingBracketLength(text, open);
         int closeOffset = Fxml2TypeArgumentParser.findClosingBracket(text, contentStart);
         if (closeOffset < 0) return facade.getElementFactory().createType(argClass);
 

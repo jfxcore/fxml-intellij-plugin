@@ -616,17 +616,11 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
         if (afterName >= rawValue.length()) return;
 
-        boolean literal;
-        int contentStart; // offset in rawValue of first char after opening bracket
-        if (rawValue.charAt(afterName) == '<') {
-            literal = true;
-            contentStart = afterName + 1;
-        } else if (rawValue.startsWith("&lt;", afterName)) {
-            literal = false;
-            contentStart = afterName + 4; // skip "&lt;"
-        } else {
-            return; // no type arg bracket
-        }
+        // The bracket must follow the class name immediately, in either the literal
+        // ('<') or the escaped ("&lt;") form.
+        int openBracketLen = Fxml2TypeArgumentParser.openingBracketLength(rawValue, afterName);
+        if (openBracketLen == 0) return; // no type arg bracket
+        int contentStart = afterName + openBracketLen; // offset of first char after opening bracket
 
         // Find the matching close bracket (nested type arguments are taken into account)
         int closeOffset = Fxml2TypeArgumentParser.findClosingBracket(rawValue, contentStart);
@@ -638,7 +632,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         // findReferenceAt() never returns null for cursor positions on '<'/'&lt;' or '>'/'&gt;'.
         // Without them, the cursor landing exactly on the bracket triggers a non-deterministic
         // word-at-caret fallback that may highlight either the class name or the type arg.
-        int openBracketLen  = literal ? 1 : 4; // '<' vs "&lt;"
         int closeBracketLen = rawValue.charAt(closeOffset) == '&' ? 4 : 1; // "&gt;" vs '>'
         refs.add(softRef(attrVal, new TextRange(1 + afterName, 1 + afterName + openBracketLen), null));
         refs.add(softRef(attrVal, new TextRange(1 + closeOffset, 1 + closeOffset + closeBracketLen), null));
