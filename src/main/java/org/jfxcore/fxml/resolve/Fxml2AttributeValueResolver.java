@@ -89,23 +89,72 @@ public final class Fxml2AttributeValueResolver {
         PsiTypeParameter[] typeParams = ownerClass.getTypeParameters();
         if (typeParams.length == 0) return PsiSubstitutor.EMPTY;
 
-        String[] typeArgNames = raw.split(",", -1);
+        // Top-level split only: an argument may itself be parameterized, e.g.
+        // fx:typeArguments="javafx.util.Pair&lt;String, String&gt;" is a single argument.
+        List<Fxml2TypeArgumentParser.TypeArg> typeArgs = Fxml2TypeArgumentParser.splitTopLevel(raw);
         PsiSubstitutor sub = PsiSubstitutor.EMPTY;
         JavaPsiFacade facade = JavaPsiFacade.getInstance(ownerClass.getProject());
         GlobalSearchScope resolveScope = Fxml2ImportResolver.compileScope(xmlFile);
 
-        for (int i = 0; i < Math.min(typeParams.length, typeArgNames.length); i++) {
-            String argName = typeArgNames[i].trim();
-            if (argName.isBlank()) continue;
-            // Try import resolution first (handles simple names and import aliases).
-            PsiClass argClass = Fxml2ImportResolver.resolve(argName, xmlFile);
-            if (argClass == null) {
-                argClass = facade.findClass(argName, resolveScope);
-            }
-            if (argClass == null) return PsiSubstitutor.EMPTY; // cannot resolve -> give up
-            sub = sub.put(typeParams[i], facade.getElementFactory().createType(argClass));
+        for (int i = 0; i < Math.min(typeParams.length, typeArgs.size()); i++) {
+            PsiType argType = resolveTypeArgument(typeArgs.get(i).text(), xmlFile, facade, resolveScope);
+            if (argType == null) return PsiSubstitutor.EMPTY; // cannot resolve -> give up
+            sub = sub.put(typeParams[i], argType);
         }
         return sub;
+    }
+
+    /**
+     * Resolves a single (possibly parameterized) type argument such as {@code "String"} or
+     * {@code "javafx.util.Pair<String, Integer>"} to a {@link PsiType}.  Nested arguments are
+     * applied when they all resolve and their count matches the class's type parameters;
+     * otherwise the raw type is returned.  Returns {@code null} when the type name itself
+     * cannot be resolved.
+     */
+    private static @Nullable PsiType resolveTypeArgument(
+            @NotNull String text,
+            @NotNull com.intellij.psi.xml.XmlFile xmlFile,
+            @NotNull JavaPsiFacade facade,
+            @NotNull GlobalSearchScope resolveScope) {
+
+        String rawName = Fxml2TypeArgumentParser.rawName(text);
+        if (rawName.isBlank()) return null;
+
+        // Try import resolution first (handles simple names and import aliases).
+        PsiClass argClass = Fxml2ImportResolver.resolve(rawName, xmlFile);
+        if (argClass == null) {
+            argClass = facade.findClass(rawName, resolveScope);
+        }
+        if (argClass == null) return null;
+
+        // Locate the argument's own type-argument list, in literal or escaped form.
+        int open = text.indexOf('<', rawName.length());
+        int openLen = 1;
+        if (open < 0) {
+            open = text.indexOf("&lt;", rawName.length());
+            openLen = 4;
+        }
+        if (open < 0) {
+            return facade.getElementFactory().createType(argClass);
+        }
+
+        int contentStart = open + openLen;
+        int closeOffset = Fxml2TypeArgumentParser.findClosingBracket(text, contentStart);
+        if (closeOffset < 0) return facade.getElementFactory().createType(argClass);
+
+        List<Fxml2TypeArgumentParser.TypeArg> nested =
+                Fxml2TypeArgumentParser.splitTopLevel(text.substring(contentStart, closeOffset));
+        if (nested.size() != argClass.getTypeParameters().length) {
+            return facade.getElementFactory().createType(argClass);
+        }
+
+        PsiType[] nestedTypes = new PsiType[nested.size()];
+        for (int i = 0; i < nested.size(); i++) {
+            PsiType nestedType = resolveTypeArgument(nested.get(i).text(), xmlFile, facade, resolveScope);
+            if (nestedType == null) return facade.getElementFactory().createType(argClass);
+            nestedTypes[i] = nestedType;
+        }
+        return facade.getElementFactory().createType(argClass, nestedTypes);
     }
 
     /**
