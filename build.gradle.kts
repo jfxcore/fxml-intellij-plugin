@@ -4,7 +4,7 @@ import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
 import java.time.Duration
 
 plugins {
-    id("org.jetbrains.intellij.platform") version "2.16.0"
+    id("org.jetbrains.intellij.platform") version "2.18.1"
     java
 }
 
@@ -13,7 +13,7 @@ version = project.findProperty("TAG_VERSION") ?: "1.0-SNAPSHOT"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(26)
     }
 }
 
