@@ -10,24 +10,31 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.LangDataKeys;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.PackageIndex;
 import com.intellij.openapi.roots.ProjectRootManager;
+import com.intellij.openapi.ui.InputValidatorEx;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiFileFactory;
+import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.jps.model.java.JavaModuleSourceRootTypes;
+import org.jfxcore.fxml.lang.Fxml2FileType;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -44,6 +51,9 @@ import java.util.Map;
 public final class CreateFxml2FileAction extends CreateFileFromTemplateAction implements DumbAware {
 
     private static final String TEMPLATE_NAME = "Fxml2File";
+    private static final String FXML_EXTENSION = "fxml";
+    private static final String FXML2_EXTENSION = "fxmlx";
+    private static final String FX_CLASS_ATTRIBUTE = "FX_CLASS";
     private static final String JAVAFX_APPLICATION = "javafx.application.Application";
 
     public CreateFxml2FileAction() {
@@ -60,6 +70,7 @@ public final class CreateFxml2FileAction extends CreateFileFromTemplateAction im
                                @NotNull CreateFileFromTemplateDialog.Builder builder) {
         FileTemplate template = FileTemplateManager.getInstance(project).getInternalTemplate(TEMPLATE_NAME);
         builder.setTitle("New FXML/2 File")
+               .setValidator(NAME_VALIDATOR)
                .addKind("FXML/2 file", AllIcons.FileTypes.Xml, template.getName());
     }
 
@@ -68,26 +79,108 @@ public final class CreateFxml2FileAction extends CreateFileFromTemplateAction im
         return "Create FXML/2 File " + newName;
     }
 
+    /**
+     * Accepts names whose base name (the part before an optional {@code .fxml} or {@code .fxmlx}
+     * extension) is a valid Java identifier. The compiler derives the class of a document from its
+     * file name and requires the simple name of {@code fx:subclass} to match it exactly, so a base
+     * name that is not an identifier cannot be compiled.
+     */
+    static final InputValidatorEx NAME_VALIDATOR = new InputValidatorEx() {
+        @Override
+        public @Nullable String getErrorText(@NotNull String inputString) {
+            String name = inputString.trim();
+            if (name.isEmpty()) {
+                return null;
+            }
+            return isValidBaseName(toBaseName(name))
+                    ? null
+                    : "The name must be a Java identifier, optionally followed by '." + FXML_EXTENSION
+                      + "' or '." + FXML2_EXTENSION + "'";
+        }
+
+        @Override
+        public boolean canClose(@NotNull String inputString) {
+            String name = inputString.trim();
+            return !name.isEmpty() && isValidBaseName(toBaseName(name));
+        }
+    };
+
+    private static boolean isValidBaseName(@NotNull String baseName) {
+        if (baseName.isEmpty() || !Character.isJavaIdentifierStart(baseName.charAt(0))) {
+            return false;
+        }
+        return baseName.chars().allMatch(Character::isJavaIdentifierPart);
+    }
+
     // -------------------------------------------------------------------------
-    // File creation: substitute FX_CLASS directly via Velocity properties
+    // File creation
     // -------------------------------------------------------------------------
 
+    /**
+     * Creates the file from the FXML/2 template. The extension entered by the user is kept if it is
+     * one of the FXML/2 extensions, otherwise {@code .fxml} is appended, and {@code FX_CLASS} is
+     * substituted in the template text.
+     */
     @Override
     protected PsiFile createFile(String name, String templateName, PsiDirectory dir) {
         FileTemplate template = FileTemplateManager.getInstance(dir.getProject()).getInternalTemplate(templateName);
-        String fxClass = computeFxClass(name, dir);
-        return createFileFromTemplate(name, template, dir, null, true, Map.of(), Map.of("FX_CLASS", fxClass));
+        String baseName = toBaseName(name);
+        String extension = extensionOf(name);
+        String fileName = baseName + "." + (isFxml2Extension(extension) ? extension : FXML_EXTENSION);
+
+        String text;
+        try {
+            text = template.getText(Map.of(FX_CLASS_ATTRIBUTE, computeFxClass(baseName, dir)));
+        } catch (IOException e) {
+            throw new IncorrectOperationException("Cannot read the FXML/2 file template", (Throwable)e);
+        }
+
+        Project project = dir.getProject();
+        dir.checkCreateFile(fileName);
+        PsiFile file = (PsiFile)dir.add(
+                PsiFileFactory.getInstance(project).createFileFromText(fileName, Fxml2FileType.INSTANCE, text));
+        if (template.isReformatCode()) {
+            CodeStyleManager.getInstance(project).reformat(file);
+        }
+
+        VirtualFile virtualFile = file.getVirtualFile();
+        if (virtualFile != null) {
+            FileEditorManager.getInstance(project).openFile(virtualFile, true);
+        }
+        return file;
     }
 
     /**
-     * Builds the fully-qualified {@code fx:subclass} value from the directory's package
-     * and the file's base name converted to a Java class name.
+     * Returns the entered name without an {@code .fxml} or {@code .fxmlx} extension. Any other
+     * extension is part of the base name, because the file keeps it and gets {@code .fxml} appended.
+     */
+    private static @NotNull String toBaseName(@NotNull String name) {
+        String extension = extensionOf(name);
+        return isFxml2Extension(extension) ? name.substring(0, name.length() - extension.length() - 1) : name;
+    }
+
+    /**
+     * Returns the extension of the last segment of the given path, or an empty string if it has none.
+     */
+    private static @NotNull String extensionOf(@NotNull String path) {
+        int lastSeparator = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+        int dot = path.lastIndexOf('.');
+        return dot > lastSeparator + 1 ? path.substring(dot + 1) : "";
+    }
+
+    private static boolean isFxml2Extension(@NotNull String extension) {
+        return FXML_EXTENSION.equalsIgnoreCase(extension) || FXML2_EXTENSION.equalsIgnoreCase(extension);
+    }
+
+    /**
+     * Builds the fully-qualified {@code fx:subclass} value from the directory's package and the
+     * file's base name. The compiler requires the simple class name to match the file name, so the
+     * base name is used verbatim.
      */
     private static String computeFxClass(@NotNull String baseName, @NotNull PsiDirectory dir) {
         VirtualFile vDir = dir.getVirtualFile();
         String pkg = PackageIndex.getInstance(dir.getProject()).getPackageNameByDirectory(vDir);
-        String className = toClassName(baseName);
-        return !StringUtil.isEmpty(pkg) ? pkg + "." + className : className;
+        return !StringUtil.isEmpty(pkg) ? pkg + "." + baseName : baseName;
     }
 
     // -------------------------------------------------------------------------
@@ -139,32 +232,4 @@ public final class CreateFxml2FileAction extends CreateFileFromTemplateAction im
     // Helpers
     // -------------------------------------------------------------------------
 
-    /**
-     * Converts a filename (potentially with hyphens, underscores, digits at start, etc.)
-     * into a valid Java class name with an upper-case first letter.
-     * Mirrors the logic in the bundled JavaFX plugin's {@code CreateFxmlFileAction}.
-     */
-    private static String toClassName(String name) {
-        int start;
-        for (start = 0; start < name.length(); start++) {
-            char c = name.charAt(start);
-            if (Character.isJavaIdentifierStart(c) && c != '_' && c != '$') break;
-        }
-        StringBuilder sb = new StringBuilder();
-        boolean capitalizeNext = true;
-        for (int i = start; i < name.length(); i++) {
-            char c = name.charAt(i);
-            if (!Character.isJavaIdentifierPart(c) || c == '_' || c == '$') {
-                capitalizeNext = true;
-                continue;
-            }
-            if (capitalizeNext) {
-                capitalizeNext = false;
-                sb.append(Character.toUpperCase(c));
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
-    }
 }
