@@ -131,7 +131,7 @@ public final class Fxml2BindingExpressionParser {
                 int closeAngleEnd = closeAngleIdx + closeAngleMark.length();
 
                 String typeName = afterParent.substring(openAngleLen, closeAngleIdx).trim();
-                if (typeName.isEmpty() || !isJavaIdentifier(typeName)) return null;
+                if (!Fxml2JavaNames.isIdentifier(typeName)) return null;
 
                 String afterClose = afterParent.substring(closeAngleEnd); // after ">" or "&gt;"
                 Integer level = null;
@@ -182,19 +182,6 @@ public final class Fxml2BindingExpressionParser {
         String remaining = afterParent.substring(close + 2); // after "]/"
         return new ContextSelector(selectorText, "parent", null, level,
                 selectorLen, remaining, selectorLen);
-    }
-
-    /**
-     * Returns {@code true} if {@code s} is a syntactically valid Java simple identifier
-     * (starts with a Java identifier start character, followed by zero or more Java
-     * identifier part characters, and contains no dots).
-     */
-    private static boolean isJavaIdentifier(@NotNull String s) {
-        if (s.isEmpty() || !Character.isJavaIdentifierStart(s.charAt(0))) return false;
-        for (int i = 1; i < s.length(); i++) {
-            if (!Character.isJavaIdentifierPart(s.charAt(i))) return false;
-        }
-        return true;
     }
 
     /**

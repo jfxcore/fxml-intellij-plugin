@@ -32,6 +32,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
+import org.jfxcore.fxml.resolve.Fxml2JavaNames;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
@@ -544,18 +545,11 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
 
     /**
      * Returns {@code true} when {@code value} looks like an unqualified Java class name
-     * (a non-empty Java identifier with no dots, commas, or angle brackets) and could be
+     * (a Java identifier, so with no dots, commas, or angle brackets) and could be
      * resolved by adding an {@code <?import?>} PI.
      */
     private static boolean isSimpleClassName(@NotNull String value) {
-        if (value.isEmpty() || value.contains(".") || value.contains(",") || value.contains("<")) {
-            return false;
-        }
-        if (!Character.isJavaIdentifierStart(value.charAt(0))) return false;
-        for (int i = 1; i < value.length(); i++) {
-            if (!Character.isJavaIdentifierPart(value.charAt(i))) return false;
-        }
-        return true;
+        return Fxml2JavaNames.isIdentifier(value);
     }
 
     /**
