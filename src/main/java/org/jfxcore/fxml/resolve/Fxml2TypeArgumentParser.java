@@ -78,6 +78,30 @@ public final class Fxml2TypeArgumentParser {
     }
 
     /**
+     * Splits the nested type-argument list of a single type argument into its top-level
+     * arguments ({@code "Map<K, V>"} -> {@code K}, {@code V}).  The reported offsets are
+     * relative to {@code baseOffset}, which should be the offset of {@code typeArg} itself,
+     * so that offsets stay meaningful at any nesting depth.
+     *
+     * @return the nested arguments, or an empty list when {@code typeArg} is not
+     *         parameterized or its argument list is unterminated
+     */
+    public static @NotNull List<TypeArg> nestedArgs(@NotNull String typeArg, int baseOffset) {
+        int open = indexOfOpeningBracket(typeArg, 0);
+        if (open < 0) return List.of();
+        int inner = open + openingBracketLength(typeArg, open);
+        int close = findClosingBracket(typeArg, inner);
+        if (close < 0) return List.of();
+
+        List<TypeArg> nested = splitTopLevel(typeArg.substring(inner, close));
+        List<TypeArg> result = new ArrayList<>(nested.size());
+        for (TypeArg arg : nested) {
+            result.add(new TypeArg(arg.text(), baseOffset + inner + arg.offset()));
+        }
+        return result;
+    }
+
+    /**
      * Returns the raw type name of a type argument, i.e. everything before its own type
      * arguments ({@code "Map<K, V>"} -> {@code "Map"}).  Wildcards and array suffixes are
      * left untouched.

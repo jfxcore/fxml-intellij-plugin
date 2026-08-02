@@ -127,19 +127,10 @@ public final class Fxml2AttributeValueResolver {
         }
         if (argClass == null) return null;
 
-        // Locate the argument's own type-argument list, in literal or escaped form.
-        int open = Fxml2TypeArgumentParser.indexOfOpeningBracket(text, rawName.length());
-        if (open < 0) {
-            return facade.getElementFactory().createType(argClass);
-        }
-
-        int contentStart = open + Fxml2TypeArgumentParser.openingBracketLength(text, open);
-        int closeOffset = Fxml2TypeArgumentParser.findClosingBracket(text, contentStart);
-        if (closeOffset < 0) return facade.getElementFactory().createType(argClass);
-
-        List<Fxml2TypeArgumentParser.TypeArg> nested =
-                Fxml2TypeArgumentParser.splitTopLevel(text.substring(contentStart, closeOffset));
-        if (nested.size() != argClass.getTypeParameters().length) {
+        // The argument's own type-argument list, in literal or escaped form; empty when the
+        // argument is not parameterized or its list is unterminated.
+        List<Fxml2TypeArgumentParser.TypeArg> nested = Fxml2TypeArgumentParser.nestedArgs(text, 0);
+        if (nested.isEmpty() || nested.size() != argClass.getTypeParameters().length) {
             return facade.getElementFactory().createType(argClass);
         }
 

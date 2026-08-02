@@ -715,6 +715,74 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    /**
+     * Compiler: NUM_TYPE_ARGUMENTS_MISMATCH: the arity of a <em>nested</em> type argument is
+     * validated as well, so parameterizing a non-generic type inside a type-argument list is
+     * an error, even when the outer arity is correct.
+     */
+    @Test
+    void nestedTypeArgumentsOnNonGenericTypeProducesError() {
+        getFixture().addFileToProject("sample/app/OneParamType.java",
+                """
+                package sample.app;
+                public class OneParamType<T> {}
+                """);
+        getFixture().configureByText("TestViewNestedNonGeneric.fxml", fxml(
+                "sample.app.OneParamType",
+                """
+                  <OneParamType fx:typeArguments=<error descr="java.lang.String: required 0 type argument(s), but 2 were provided">"java.lang.String&lt;java.lang.String, java.lang.String&gt;"</error>/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Compiler: NUM_TYPE_ARGUMENTS_MISMATCH: a nested type argument with the wrong number of
+     * arguments for its own type parameters is an error.
+     */
+    @Test
+    void nestedTypeArgumentsWithWrongCountProducesError() {
+        getFixture().addFileToProject("sample/app/OneParamType2.java",
+                """
+                package sample.app;
+                public class OneParamType2<T> {}
+                """);
+        getFixture().addFileToProject("sample/app/TwoParamType4.java",
+                """
+                package sample.app;
+                public class TwoParamType4<K, V> {}
+                """);
+        getFixture().configureByText("TestViewNestedWrongCount.fxml", fxml(
+                "sample.app.OneParamType2",
+                """
+                  <OneParamType2 fx:typeArguments=<error descr="sample.app.TwoParamType4: required 2 type argument(s), but 1 were provided">"sample.app.TwoParamType4&lt;java.lang.String&gt;"</error>/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** A correctly parameterized nested type argument must produce no error. */
+    @Test
+    void nestedTypeArgumentsWithCorrectCountProducesNoError() {
+        getFixture().addFileToProject("sample/app/OneParamType3.java",
+                """
+                package sample.app;
+                public class OneParamType3<T> {}
+                """);
+        getFixture().addFileToProject("sample/app/TwoParamType5.java",
+                """
+                package sample.app;
+                public class TwoParamType5<K, V> {}
+                """);
+        getFixture().configureByText("TestViewNestedOk.fxml", fxml(
+                "sample.app.OneParamType3",
+                """
+                  <OneParamType3 fx:typeArguments="sample.app.TwoParamType5&lt;java.lang.String, java.lang.Integer&gt;"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     // -----------------------------------------------------------------------
     // fx:typeArguments bound validation: compiler: TYPE_ARGUMENT_OUT_OF_BOUND
     // -----------------------------------------------------------------------

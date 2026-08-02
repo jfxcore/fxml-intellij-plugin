@@ -321,7 +321,10 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                                 ProblemHighlightType.GENERIC_ERROR,
                                 isOnTheFly));
                     } else {
-                        // Count matches: validate each argument against its type parameter's bound.
+                        // Count matches: validate the arity of nested type arguments, then
+                        // check each argument against its type parameter's bound.
+                        checkNestedTypeArgumentArity(argTokens, typeArgsTarget, xmlFile, tag,
+                                problems, manager, isOnTheFly);
                         checkTypeArgumentBounds(typeArgumentsAttr, argTokens, typeParams,
                                 xmlFile, tag, problems, manager, isOnTheFly);
                     }
@@ -466,6 +469,55 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                             isOnTheFly));
                 }
             }
+        }
+    }
+
+    /**
+     * Validates the arity of nested type arguments at every nesting depth, mirroring the
+     * compiler's recursive type invocation: {@code Foo<String<String, String>>} is an error
+     * because {@code String} accepts no type arguments, even though {@code Foo} receives the
+     * expected single argument.
+     *
+     * <p>Arguments that cannot be resolved and wildcards are skipped; a resolvable argument's
+     * own arguments are checked against the type parameters of its raw type, and the check
+     * then descends into them.
+     */
+    private static void checkNestedTypeArgumentArity(
+            @NotNull List<Fxml2TypeArgumentParser.TypeArg> argTokens,
+            @NotNull PsiElement target,
+            @NotNull XmlFile xmlFile,
+            @NotNull XmlTag tag,
+            @NotNull List<ProblemDescriptor> problems,
+            @NotNull InspectionManager manager,
+            boolean isOnTheFly) {
+
+        JavaPsiFacade facade = JavaPsiFacade.getInstance(tag.getProject());
+        GlobalSearchScope scope = tag.getResolveScope();
+
+        for (Fxml2TypeArgumentParser.TypeArg arg : argTokens) {
+            List<Fxml2TypeArgumentParser.TypeArg> nested =
+                    Fxml2TypeArgumentParser.nestedArgs(arg.text(), arg.offset());
+            if (nested.isEmpty()) continue;
+
+            PsiClass argClass = resolveTypeArgClass(arg.rawName(), xmlFile, facade, scope);
+            if (argClass == null) continue; // unresolved; already reported as an unresolved reference
+
+            int expected = argClass.getTypeParameters().length;
+            if (expected != nested.size()) {
+                String name = argClass.getQualifiedName() != null ? argClass.getQualifiedName() : arg.rawName();
+                problems.add(manager.createProblemDescriptor(
+                        target,
+                        name + ": required " + expected + " type argument(s), but "
+                                + nested.size() + " were provided",
+                        (LocalQuickFix) null,
+                        ProblemHighlightType.GENERIC_ERROR,
+                        isOnTheFly));
+                // A mismatch at this level makes deeper checks meaningless, matching the
+                // compiler's early exit on NUM_TYPE_ARGUMENTS_MISMATCH.
+                continue;
+            }
+
+            checkNestedTypeArgumentArity(nested, target, xmlFile, tag, problems, manager, isOnTheFly);
         }
     }
 
