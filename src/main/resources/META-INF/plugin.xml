@@ -1039,6 +1039,17 @@
         <lang.fileViewProviderFactory language="XML"
                                       implementationClass="org.jfxcore.fxml.lang.Fxml2FileViewProviderFactory"/>
 
+        <!--
+            Replaces the platform's CommentByLineComment (Ctrl+/) and CommentByBlockComment
+            (Ctrl+Shift+/) actions with FXML-aware variants, so that the correct XML comment
+            syntax is used when the caret or selection is inside embedded FXML markup in a
+            @ComponentView annotation.  Both replacements keep the platform action ID and
+            delegate to the platform behavior outside of embedded markup; the replaced
+            actions are restored when the plugin is unloaded.
+        -->
+        <dynamicActionConfigurationCustomizer
+                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedCommentActionCustomizer"/>
+
     </extensions>
 
     <actions resource-bundle="messages.Fxml2Bundle">
@@ -1047,23 +1058,5 @@
                 icon="AllIcons.FileTypes.Xml">
             <add-to-group group-id="NewGroup" anchor="after" relative-to-action="NewDir"/>
         </action>
-
-        <!--
-            Override the platform's CommentByLineComment (Ctrl+/) and CommentByBlockComment
-            (Ctrl+Shift+/) actions so that they use the correct XML comment syntax when the
-            caret or selection is inside embedded FXML markup in a @ComponentView annotation.
-
-            Note: the "overrides" attribute is an internal ActionManager feature that is not
-            part of the DevKit DOM schema for non-JetBrains builds; the IDE may show a false-
-            positive "Attribute overrides is not allowed here" validation warning in the editor,
-            but the attribute is handled correctly at runtime by ActionManagerImpl and the plugin
-            compiles and runs without any issue.
-        -->
-        <action id="CommentByLineComment"
-                class="org.jfxcore.fxml.lang.Fxml2EmbeddedCommentHandlers$LineCommentAction"
-                overrides="true"/>
-        <action id="CommentByBlockComment"
-                class="org.jfxcore.fxml.lang.Fxml2EmbeddedCommentHandlers$BlockCommentAction"
-                overrides="true"/>
     </actions>
 </idea-plugin>
