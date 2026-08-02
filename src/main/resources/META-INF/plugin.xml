@@ -560,6 +560,19 @@
                          level="ERROR"
                          implementationClass="org.jfxcore.fxml.annotator.Fxml2FxAttributeInspection"/>
 
+        <!--
+            Inspection: reports an fx:subclass directive whose code-behind class does not exist,
+            mirroring the compiler's "'<name>' cannot be resolved" error. Offers quick-fixes to
+            remove the directive or to create the missing code-behind class.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.unresolved.subclass.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2UnresolvedSubclassInspection"/>
+
         <localInspection language="XML"
                          bundle="messages.Fxml2Bundle"
                          key="inspection.unresolved.style.class.display.name"
@@ -724,21 +737,11 @@
         <internalFileTemplate name="Fxml2File"/>
 
         <!--
-            Internal file templates used by the "Create code-behind class" intention action.
+            Internal file templates used by the "Create code-behind class" quick-fix of
+            the unresolved-fx:subclass inspection.
         -->
         <internalFileTemplate name="Fxml2CodeBehind.java"/>
         <internalFileTemplate name="Fxml2CodeBehind.kt"/>
-
-        <!--
-            Intention action: "Create FXML/2 code-behind class".
-            Appears in Alt+Enter on fx:subclass attribute name or value when the
-            named class does not yet exist: no error highlight shown.
-        -->
-        <intentionAction>
-            <language>XML</language>
-            <categoryKey>intention.category.name</categoryKey>
-            <className>org.jfxcore.fxml.actions.CreateCodeBehindIntention</className>
-        </intentionAction>
 
         <!--
             Intention action: "Embed markup in code-behind file".
