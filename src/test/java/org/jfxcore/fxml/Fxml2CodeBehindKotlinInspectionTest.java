@@ -12,6 +12,18 @@ import org.junit.jupiter.api.TestInstance;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2CodeBehindKotlinInspectionTest extends Fxml2TestBase {
 
+    /** Expected warning text on a class, XML-escaped for {@code checkHighlighting}. */
+    private static final String CLASS_WARNING =
+            "Class does not call initializeComponent(). "
+            + "Add a call to initializeComponent() in an init block or constructor, "
+            + "or suppress with @Suppress(&quot;Fxml2InitializeComponent&quot;).";
+
+    /** Expected warning text on a secondary constructor. */
+    private static final String CTOR_WARNING =
+            "Constructor does not call initializeComponent(). "
+            + "Add a call to initializeComponent() in this constructor, or suppress with "
+            + "@Suppress(&quot;Fxml2InitializeComponent&quot;).";
+
     @BeforeEach
     void enableInspection() {
         getFixture().enableInspections(new Fxml2InitializeComponentInspection());
@@ -137,7 +149,7 @@ class Fxml2CodeBehindKotlinInspectionTest extends Fxml2TestBase {
         getFixture().configureByText("BadKtControl.kt",
                 """
                 package test
-                class <warning descr="Class does not call initializeComponent(). Add a call to initializeComponent() in an init block or constructor, or suppress with @Suppress(&quot;Fxml2InitializeComponent&quot;).">BadKtControl</warning> : BadKtControlBase() {
+                class <warning descr="%s">BadKtControl</warning> : BadKtControlBase() {
                     init {
                         // initializeComponent() not called
                     }
@@ -145,7 +157,7 @@ class Fxml2CodeBehindKotlinInspectionTest extends Fxml2TestBase {
                 open class BadKtControlBase : javafx.scene.layout.BorderPane() {
                     protected fun initializeComponent() {}
                 }
-                """);
+                """.formatted(CLASS_WARNING));
         getFixture().checkHighlighting(false, false, false);
     }
 
@@ -160,12 +172,168 @@ class Fxml2CodeBehindKotlinInspectionTest extends Fxml2TestBase {
         getFixture().configureByText("NoInitKtControl.kt",
                 """
                 package test
-                class <warning descr="Class does not call initializeComponent(). Add a call to initializeComponent() in an init block or constructor, or suppress with @Suppress(&quot;Fxml2InitializeComponent&quot;).">NoInitKtControl</warning> : NoInitKtControlBase()
+                class <warning descr="%s">NoInitKtControl</warning> : NoInitKtControlBase()
                 open class NoInitKtControlBase : javafx.scene.layout.BorderPane() {
+                    protected fun initializeComponent() {}
+                }
+                """.formatted(CLASS_WARNING));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A secondary constructor that delegates via {@code this(...)} to a constructor calling
+     * {@code initializeComponent()} produces no warning.
+     */
+    @Test
+    void secondaryConstructorDelegatingToInitializingConstructorProducesNoWarning() {
+        getFixture().addFileToProject("test/ChainKtControl.fxml",
+                fxml2WithClass("test.ChainKtControl"));
+        getFixture().configureByText("ChainKtControl.kt",
+                """
+                package test
+                class ChainKtControl : ChainKtControlBase {
+                    constructor() : this("default")
+                    constructor(name: String) : super() {
+                        initializeComponent()
+                    }
+                }
+                open class ChainKtControlBase : javafx.scene.layout.BorderPane {
+                    constructor() : super()
                     protected fun initializeComponent() {}
                 }
                 """);
         getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A secondary constructor whose delegation chain never reaches
+     * {@code initializeComponent()} is warned on the {@code constructor} keyword.
+     */
+    @Test
+    void secondaryConstructorWithoutCallProducesWarning() {
+        getFixture().addFileToProject("test/BadChainKtControl.fxml",
+                fxml2WithClass("test.BadChainKtControl"));
+        getFixture().configureByText("BadChainKtControl.kt",
+                """
+                package test
+                class BadChainKtControl : BadChainKtControlBase {
+                    <warning descr="%s">constructor</warning>() : super()
+                }
+                open class BadChainKtControlBase : javafx.scene.layout.BorderPane {
+                    constructor() : super()
+                    protected fun initializeComponent() {}
+                }
+                """.formatted(CTOR_WARNING));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * With a primary constructor present, every construction path runs the init blocks, so a
+     * call that appears only in a secondary constructor still leaves the primary path
+     * uninitialized and the class is warned.
+     */
+    @Test
+    void primaryConstructorPathWithoutCallProducesClassWarning() {
+        getFixture().addFileToProject("test/PrimaryKtControl.fxml",
+                fxml2WithClass("test.PrimaryKtControl"));
+        getFixture().configureByText("PrimaryKtControl.kt",
+                """
+                package test
+                class <warning descr="%s">PrimaryKtControl</warning>() : PrimaryKtControlBase() {
+                    constructor(name: String) : this() {
+                        initializeComponent()
+                    }
+                }
+                open class PrimaryKtControlBase : javafx.scene.layout.BorderPane() {
+                    protected fun initializeComponent() {}
+                }
+                """.formatted(CLASS_WARNING));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Quick-fixes
+    // -----------------------------------------------------------------------
+
+    /**
+     * The class-level quick-fix adds an {@code init} block calling
+     * {@code initializeComponent()} as the first declaration of the class body.
+     */
+    @Test
+    void quickFixAddsInitBlock() {
+        getFixture().addFileToProject("test/FixKtControl.fxml",
+                fxml2WithClass("test.FixKtControl"));
+        getFixture().configureByText("FixKtControl.kt",
+                """
+                package test
+                class FixKtControl : FixKtControlBase() {
+                    private val name: String = "x"
+                }
+                open class FixKtControlBase : javafx.scene.layout.BorderPane() {
+                    protected fun initializeComponent() {}
+                }
+                """);
+        applyFix("Add init block calling initializeComponent()");
+        getFixture().checkResult("""
+                package test
+                class FixKtControl : FixKtControlBase() {
+                    init {
+                        initializeComponent()
+                    }
+
+                    private val name: String = "x"
+                }
+                open class FixKtControlBase : javafx.scene.layout.BorderPane() {
+                    protected fun initializeComponent() {}
+                }
+                """);
+    }
+
+    /**
+     * The constructor-level quick-fix inserts {@code initializeComponent()} as the first
+     * statement of a secondary constructor body.
+     */
+    @Test
+    void quickFixAddsCallToSecondaryConstructor() {
+        getFixture().addFileToProject("test/FixKtCtorControl.fxml",
+                fxml2WithClass("test.FixKtCtorControl"));
+        getFixture().configureByText("FixKtCtorControl.kt",
+                """
+                package test
+                class FixKtCtorControl : FixKtCtorControlBase {
+                    constructor() : super() {
+                        println("hello")
+                    }
+                }
+                open class FixKtCtorControlBase : javafx.scene.layout.BorderPane {
+                    constructor() : super()
+                    protected fun initializeComponent() {}
+                }
+                """);
+        applyFix("Add initializeComponent() call");
+        getFixture().checkResult("""
+                package test
+                class FixKtCtorControl : FixKtCtorControlBase {
+                    constructor() : super() {
+                        initializeComponent()
+                        println("hello")
+                    }
+                }
+                open class FixKtCtorControlBase : javafx.scene.layout.BorderPane {
+                    constructor() : super()
+                    protected fun initializeComponent() {}
+                }
+                """);
+    }
+
+    /** Applies the single quick-fix in the configured file whose name matches. */
+    private void applyFix(String familyName) {
+        var fixes = getFixture().getAllQuickFixes().stream()
+                .filter(fix -> familyName.equals(fix.getText()))
+                .toList();
+        org.junit.jupiter.api.Assertions.assertEquals(1, fixes.size(),
+                "Expected exactly one \"" + familyName + "\" quick-fix");
+        getFixture().launchAction(fixes.getFirst());
     }
 
     // -----------------------------------------------------------------------

@@ -1,12 +1,21 @@
 <html lang="en">
 <body>
-Reports constructors in FXML code-behind classes that do not call
+Reports FXML code-behind classes with a construction path that does not call
 <code>initializeComponent()</code>.
 <p>
 A class is a <em>code-behind class</em> when an FXML file exists in the project
 with <code>fx:subclass</code> pointing to that class. The compiler-generated base class
 provides <code>initializeComponent()</code>, which must be called in the constructor
 to instantiate the scene graph declared in the FXML file.
+<p>
+A construction path is satisfied when the call appears in the constructor itself or in a
+constructor it delegates to, through Java <code>this(...)</code> and <code>super(...)</code>
+calls or Kotlin <code>this(...)</code> delegation. In Kotlin, an <code>init</code> block also
+satisfies every path. A class that declares no constructor at all is reported on the class
+name, because its implicit constructor cannot call <code>initializeComponent()</code>.
+<p>
+A quick-fix inserts the call as the first statement of the reported constructor, or adds a
+constructor (Java) or <code>init</code> block (Kotlin) when the class declares none.
 <p><b>Example</b> (problematic):</p>
 <pre><code>public class MyControl extends MyControlBase {
     public MyControl() {
