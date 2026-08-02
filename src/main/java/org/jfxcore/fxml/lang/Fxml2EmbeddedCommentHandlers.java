@@ -11,6 +11,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.actionSystem.OverridingAction;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Caret;
 import com.intellij.openapi.editor.Document;
@@ -31,6 +32,8 @@ import java.util.List;
 /**
  * Hosts two action overrides that ensure correct comment syntax when the caret or
  * selection is inside embedded FXML markup in a {@code @ComponentView} annotation.
+ * Both are installed under the corresponding platform action ID by
+ * {@link Fxml2EmbeddedCommentActionCustomizer}.
  *
  * <h2>Problem</h2>
  * <p>The platform's {@code CommentByLineCommentHandler} redirects to the host file's
@@ -61,8 +64,7 @@ public final class Fxml2EmbeddedCommentHandlers {
     // -----------------------------------------------------------------------
 
     /**
-     * Replaces the platform's {@code CommentByLineComment} action (registered via
-     * {@code overrides="true"} in {@code plugin.xml}).
+     * Replaces the platform's {@code CommentByLineComment} action.
      *
      * <p>When the selection (or caret line) contains at least one FXML line, each line
      * is toggled independently:
@@ -74,7 +76,10 @@ public final class Fxml2EmbeddedCommentHandlers {
      * <p>For selections containing no FXML lines the original platform handler is
      * called unchanged via {@code super.actionPerformed(e)}.
      */
-    public static final class LineCommentAction extends CommentByLineCommentAction {
+    // Installed under the platform action ID by Fxml2EmbeddedCommentActionCustomizer,
+    // hence there is no <action> declaration in plugin.xml.
+    @SuppressWarnings("ComponentNotRegistered")
+    public static final class LineCommentAction extends CommentByLineCommentAction implements OverridingAction {
 
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
@@ -377,8 +382,7 @@ public final class Fxml2EmbeddedCommentHandlers {
     // -----------------------------------------------------------------------
 
     /**
-     * Replaces the platform's {@code CommentByBlockComment} action (registered via
-     * {@code overrides="true"} in {@code plugin.xml}).
+     * Replaces the platform's {@code CommentByBlockComment} action.
      *
      * <p>When the caret or selection start is inside embedded FXML markup, wraps the
      * selection in {@code <!-- } / {@code  -->} (or removes those wrappers when the
@@ -394,7 +398,10 @@ public final class Fxml2EmbeddedCommentHandlers {
      * been committed at the moment the action runs, causing the platform to fall back to
      * the Java commenter and insert Java block comments instead of {@code <!--} ... {@code -->}.
      */
-    public static final class BlockCommentAction extends AnAction implements DumbAware {
+    // Installed under the platform action ID by Fxml2EmbeddedCommentActionCustomizer,
+    // hence there is no <action> declaration in plugin.xml.
+    @SuppressWarnings("ComponentNotRegistered")
+    public static final class BlockCommentAction extends AnAction implements DumbAware, OverridingAction {
 
         @Override
         public @NotNull ActionUpdateThread getActionUpdateThread() {
