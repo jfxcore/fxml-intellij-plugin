@@ -1,0 +1,17 @@
+<p>
+Reports an <code>fx:subclass</code> directive whose code-behind class does not exist.
+</p>
+<p>
+The FXML compiler resolves the fully-qualified name declared by <code>fx:subclass</code> and
+fails with <code>'com.sample.MyControl' cannot be resolved</code> when no such class is found.
+</p>
+<p>Two quick-fixes are available:</p>
+<ul>
+  <li><b>Remove fx:subclass</b>, which compiles the markup down to a standalone class named
+      after the FXML file.</li>
+  <li><b>Create code-behind class</b>, which creates the missing Java or Kotlin class next to
+      the FXML file, extending the compiler-generated markup base class and calling
+      <code>initializeComponent()</code>. This fix is offered only when the declared name is a
+      fully-qualified name built from valid Java identifiers whose simple name matches the FXML
+      file name, because the compiler rejects any other code-behind name.</li>
+</ul>

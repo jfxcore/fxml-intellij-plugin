@@ -29,6 +29,7 @@ import org.jfxcore.fxml.lang.Fxml2ImportUtil;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
+import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
 /**
  * Intention action that offers to add an {@code <?import fqn?>} processing instruction
@@ -221,6 +222,13 @@ public final class AddImportForClassReferenceIntention implements IntentionActio
             @NotNull XmlAttributeValue attrVal,
             int caretOffset,
             @NotNull XmlFile xmlFile) {
+
+        // Values that spell out a class name literally (fx:subclass, fx:className, xmlns)
+        // are not resolved through <?import?>, so their qualifiers must be left alone.
+        if (attrVal.getParent() instanceof XmlAttribute attr
+                && Fxml2XmlUtil.isLiteralClassNameAttribute(attr.getName())) {
+            return null;
+        }
 
         int elementStart = attrVal.getTextRange().getStartOffset();
         int relOffset = caretOffset - elementStart;

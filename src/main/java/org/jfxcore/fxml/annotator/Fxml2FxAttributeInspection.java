@@ -30,13 +30,13 @@ import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
+import org.jfxcore.fxml.resolve.Fxml2JavaNames;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Validates {@code fx:} intrinsic attributes in FXML files, mirroring the compiler's
@@ -68,10 +68,6 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
      */
     private static final Set<String> ROOT_ONLY_INTRINSICS = Set.of(
             "subclass", "classModifier", "classParameters", "className", "context");
-
-    /** Java identifier pattern: matches the compiler's NameHelper.JAVA_IDENTIFIER. */
-    private static final Pattern JAVA_IDENTIFIER =
-            Pattern.compile("^(\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*)$");
 
     @Override
     public ProblemDescriptor @Nullable [] checkFile(
@@ -203,7 +199,7 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                             (LocalQuickFix) null,
                             ProblemHighlightType.GENERIC_ERROR,
                             isOnTheFly));
-                } else if (!JAVA_IDENTIFIER.matcher(trimmed).matches()) {
+                } else if (!Fxml2JavaNames.isIdentifier(trimmed)) {
                     // Invalid identifier -> error on the value text
                     PsiElement target = valueEl != null ? valueEl : attr;
                     problems.add(manager.createProblemDescriptor(
