@@ -85,10 +85,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
 
         for (XmlAttributeValue attrVal : PsiTreeUtil.findChildrenOfType(xmlFile, XmlAttributeValue.class)) {
             if (!(attrVal.getParent() instanceof XmlAttribute attr)) continue;
-            String attrName = attr.getName();
-            if (attrName.startsWith("xmlns") || "fx:className".equals(attrName) || attrName.startsWith("fx:subclass")) {
-                continue;
-            }
+            if (Fxml2XmlUtil.isLiteralClassNameAttribute(attr.getName())) continue;
 
             String rawValue = attrVal.getValue();
             if (rawValue.isBlank()) continue;

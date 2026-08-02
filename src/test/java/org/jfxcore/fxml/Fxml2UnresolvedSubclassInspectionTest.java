@@ -172,6 +172,22 @@ class Fxml2UnresolvedSubclassInspectionTest extends Fxml2TestBase {
                 "'Create code-behind class' must not be offered for a mismatched class name");
     }
 
+    /**
+     * The {@code fx:subclass} value must stay fully qualified, so the "Add import for class
+     * reference" intention is never offered on it, not even for a class that exists.
+     */
+    @Test
+    void addImportIntentionIsNotOfferedOnSubclassValue() {
+        getFixture().addClass("""
+                package test;
+                public class TestView extends javafx.scene.layout.BorderPane {}
+                """);
+        getFixture().configureByText("TestView.fxml",
+                fxmlWithSubclassText("test.Test<caret>View"));
+        assertTrue(getFixture().filterAvailableIntentions("Add import for class reference").isEmpty(),
+                "'Add import for class reference' must not be offered on fx:subclass");
+    }
+
     // -----------------------------------------------------------------------
     // Quick-fix behavior
     // -----------------------------------------------------------------------

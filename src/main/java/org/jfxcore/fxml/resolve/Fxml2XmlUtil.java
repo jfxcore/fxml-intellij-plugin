@@ -35,6 +35,22 @@ public final class Fxml2XmlUtil {
     }
 
     /**
+     * Returns {@code true} when the value of {@code attrName} is a class name that is written
+     * out literally rather than resolved through the file's {@code <?import?>} declarations:
+     * the fully-qualified code-behind class ({@code fx:subclass}), the name of the generated
+     * markup class ({@code fx:className}), or a namespace URI ({@code xmlns}, {@code xmlns:*}).
+     *
+     * <p>Package qualifiers in such values are load-bearing and must never be shortened or
+     * turned into an import.
+     */
+    public static boolean isLiteralClassNameAttribute(@NotNull String attrName) {
+        return attrName.equals("xmlns")
+                || attrName.startsWith("xmlns:")
+                || attrName.equals("fx:className")
+                || attrName.equals("fx:subclass");
+    }
+
+    /**
      * Builds the canonical "invalid value" error message used by the inspection.
      * <ul>
      *   <li>When the property type is {@code Insets}, mirrors the compiler's
