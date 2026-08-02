@@ -341,6 +341,72 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     }
 
     /**
+     * The first argument of a <em>nested</em> type-argument list is completed like any other
+     * argument: the enclosing type name and its opening bracket must not be taken to be part
+     * of the name being typed.
+     * E.g. {@code fx:typeArguments="javafx.util.Pair&lt;Bu<caret>, String&gt;"} must offer
+     * {@code Button}.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void typeArgumentsNestedFirstArgCompletion() {
+        getFixture().addFileToProject("sample/app/Button3.java",
+                """
+                package sample.app;
+                public class Button3 extends javafx.scene.control.Button {}
+                """);
+        getFixture().configureByText("TypeArgsNestedFirst.fxml", fxml(
+                "javafx.scene.control.ListView\njavafx.util.Pair\nsample.app.Button3",
+                """
+                  <ListView fx:typeArguments="Pair&lt;Bu<caret>, java.lang.String&gt;"/>
+                """
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            String text = getFixture().getEditor().getDocument().getText();
+            assertTrue(text.contains("Button3"),
+                    "Expected 'Button3' to be auto-inserted, document: " + text);
+            return;
+        }
+        List<String> fqns = lookupStrings(items);
+        List<String> names = displayNames(items);
+        assertTrue(fqns.contains("Button3") || fqns.contains("sample.app.Button3"),
+                "Expected 'Button3' in nested first-argument completions, got: " + fqns);
+        assertTrue(names.contains("Button3"),
+                "Expected 'Button3' display name in nested first-argument completions, got: " + names);
+    }
+
+    /**
+     * The last argument of a nested type-argument list is completed as well, with the
+     * closing bracket following the caret.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void typeArgumentsNestedLastArgCompletion() {
+        getFixture().addFileToProject("sample/app/Button4.java",
+                """
+                package sample.app;
+                public class Button4 extends javafx.scene.control.Button {}
+                """);
+        getFixture().configureByText("TypeArgsNestedLast.fxml", fxml(
+                "javafx.scene.control.ListView\njavafx.util.Pair\nsample.app.Button4",
+                """
+                  <ListView fx:typeArguments="Pair&lt;java.lang.String, Bu<caret>&gt;"/>
+                """
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            String text = getFixture().getEditor().getDocument().getText();
+            assertTrue(text.contains("Button4"),
+                    "Expected 'Button4' to be auto-inserted, document: " + text);
+            return;
+        }
+        List<String> fqns = lookupStrings(items);
+        assertTrue(fqns.contains("Button4") || fqns.contains("sample.app.Button4"),
+                "Expected 'Button4' in nested last-argument completions, got: " + fqns);
+    }
+
+    /**
      * Inside {@code <?import javafx.scene.<caret>?>} the contributor should offer
      * sub-packages (e.g. {@code javafx.scene.control}).
      */

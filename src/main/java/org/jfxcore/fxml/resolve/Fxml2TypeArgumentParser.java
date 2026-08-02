@@ -102,6 +102,31 @@ public final class Fxml2TypeArgumentParser {
     }
 
     /**
+     * Returns the offset in {@code text} at which the last type name starts, i.e. the offset
+     * just past the last argument separator: a comma or a bracket in either the literal or
+     * the escaped form.  Leading whitespace of that name is not skipped.
+     *
+     * <p>Callers use this to isolate the name a caret sits in from everything that precedes
+     * it in a type-argument list, at any nesting depth: in {@code "Pair<Stri"} the last name
+     * starts at {@code "Stri"}, not at {@code "Pair<Stri"}.
+     */
+    public static int lastNameStart(@NotNull String text) {
+        int start = 0;
+        int i = 0;
+        while (i < text.length()) {
+            int bracketLen = bracketAt(text, i) != 0 ? bracketLength(text, i) : 0;
+            if (bracketLen > 0) {
+                i += bracketLen;
+                start = i;
+            } else {
+                if (text.charAt(i) == ',') start = i + 1;
+                i++;
+            }
+        }
+        return start;
+    }
+
+    /**
      * Returns the raw type name of a type argument, i.e. everything before its own type
      * arguments ({@code "Map<K, V>"} -> {@code "Map"}).  Wildcards and array suffixes are
      * left untouched.
