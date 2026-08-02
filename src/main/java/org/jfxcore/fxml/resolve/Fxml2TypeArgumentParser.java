@@ -17,8 +17,8 @@ import java.util.List;
  * produces bogus class names ({@code "Pair<String"}, {@code "String>"}).
  *
  * <p>All methods accept the raw attribute text, which may use either literal angle brackets
- * ({@code <}, {@code >} — legal inside an XML attribute value) or the escaped entity forms
- * ({@code &lt;}, {@code &gt;}).
+ * ({@code <}, {@code >}, which are legal inside an XML attribute value) or the escaped entity
+ * forms ({@code &lt;}, {@code &gt;}).
  */
 public final class Fxml2TypeArgumentParser {
 
