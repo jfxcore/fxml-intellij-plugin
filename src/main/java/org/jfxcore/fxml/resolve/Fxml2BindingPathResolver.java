@@ -990,11 +990,7 @@ public final class Fxml2BindingPathResolver {
             // Strip the <...> / &lt;...&gt; portion before property lookup; the witness is only
             // for the compiler's type inference and does not affect which method is resolved.
             String lookupName = name;
-            int witnessStart = name.indexOf('<');
-            if (witnessStart < 0) {
-                int ltIdx = name.indexOf("&lt;");
-                if (ltIdx > 0) witnessStart = ltIdx;
-            }
+            int witnessStart = Fxml2TypeArgumentParser.indexOfOpeningBracket(name, 0);
             if (witnessStart > 0) {
                 lookupName = name.substring(0, witnessStart);
             }

@@ -63,6 +63,7 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
 import org.jfxcore.fxml.resolve.Fxml2TagResolver;
+import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -818,13 +819,10 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             if (caretOffset > fileText.length()) return;
             String typed = fileText.substring(valueStart, caretOffset);
 
-            // fx:typeArguments accepts comma-separated type names (e.g. "Row, Button").
-            // Extract only the segment after the last comma so completeFqn sees just the
-            // current argument being typed (e.g. "Bu" from "Row, Bu").
-            int lastComma = typed.lastIndexOf(',');
-            if (lastComma >= 0) {
-                typed = typed.substring(lastComma + 1).stripLeading();
-            }
+            // fx:typeArguments accepts comma-separated type names, each of which may itself
+            // be parameterized (e.g. "Row, Pair&lt;Button"). Extract only the name the caret
+            // sits in so completeFqn sees just that name (e.g. "Bu" from "Row, Pair&lt;Bu").
+            typed = typed.substring(Fxml2TypeArgumentParser.lastNameStart(typed)).stripLeading();
 
             completeFqn(parameters, result, typed);
         }

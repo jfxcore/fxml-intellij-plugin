@@ -29,6 +29,7 @@ import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
+import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
 import java.util.ArrayList;
@@ -242,15 +243,16 @@ public final class Fxml2UnusedImportsInspection extends XmlSuppressableInspectio
                         && Fxml2ImportResolver.FXML2_NAMESPACE.equals(attr.getNamespace())) {
                     String rawValue = attr.getValue();
                     if (rawValue != null && !rawValue.isBlank()) {
-                        for (String token : rawValue.split(",", -1)) {
-                            String fqn = token.strip();
-                            if (!fqn.isEmpty()) {
-                                String simpleName = fqn.contains(".")
-                                        ? fqn.substring(fqn.lastIndexOf('.') + 1)
-                                        : fqn;
-                                if (isResolvableClass(simpleName, xmlFile) || isResolvableClass(fqn, xmlFile)) {
-                                    names.add(simpleName);
-                                }
+                        // Includes names nested in a parameterized argument, e.g. both
+                        // Pair and String in "Pair<String, String>".
+                        for (Fxml2TypeArgumentParser.TypeName typeName
+                                : Fxml2TypeArgumentParser.allTypeNames(rawValue, 0)) {
+                            String fqn = typeName.name();
+                            String simpleName = fqn.contains(".")
+                                    ? fqn.substring(fqn.lastIndexOf('.') + 1)
+                                    : fqn;
+                            if (isResolvableClass(simpleName, xmlFile) || isResolvableClass(fqn, xmlFile)) {
+                                names.add(simpleName);
                             }
                         }
                     }

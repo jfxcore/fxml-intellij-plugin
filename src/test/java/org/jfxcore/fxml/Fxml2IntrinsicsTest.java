@@ -479,6 +479,164 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    /**
+     * A nested type-argument list is part of a single type argument: neither the arity
+     * check nor the reference resolution may split it at the inner comma.
+     */
+    @Test
+    void fxTypeArgumentsNestedGenericIsSingleArgument() {
+        getFixture().addFileToProject("sample/app/MyBox.java",
+                """
+                package sample.app;
+                public class MyBox<T> {}
+                """);
+        getFixture().configureByText("TestViewNested.fxml", fxml(
+                "sample.app.MyBox",
+                """
+                  <MyBox fx:typeArguments="javafx.util.Pair&lt;String, String&gt;"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Type names nested inside a type argument are resolved as well, so an unresolvable
+     * nested name is highlighted, and only that name.
+     */
+    @Test
+    void fxTypeArgumentsNestedUnresolvableProducesError() {
+        getFixture().addFileToProject("sample/app/MyBox2.java",
+                """
+                package sample.app;
+                public class MyBox2<T> {}
+                """);
+        getFixture().configureByText("TestViewNested2.fxml", fxml(
+                "sample.app.MyBox2",
+                """
+                  <MyBox2 fx:typeArguments="javafx.util.Pair&lt;String, sample.app.<error descr="Cannot resolve symbol 'NoSuch'">NoSuch</error>&gt;"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * An unterminated nested type-argument list is a syntax error; the compiler reports
+     * UNEXPECTED_END_OF_TYPE_DECLARATION.
+     */
+    @Test
+    void fxTypeArgumentsUnterminatedProducesError() {
+        getFixture().addFileToProject("sample/app/MyBox3.java",
+                """
+                package sample.app;
+                public class MyBox3<T> {}
+                """);
+        getFixture().configureByText("TestViewNested3.fxml", fxml(
+                "sample.app.MyBox3",
+                """
+                  <MyBox3 fx:typeArguments=<error descr="Unexpected end of type declaration">"javafx.util.Pair&lt;String, String"</error>/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Deeply nested type arguments (three levels) still count as a single argument and
+     * every name in them resolves.
+     */
+    @Test
+    void fxTypeArgumentsDeeplyNestedIsSingleArgument() {
+        getFixture().addFileToProject("sample/app/MyBox4.java",
+                """
+                package sample.app;
+                public class MyBox4<T> {}
+                """);
+        getFixture().configureByText("TestViewNested4.fxml", fxml(
+                "sample.app.MyBox4",
+                """
+                  <MyBox4 fx:typeArguments="java.util.Map&lt;String, java.util.List&lt;javafx.util.Pair&lt;String, Integer&gt;&gt;&gt;"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A name nested three levels deep is resolved, so an unresolvable one is highlighted
+     * exactly (the offsets must survive the escaped brackets preceding it).
+     */
+    @Test
+    void fxTypeArgumentsDeeplyNestedUnresolvableProducesError() {
+        getFixture().addFileToProject("sample/app/MyBox5.java",
+                """
+                package sample.app;
+                public class MyBox5<T> {}
+                """);
+        getFixture().configureByText("TestViewNested5.fxml", fxml(
+                "sample.app.MyBox5",
+                """
+                  <MyBox5 fx:typeArguments="java.util.Map&lt;String, java.util.List&lt;javafx.util.Pair&lt;String, sample.app.<error descr="Cannot resolve symbol 'NoSuch'">NoSuch</error>&gt;&gt;&gt;"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Nested type arguments combined with sibling top-level arguments: the arity is
+     * counted at the top level only.
+     */
+    @Test
+    void fxTypeArgumentsNestedAmongSiblingsCountsTopLevelOnly() {
+        getFixture().addFileToProject("sample/app/MyPair.java",
+                """
+                package sample.app;
+                public class MyPair<K, V> {}
+                """);
+        getFixture().configureByText("TestViewNested6.fxml", fxml(
+                "sample.app.MyPair",
+                """
+                  <MyPair fx:typeArguments="java.util.List&lt;String&gt;, java.util.Map&lt;String, Integer&gt;"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * The unescaped bracket form ({@code Pair<String, String>}, as opposed to
+     * {@code &lt;}/{@code &gt;}) is handled identically: one type argument, all names
+     * resolved.
+     */
+    @Test
+    void fxTypeArgumentsLiteralAngleBracketsAreHandled() {
+        getFixture().addFileToProject("sample/app/MyBox6.java",
+                """
+                package sample.app;
+                public class MyBox6<T> {}
+                """);
+        getFixture().configureByText("TestViewNested7.fxml", fxml(
+                "sample.app.MyBox6",
+                """
+                  <MyBox6 fx:typeArguments="javafx.util.Pair<String, String>"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** Unescaped brackets: an unresolvable nested name is still highlighted precisely. */
+    @Test
+    void fxTypeArgumentsLiteralAngleBracketsUnresolvableProducesError() {
+        getFixture().addFileToProject("sample/app/MyBox7.java",
+                """
+                package sample.app;
+                public class MyBox7<T> {}
+                """);
+        getFixture().configureByText("TestViewNested8.fxml", fxml(
+                "sample.app.MyBox7",
+                """
+                  <MyBox7 fx:typeArguments="javafx.util.Pair<String, sample.app.<error descr="Cannot resolve symbol 'NoSuch'">NoSuch</error>>"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     // -----------------------------------------------------------------------
     // fx:typeArguments count validation: compiler: NUM_TYPE_ARGUMENTS_MISMATCH / CANNOT_PARAMETERIZE_TYPE
     // -----------------------------------------------------------------------
@@ -552,6 +710,74 @@ class Fxml2IntrinsicsTest extends Fxml2TestBase {
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane fx:typeArguments=<error descr="javafx.scene.layout.GridPane cannot be parameterized">"java.lang.String"</error>/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Compiler: NUM_TYPE_ARGUMENTS_MISMATCH: the arity of a <em>nested</em> type argument is
+     * validated as well, so parameterizing a non-generic type inside a type-argument list is
+     * an error, even when the outer arity is correct.
+     */
+    @Test
+    void nestedTypeArgumentsOnNonGenericTypeProducesError() {
+        getFixture().addFileToProject("sample/app/OneParamType.java",
+                """
+                package sample.app;
+                public class OneParamType<T> {}
+                """);
+        getFixture().configureByText("TestViewNestedNonGeneric.fxml", fxml(
+                "sample.app.OneParamType",
+                """
+                  <OneParamType fx:typeArguments=<error descr="java.lang.String: required 0 type argument(s), but 2 were provided">"java.lang.String&lt;java.lang.String, java.lang.String&gt;"</error>/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * Compiler: NUM_TYPE_ARGUMENTS_MISMATCH: a nested type argument with the wrong number of
+     * arguments for its own type parameters is an error.
+     */
+    @Test
+    void nestedTypeArgumentsWithWrongCountProducesError() {
+        getFixture().addFileToProject("sample/app/OneParamType2.java",
+                """
+                package sample.app;
+                public class OneParamType2<T> {}
+                """);
+        getFixture().addFileToProject("sample/app/TwoParamType4.java",
+                """
+                package sample.app;
+                public class TwoParamType4<K, V> {}
+                """);
+        getFixture().configureByText("TestViewNestedWrongCount.fxml", fxml(
+                "sample.app.OneParamType2",
+                """
+                  <OneParamType2 fx:typeArguments=<error descr="sample.app.TwoParamType4: required 2 type argument(s), but 1 were provided">"sample.app.TwoParamType4&lt;java.lang.String&gt;"</error>/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** A correctly parameterized nested type argument must produce no error. */
+    @Test
+    void nestedTypeArgumentsWithCorrectCountProducesNoError() {
+        getFixture().addFileToProject("sample/app/OneParamType3.java",
+                """
+                package sample.app;
+                public class OneParamType3<T> {}
+                """);
+        getFixture().addFileToProject("sample/app/TwoParamType5.java",
+                """
+                package sample.app;
+                public class TwoParamType5<K, V> {}
+                """);
+        getFixture().configureByText("TestViewNestedOk.fxml", fxml(
+                "sample.app.OneParamType3",
+                """
+                  <OneParamType3 fx:typeArguments="sample.app.TwoParamType5&lt;java.lang.String, java.lang.Integer&gt;"/>
                 """
         ));
         getFixture().checkHighlighting(false, false, false);

@@ -32,6 +32,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2JavaNames;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
+import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -281,17 +282,27 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                 PsiTypeParameter[] typeParams = tagClass.getTypeParameters();
                 int expectedCount = typeParams.length;
                 String rawTypeArgs = typeArgumentsAttr.getValue();
-                String[] argTokens = rawTypeArgs != null ? rawTypeArgs.split(",", -1) : new String[0];
-                int actualCount = 0;
-                for (String token : argTokens) {
-                    if (!token.isBlank()) actualCount++;
-                }
+                // Split on top-level commas only: a single argument may itself be
+                // parameterized, e.g. "javafx.util.Pair<String, String>" is one argument.
+                List<Fxml2TypeArgumentParser.TypeArg> argTokens =
+                        Fxml2TypeArgumentParser.splitTopLevel(rawTypeArgs);
+                int actualCount = argTokens.size();
                 if (actualCount > 0) {
                     String className = tagClass.getQualifiedName();
                     if (className == null) className = tag.getLocalName();
                     XmlAttributeValue typeArgsValueEl = typeArgumentsAttr.getValueElement();
                     PsiElement typeArgsTarget = typeArgsValueEl != null ? typeArgsValueEl : typeArgumentsAttr;
-                    if (expectedCount == 0) {
+                    if (!Fxml2TypeArgumentParser.isBalanced(rawTypeArgs)) {
+                        // Unterminated nested type-argument list; the compiler reports
+                        // UNEXPECTED_END_OF_TYPE_DECLARATION. Arity and bounds are
+                        // meaningless for a malformed declaration, so stop here.
+                        problems.add(manager.createProblemDescriptor(
+                                typeArgsTarget,
+                                "Unexpected end of type declaration",
+                                (LocalQuickFix) null,
+                                ProblemHighlightType.GENERIC_ERROR,
+                                isOnTheFly));
+                    } else if (expectedCount == 0) {
                         problems.add(manager.createProblemDescriptor(
                                 typeArgsTarget,
                                 className + " cannot be parameterized",
@@ -306,8 +317,11 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                                 ProblemHighlightType.GENERIC_ERROR,
                                 isOnTheFly));
                     } else {
-                        // Count matches: validate each argument against its type parameter's bound.
-                        checkTypeArgumentBounds(typeArgumentsAttr, rawTypeArgs, argTokens, typeParams,
+                        // Count matches: validate the arity of nested type arguments, then
+                        // check each argument against its type parameter's bound.
+                        checkNestedTypeArgumentArity(argTokens, typeArgsTarget, xmlFile, tag,
+                                problems, manager, isOnTheFly);
+                        checkTypeArgumentBounds(typeArgumentsAttr, argTokens, typeParams,
                                 xmlFile, tag, problems, manager, isOnTheFly);
                     }
                 }
@@ -349,10 +363,8 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                 if (factoryValue != null && !factoryValue.isBlank()) {
                     String methodName = factoryValue.trim();
                     // Strip type witness: "observableArrayList<String>" -> "observableArrayList"
-                    // Also handle XML-entity-encoded form "&lt;" in case getValue() is not fully decoded
-                    int angleIdx = methodName.indexOf('<');
-                    if (angleIdx < 0) angleIdx = methodName.indexOf('&'); // &lt; form
-                    if (angleIdx > 0) methodName = methodName.substring(0, angleIdx).trim();
+                    // (handles the literal '<' and the XML-entity-encoded "&lt;" form)
+                    methodName = Fxml2TypeArgumentParser.rawName(methodName);
                     boolean found = false;
                     for (PsiMethod m : tagClass.findMethodsByName(methodName, true)) {
                         if (m.hasModifierProperty(PsiModifier.STATIC)
@@ -457,6 +469,55 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
     }
 
     /**
+     * Validates the arity of nested type arguments at every nesting depth, mirroring the
+     * compiler's recursive type invocation: {@code Foo<String<String, String>>} is an error
+     * because {@code String} accepts no type arguments, even though {@code Foo} receives the
+     * expected single argument.
+     *
+     * <p>Arguments that cannot be resolved and wildcards are skipped; a resolvable argument's
+     * own arguments are checked against the type parameters of its raw type, and the check
+     * then descends into them.
+     */
+    private static void checkNestedTypeArgumentArity(
+            @NotNull List<Fxml2TypeArgumentParser.TypeArg> argTokens,
+            @NotNull PsiElement target,
+            @NotNull XmlFile xmlFile,
+            @NotNull XmlTag tag,
+            @NotNull List<ProblemDescriptor> problems,
+            @NotNull InspectionManager manager,
+            boolean isOnTheFly) {
+
+        JavaPsiFacade facade = JavaPsiFacade.getInstance(tag.getProject());
+        GlobalSearchScope scope = tag.getResolveScope();
+
+        for (Fxml2TypeArgumentParser.TypeArg arg : argTokens) {
+            List<Fxml2TypeArgumentParser.TypeArg> nested =
+                    Fxml2TypeArgumentParser.nestedArgs(arg.text(), arg.offset());
+            if (nested.isEmpty()) continue;
+
+            PsiClass argClass = resolveTypeArgClass(arg.rawName(), xmlFile, facade, scope);
+            if (argClass == null) continue; // unresolved; already reported as an unresolved reference
+
+            int expected = argClass.getTypeParameters().length;
+            if (expected != nested.size()) {
+                String name = argClass.getQualifiedName() != null ? argClass.getQualifiedName() : arg.rawName();
+                problems.add(manager.createProblemDescriptor(
+                        target,
+                        name + ": required " + expected + " type argument(s), but "
+                                + nested.size() + " were provided",
+                        (LocalQuickFix) null,
+                        ProblemHighlightType.GENERIC_ERROR,
+                        isOnTheFly));
+                // A mismatch at this level makes deeper checks meaningless, matching the
+                // compiler's early exit on NUM_TYPE_ARGUMENTS_MISMATCH.
+                continue;
+            }
+
+            checkNestedTypeArgumentArity(nested, target, xmlFile, tag, problems, manager, isOnTheFly);
+        }
+    }
+
+    /**
      * Validates each type argument in {@code fx:typeArguments} against its corresponding
      * type parameter's declared bound.  Mirrors the compiler's
      * {@code TypeInvoker.checkProvidedArgument()} logic:
@@ -477,8 +538,7 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
      */
     private static void checkTypeArgumentBounds(
             @NotNull XmlAttribute typeArgumentsAttr,
-            @NotNull String rawTypeArgs,
-            @NotNull String[] argTokens,
+            @NotNull List<Fxml2TypeArgumentParser.TypeArg> argTokens,
             @NotNull PsiTypeParameter[] typeParams,
             @NotNull XmlFile xmlFile,
             @NotNull XmlTag tag,
@@ -494,17 +554,11 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
         // First pass: resolve each non-blank token to its PsiClass.
         // argClasses[i] maps to typeParams[i]; null when the class cannot be resolved
         // (already reported as an unresolved reference by the reference contributor).
+        // A parameterized argument is resolved through its raw name ("Pair<K, V>" -> "Pair"),
+        // which is all the erasure-level bound check below needs.
         PsiClass[] argClasses = new PsiClass[typeParams.length];
-        {
-            int idx = 0;
-            for (String token : argTokens) {
-                if (idx >= typeParams.length) break;
-                String name = token.trim();
-                if (!name.isBlank()) {
-                    argClasses[idx] = resolveTypeArgClass(name, xmlFile, facade, scope);
-                    idx++;
-                }
-            }
+        for (int i = 0; i < Math.min(typeParams.length, argTokens.size()); i++) {
+            argClasses[i] = resolveTypeArgClass(argTokens.get(i).rawName(), xmlFile, facade, scope);
         }
 
         // Build a substitutor that maps each type parameter to the raw type of its
@@ -519,23 +573,15 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
         }
 
         // Second pass: check each resolved argument against its parameter's bound.
-        // Track the cursor position in rawTypeArgs so we can compute a precise text
-        // range for highlighting only the offending token within the attribute value.
-        int searchFrom = 0;
-        int paramIdx = 0;
-        for (String token : argTokens) {
-            String name = token.trim();
-            int tokenStart = name.isEmpty() ? -1 : rawTypeArgs.indexOf(name, searchFrom);
-            searchFrom += token.length() + 1; // advance past "token,"
-
-            if (name.isBlank() || paramIdx >= typeParams.length) {
-                if (!name.isBlank()) paramIdx++;
-                continue;
-            }
+        // Each argument carries its offset in the attribute value, so the problem can be
+        // highlighted on exactly the offending token.
+        for (int paramIdx = 0; paramIdx < Math.min(typeParams.length, argTokens.size()); paramIdx++) {
+            Fxml2TypeArgumentParser.TypeArg token = argTokens.get(paramIdx);
+            String name = token.text();
+            int tokenStart = token.offset();
 
             PsiTypeParameter typeParam = typeParams[paramIdx];
             PsiClass argClass = argClasses[paramIdx];
-            paramIdx++;
 
             if (argClass == null) continue; // unresolved; already reported by reference contributor
 
@@ -578,14 +624,14 @@ public final class Fxml2FxAttributeInspection extends XmlSuppressableInspectionT
                 String boundFqn = boundClass.getQualifiedName() != null ? boundClass.getQualifiedName() : boundClass.getName();
                 String message  = "Type argument " + argFqn + " is not within its bound, should extend " + boundFqn;
 
-                if (valueEl != null && tokenStart >= 0) {
+                if (valueEl != null) {
                     // +1 to skip the opening quote of the XmlAttributeValue text
                     TextRange range = TextRange.create(tokenStart + 1, tokenStart + 1 + name.length());
                     problems.add(manager.createProblemDescriptor(
                             valueEl, range, message, ProblemHighlightType.GENERIC_ERROR, isOnTheFly));
                 } else {
                     problems.add(manager.createProblemDescriptor(
-                            valueEl != null ? valueEl : typeArgumentsAttr,
+                            typeArgumentsAttr,
                             message, (LocalQuickFix) null,
                             ProblemHighlightType.GENERIC_ERROR, isOnTheFly));
                 }

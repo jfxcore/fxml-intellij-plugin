@@ -701,6 +701,34 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     }
 
     /**
+     * A nested type argument in a markup extension ({@code {GenericExtension<List<String>>}})
+     * resolves in both the escaped and the literal bracket form; the inner comma must not
+     * be mistaken for an argument separator.
+     */
+    @Test
+    void genericTypeArgNested_noError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.GenericExtension",
+                """
+                  <Label text="{GenericExtension&lt;java.util.Map&lt;String, java.util.List&lt;String&gt;&gt;&gt; key=hello}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** Same, using literal angle brackets. */
+    @Test
+    void genericTypeArgNestedLiteralAngle_noError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.GenericExtension",
+                """
+                  <Label text="{GenericExtension<java.util.Map<String, java.util.List<String>>> key=hello}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
      * A generic markup extension used without any parameters resolves the class correctly.
      */
     @Test

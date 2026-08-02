@@ -44,6 +44,7 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
 import org.jfxcore.fxml.resolve.Fxml2TagResolver;
+import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
 import java.util.ArrayList;
@@ -615,22 +616,14 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
         if (afterName >= rawValue.length()) return;
 
-        boolean literal;
-        int contentStart; // offset in rawValue of first char after opening bracket
-        if (rawValue.charAt(afterName) == '<') {
-            literal = true;
-            contentStart = afterName + 1;
-        } else if (rawValue.startsWith("&lt;", afterName)) {
-            literal = false;
-            contentStart = afterName + 4; // skip "&lt;"
-        } else {
-            return; // no type arg bracket
-        }
+        // The bracket must follow the class name immediately, in either the literal
+        // ('<') or the escaped ("&lt;") form.
+        int openBracketLen = Fxml2TypeArgumentParser.openingBracketLength(rawValue, afterName);
+        if (openBracketLen == 0) return; // no type arg bracket
+        int contentStart = afterName + openBracketLen; // offset of first char after opening bracket
 
-        // Find the matching close bracket
-        int closeOffset = literal
-                ? findClosingAngleLiteral(rawValue, contentStart)
-                : findClosingAngleEntity(rawValue, contentStart);
+        // Find the matching close bracket (nested type arguments are taken into account)
+        int closeOffset = Fxml2TypeArgumentParser.findClosingBracket(rawValue, contentStart);
         if (closeOffset < 0) {
             return;
         }
@@ -639,51 +632,19 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         // findReferenceAt() never returns null for cursor positions on '<'/'&lt;' or '>'/'&gt;'.
         // Without them, the cursor landing exactly on the bracket triggers a non-deterministic
         // word-at-caret fallback that may highlight either the class name or the type arg.
-        int openBracketLen  = literal ? 1 : 4; // '<' vs "&lt;"
-        int closeBracketLen = literal ? 1 : 4; // '>' vs "&gt;"
+        int closeBracketLen = rawValue.charAt(closeOffset) == '&' ? 4 : 1; // "&gt;" vs '>'
         refs.add(softRef(attrVal, new TextRange(1 + afterName, 1 + afterName + openBracketLen), null));
         refs.add(softRef(attrVal, new TextRange(1 + closeOffset, 1 + closeOffset + closeBracketLen), null));
 
         String typeArgContent = rawValue.substring(contentStart, closeOffset);
 
-        // Emit class refs for each comma-separated type token
-        int cursor = 0;
-        for (String token : typeArgContent.split(",", -1)) {
-            int leadingSpaces = 0;
-            while (leadingSpaces < token.length()
-                    && Character.isWhitespace(token.charAt(leadingSpaces))) {
-                leadingSpaces++;
-            }
-            String name = token.stripTrailing().substring(leadingSpaces);
-            if (!name.isEmpty()) {
-                // Strip nested angle brackets (e.g. "Map<K,V>" -> "Map")
-                int innerAngle = name.indexOf('<');
-                if (innerAngle < 0) innerAngle = name.indexOf("&lt;");
-                if (innerAngle > 0) name = name.substring(0, innerAngle);
-                int tokenOffset = contentStart + cursor + leadingSpaces;
-                refs.addAll(List.of(buildFqnSegmentRefs(attrVal, name, tokenOffset, xmlFile, false)));
-            }
-            cursor += token.length() + 1; // +1 for comma
+        // Emit class refs for every type name, including those nested in type arguments
+        // of a type argument (e.g. both "Map" and "String" in "Map<String, V>").
+        for (Fxml2TypeArgumentParser.TypeName typeName
+                : Fxml2TypeArgumentParser.allTypeNames(typeArgContent, contentStart)) {
+            refs.addAll(List.of(buildFqnSegmentRefs(
+                    attrVal, typeName.name(), typeName.offset(), xmlFile, false)));
         }
-    }
-
-    /** Finds the offset of the matching {@code >} in a literal angle-bracket sequence. */
-    private static int findClosingAngleLiteral(@NotNull String s, int from) {
-        int depth = 1;
-        for (int i = from; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '<') depth++;
-            else if (c == '>') { if (--depth == 0) return i; }
-        }
-        return -1;
-    }
-
-    /** Finds the offset of the matching {@code &gt;} entity in a string. */
-    private static int findClosingAngleEntity(@NotNull String s, int from) {
-        for (int i = from; i <= s.length() - 4; i++) {
-            if (s.startsWith("&gt;", i)) return i;
-        }
-        return -1;
     }
 
 
@@ -1783,28 +1744,14 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             String rawValue = attrVal.getValue();
             if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
 
-            // fx:typeArguments may be a comma-separated list of FQNs, e.g.
-            //   "javafx.scene.control.Button, javafx.scene.control.Label"
-            // Split by comma and emit segment refs for each token independently.
+            // fx:typeArguments may be a comma-separated list of FQNs, and each argument may
+            // itself be parameterized, e.g. "javafx.util.Pair<String, String>, Integer".
+            // Emit segment refs for every type name at any nesting depth.
             List<PsiReference> refs = new ArrayList<>();
-            int cursor = 0;
-            for (String token : rawValue.split(",", -1)) {
-                // Strip leading whitespace, track how many chars we skipped.
-                int leadingSpaces = 0;
-                while (leadingSpaces < token.length()
-                        && Character.isWhitespace(token.charAt(leadingSpaces))) {
-                    leadingSpaces++;
-                }
-                String trimmed = token.stripTrailing();
-                String fqn     = leadingSpaces <= trimmed.length() ? trimmed.substring(leadingSpaces) : "";
-
-                if (!fqn.isBlank()) {
-                    // tokenStart is the offset of the first non-whitespace char within rawValue.
-                    int tokenStart = cursor + leadingSpaces;
-                    refs.addAll(List.of(
-                            buildFqnSegmentRefs(attrVal, fqn, tokenStart, xmlFile, true)));
-                }
-                cursor += token.length() + 1; // +1 for the comma
+            for (Fxml2TypeArgumentParser.TypeName typeName
+                    : Fxml2TypeArgumentParser.allTypeNames(rawValue, 0)) {
+                refs.addAll(List.of(
+                        buildFqnSegmentRefs(attrVal, typeName.name(), typeName.offset(), xmlFile, true)));
             }
             return refs.isEmpty() ? PsiReference.EMPTY_ARRAY : refs.toArray(PsiReference.EMPTY_ARRAY);
         }

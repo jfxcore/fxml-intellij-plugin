@@ -30,6 +30,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
+import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
 import java.util.ArrayList;
@@ -113,16 +114,13 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
             boolean isOnTheFly,
             @NotNull List<ProblemDescriptor> problems) {
 
-        int cursor = 0;
-        for (String token : rawValue.split(",", -1)) {
-            int leadingSpaces = 0;
-            while (leadingSpaces < token.length() && Character.isWhitespace(token.charAt(leadingSpaces))) {
-                leadingSpaces++;
-            }
-            String fqn = token.strip();
-            int tokenStart = cursor + leadingSpaces;
+        // Every type name at any nesting depth, so that qualifiers inside nested type
+        // arguments ("Pair<java.lang.String, V>") are checked as well.
+        for (Fxml2TypeArgumentParser.TypeName typeName : Fxml2TypeArgumentParser.allTypeNames(rawValue, 0)) {
+            String fqn = typeName.name();
+            int tokenStart = typeName.offset();
 
-            if (!fqn.isBlank() && fqn.contains(".") && Character.isJavaIdentifierStart(fqn.charAt(0))) {
+            if (fqn.contains(".") && Character.isJavaIdentifierStart(fqn.charAt(0))) {
                 RedundantPrefix rp = findRedundantClassPrefix(fqn, xmlFile);
                 if (rp != null) {
                     // +1 to account for the opening quote in XmlAttributeValue text
@@ -135,7 +133,6 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
                             new RemoveAttributeValuePrefixFix(rp.prefix(), tokenStart)));
                 }
             }
-            cursor += token.length() + 1; // +1 for the comma
         }
     }
 
@@ -184,39 +181,19 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
         if (afterName >= rawValue.length()) return;
 
         // Accept both literal '<' and XML-escaped '&lt;' forms.
-        boolean literal;
-        int contentStart;
-        if (rawValue.charAt(afterName) == '<') {
-            literal = true;
-            contentStart = afterName + 1;
-        } else if (rawValue.startsWith("&lt;", afterName)) {
-            literal = false;
-            contentStart = afterName + 4;
-        } else {
-            return; // no type arguments
-        }
+        int openBracketLen = Fxml2TypeArgumentParser.openingBracketLength(rawValue, afterName);
+        if (openBracketLen == 0) return; // no type arguments
+        int contentStart = afterName + openBracketLen;
 
-        int closeOffset = literal
-                ? markupExtFindClosingAngleLiteral(rawValue, contentStart)
-                : markupExtFindClosingAngleEntity(rawValue, contentStart);
+        int closeOffset = Fxml2TypeArgumentParser.findClosingBracket(rawValue, contentStart);
         if (closeOffset < 0) return;
 
         String typeArgContent = rawValue.substring(contentStart, closeOffset);
-        int cursor = 0;
-        for (String token : typeArgContent.split(",", -1)) {
-            int leadingSpaces = 0;
-            while (leadingSpaces < token.length() && Character.isWhitespace(token.charAt(leadingSpaces))) {
-                leadingSpaces++;
-            }
-            String typeArgFqn = token.stripTrailing().substring(leadingSpaces);
-            // Strip nested angle brackets (e.g. "Map<K,V>" -> "Map")
-            int innerAngle = typeArgFqn.indexOf('<');
-            if (innerAngle < 0) innerAngle = typeArgFqn.indexOf("&lt;");
-            if (innerAngle > 0) typeArgFqn = typeArgFqn.substring(0, innerAngle);
-
-            if (!typeArgFqn.isBlank() && typeArgFqn.contains(".")
-                    && Character.isJavaIdentifierStart(typeArgFqn.charAt(0))) {
-                int tokenStart = contentStart + cursor + leadingSpaces; // offset in rawValue
+        for (Fxml2TypeArgumentParser.TypeName typeName
+                : Fxml2TypeArgumentParser.allTypeNames(typeArgContent, contentStart)) {
+            String typeArgFqn = typeName.name();
+            if (typeArgFqn.contains(".") && Character.isJavaIdentifierStart(typeArgFqn.charAt(0))) {
+                int tokenStart = typeName.offset(); // offset in rawValue
                 RedundantPrefix rp = findRedundantClassPrefix(typeArgFqn, xmlFile);
                 if (rp != null) {
                     TextRange range = TextRange.create(1 + tokenStart, 1 + tokenStart + rp.prefixLength());
@@ -228,27 +205,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
                             new RemoveAttributeValuePrefixFix(rp.prefix(), tokenStart)));
                 }
             }
-            cursor += token.length() + 1; // +1 for comma
         }
-    }
-
-    /** Finds the offset of the matching {@code >} for a literal angle-bracket sequence. */
-    private static int markupExtFindClosingAngleLiteral(@NotNull String s, int from) {
-        int depth = 1;
-        for (int i = from; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '<') depth++;
-            else if (c == '>') { if (--depth == 0) return i; }
-        }
-        return -1;
-    }
-
-    /** Finds the offset of the matching {@code &gt;} entity in a string. */
-    private static int markupExtFindClosingAngleEntity(@NotNull String s, int from) {
-        for (int i = from; i <= s.length() - 4; i++) {
-            if (s.startsWith("&gt;", i)) return i;
-        }
-        return -1;
     }
 
     /**

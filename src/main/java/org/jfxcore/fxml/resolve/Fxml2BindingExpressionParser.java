@@ -504,8 +504,7 @@ public final class Fxml2BindingExpressionParser {
             // E.g. $parent<Pane>/prefWidth is valid; $method<String> is not.
             int opLen = path.startsWith("!!") ? 2 : path.startsWith("!") ? 1 : 0;
             String pathAfterOp = path.substring(opLen); // stripped of any boolean operator
-            int angleBracket = pathAfterOp.indexOf('<');
-            if (angleBracket < 0) angleBracket = pathAfterOp.indexOf("&lt;");
+            int angleBracket = Fxml2TypeArgumentParser.indexOfOpeningBracket(pathAfterOp, 0);
             if (angleBracket >= 0 && !isParentContextSelectorAngle(pathAfterOp, angleBracket)) {
                 return new ParseError("'>' expected", 0, value.length());
             }
@@ -539,8 +538,7 @@ public final class Fxml2BindingExpressionParser {
                 // The FXML/2 compiler accepts both the literal '<' and the XML-escaped '&lt;' forms.
                 // XmlAttributeValue.getValue() may return either form depending on the XML parser,
                 // so check for both.
-                int angleIdx = name.indexOf('<');
-                if (angleIdx < 0) angleIdx = name.indexOf("&lt;");
+                int angleIdx = Fxml2TypeArgumentParser.indexOfOpeningBracket(name, 0);
                 boolean hasTypeArg = angleIdx > 0;
                 if (hasTypeArg) {
                     name = name.substring(0, angleIdx);
