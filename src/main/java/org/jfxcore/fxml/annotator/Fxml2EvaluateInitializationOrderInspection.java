@@ -63,7 +63,7 @@ public final class Fxml2EvaluateInitializationOrderInspection
 
         Fxml2ExpressionParser.Expression expression;
         try {
-            expression = Fxml2ExpressionParser.parse(decodeAngleBrackets(expressionText));
+            expression = Fxml2ExpressionParser.parse(expressionText);
         } catch (Fxml2ExpressionParser.ParseException ignored) {
             return;
         }
@@ -108,6 +108,9 @@ public final class Fxml2EvaluateInitializationOrderInspection
             }
             case Fxml2ExpressionParser.MemberExpression member ->
                     collectRiskySelectors(member.receiver(), result);
+            case Fxml2ExpressionParser.AttachedPropertyExpression attached -> {
+                if (attached.receiver() != null) collectRiskySelectors(attached.receiver(), result);
+            }
             case Fxml2ExpressionParser.InvocationExpression invocation -> {
                 collectRiskySelectors(invocation.target(), result);
                 invocation.arguments().forEach(argument -> collectRiskySelectors(argument, result));
@@ -122,9 +125,5 @@ public final class Fxml2EvaluateInitializationOrderInspection
                     collectRiskySelectors(grouped.expression(), result);
             default -> { }
         }
-    }
-
-    private static @NotNull String decodeAngleBrackets(@NotNull String text) {
-        return text.replace("&lt;", "<").replace("&gt;", ">");
     }
 }

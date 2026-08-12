@@ -850,7 +850,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         if (contextTag != null) {
             startClass = Fxml2BindingPathResolver.resolveStartClass(selector, contextTag, xmlFile);
         }
-        if (startClass == null && (selector == null || selector.isThis())) {
+        if (startClass == null && selector == null) {
             startClass = Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
         }
         if (startClass == null) return;
@@ -1035,7 +1035,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             } else {
                 startClass = Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
             }
-            if (startClass == null && (selector == null || selector.isThis())) {
+            if (startClass == null && selector == null) {
                 startClass = Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
             }
 
@@ -1100,7 +1100,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 }
             }
 
-            // Context selector reference: self/parent -> navigate to the target XmlTag
+            // Context selector reference navigates to the target XmlTag.
             if (selector != null && contextTag != null) {
                 // Position of the selector token within the attribute value text (1-based, after quote)
                 int selectorStart = 1 + expr.strippedPathOffset();
@@ -1295,7 +1295,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
     /**
      * Builds a {@link com.intellij.psi.impl.light.LightFieldBuilder} whose type is the
      * resolved class of {@code targetTag} and whose name is {@code selectorText}
-     * (e.g. {@code "self"}, {@code "parent[1]"}, {@code "this"}).
+     * (e.g. {@code "element"}, {@code "parent"}, or {@code "root"}).
      * The light field navigates to {@code targetTag} on Ctrl+click and causes
      * IntelliJ's Java documentation provider to render a {@code <Type> <selector>}
      * tooltip on hover, matching the behavior of {@code fx:id} references.
@@ -1436,8 +1436,8 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      * the element-notation {@code source=} value is a plain binding path with no prefix
      * character.  It still supports:
      * <ul>
-     *   <li>Context selectors: {@code self/prop}, {@code parent/prop},
-     *       {@code parent[N]/prop}, {@code parent<Type>/prop}</li>
+     *   <li>Context selectors such as {@code :element.prop} and
+     *       {@code :parent<Type>(N).prop}</li>
      *   <li>The {@code ..} content prefix: {@code ..items}</li>
      *   <li>Class-qualifier prefixes: {@code ClassName.staticProp}</li>
      * </ul>
@@ -1480,7 +1480,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             PsiClass startClass = Fxml2BindingPathResolver.resolveStartClass(null, fxTag, xmlFile);
             if (startClass == null) return PsiReference.EMPTY_ARRAY;
 
-            // Parse context selector (self/, parent/, this., etc.)
+            // Parse a context selector.
             ContextSelector selector = Fxml2BindingExpressionParser.parseContextSelector(rawPath);
             String remainingPath = selector != null ? selector.remainingPath() : rawPath;
             if (remainingPath.isBlank()) return PsiReference.EMPTY_ARRAY;
@@ -1516,7 +1516,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
             List<PsiReference> refs = new ArrayList<>();
 
-            // Context selector reference: self/parent/this -> navigate to the target XmlTag
+            // Context selector reference navigates to the target XmlTag.
             if (selector != null) {
                 // +1 for opening quote in XmlAttributeValue text
                 addSelectorRef(refs, attrVal, 1, selector, fxTag, xmlFile.getProject());
@@ -2583,7 +2583,8 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             @NotNull Project project) {
         XmlTag targetTag = Fxml2BindingPathResolver.resolveContextSelectorTag(selector, contextTag);
         if (targetTag == null) return;
-        PsiElement resolved = makeSelectorNavElement(selector.selectorText(), targetTag, project);
+        PsiElement resolved = makeSelectorNavElement(
+                selector.kind().name().toLowerCase(java.util.Locale.ROOT), targetTag, project);
         int selectorEnd = selectorStart + selector.selectorText().length();
         refs.add(new PsiReferenceBase<>(attrVal, new TextRange(selectorStart, selectorEnd), /* soft= */ true) {
             @Override public @NotNull PsiElement resolve() { return resolved; }

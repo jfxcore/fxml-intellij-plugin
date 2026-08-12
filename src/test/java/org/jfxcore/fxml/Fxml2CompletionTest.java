@@ -1747,7 +1747,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 javafx.scene.control.Button
                 """,
                 """
-                  <Button fx:id="myButton3" disable="${self/<caret>}"/>
+                  <Button fx:id="myButton3" disable="${:element.<caret>}"/>
                 """
         ));
         LookupElement[] items = getFixture().completeBasic();

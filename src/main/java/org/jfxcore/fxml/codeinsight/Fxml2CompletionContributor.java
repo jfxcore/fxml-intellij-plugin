@@ -1520,7 +1520,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 // No resolvable start class, but at the first-segment root-context level
                 // we can still offer fx:id-declared elements, since the FXML compiler will
                 // inject them into the base class once the project is built.
-                if (selector == null || selector.isThis()) {
+                if (selector == null) {
                     CompletionResultSet fxIdPrefixResult = result.withPrefixMatcher(
                             new PlainPrefixMatcher(partialName, true));
                     addFxIdCompletions(xmlFile, partialName, fxIdPrefixResult);
@@ -1582,7 +1582,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 // properties above) because the code-behind base class may not yet
                 // have been compiled (missing fx:id fields), and the user's intent
                 // is clear from the XML structure alone.
-                if (completedPrefix.isEmpty() && (selector == null || selector.isThis())) {
+                if (completedPrefix.isEmpty() && selector == null) {
                     addFxIdCompletions(xmlFile, partialName, prefixResult);
                 }
 
@@ -1601,7 +1601,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 // the root-tag class an effective supertype of the code-behind. Mirror this here so
                 // that root-element properties appear in completion even before the project is built.
                 // Only applied at the first segment level and when fx:context is not explicitly set.
-                if (completedPrefix.isEmpty() && (selector == null || selector.isThis())
+                if (completedPrefix.isEmpty() && selector == null
                         && Fxml2BindingPathResolver.resolveContextClass(xmlFile) == null) {
                     PsiClass rootTagClass = Fxml2BindingPathResolver.resolveRootTagClass(xmlFile);
                     if (rootTagClass != null && !rootTagClass.equals(currentClass)

@@ -2,6 +2,7 @@ package org.jfxcore.fxml.resolve;
 
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser.BinaryExpression;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser.BinaryOperator;
+import org.jfxcore.fxml.resolve.Fxml2ExpressionParser.AttachedPropertyExpression;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser.ContextSelectorExpression;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser.ContextSelectorKind;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser.Expression;
@@ -67,11 +68,50 @@ class Fxml2ExpressionParserTest {
         assertSelector(":parent", ContextSelectorKind.PARENT, null, null);
         assertSelector(":parent(0)", ContextSelectorKind.PARENT, null, 0);
         assertSelector(":parent<Pane>(2)", ContextSelectorKind.PARENT, "Pane", 2);
+        assertSelector(":parent<Pane>(+3)", ContextSelectorKind.PARENT, "Pane", 3);
+        assertSelector(":parent(-12)", ContextSelectorKind.PARENT, null, -12);
+        assertSelector(":parent <Pane> (2)", ContextSelectorKind.PARENT, "Pane", 2);
 
         MemberExpression member = assertInstanceOf(MemberExpression.class,
                 Fxml2ExpressionParser.parse(":parent<Pane>.width"));
         assertEquals(":parent<Pane>", member.receiver().text());
         assertEquals("width", member.member().text());
+        assertEquals(":element", Fxml2ExpressionParser.parseLeadingContextSelector(
+                ":element.").text());
+    }
+
+    @Test
+    void numericLiteralsStopBeforeBinarySigns() {
+        assertEquals(BinaryOperator.ADD, binary("1+2", BinaryOperator.ADD).operator());
+        assertEquals(BinaryOperator.SUBTRACT, binary("1e2-3", BinaryOperator.SUBTRACT).operator());
+        assertInstanceOf(Fxml2ExpressionParser.LiteralExpression.class,
+                Fxml2ExpressionParser.parse("1e-2"));
+    }
+
+    @Test
+    void attachedPropertySegmentsMatchCompilerExpressions() {
+        AttachedPropertyExpression leading = assertInstanceOf(AttachedPropertyExpression.class,
+                Fxml2ExpressionParser.parse("::(GridPane.rowIndex)"));
+        assertEquals(Fxml2ExpressionParser.SelectionOperator.OBSERVABLE, leading.operator());
+        assertEquals("GridPane", leading.declaringType());
+        assertEquals("rowIndex", leading.property());
+
+        AttachedPropertyExpression selected = assertInstanceOf(AttachedPropertyExpression.class,
+                Fxml2ExpressionParser.parse(":context.(GridPane.rowIndex)"));
+        assertInstanceOf(ContextSelectorExpression.class, selected.receiver());
+        assertThrows(Fxml2ExpressionParser.ParseException.class,
+                () -> Fxml2ExpressionParser.parse("factory().(GridPane.rowIndex)"));
+    }
+
+    @Test
+    void markupExtensionsAreAcceptedOnlyAsCompleteInvocationArguments() {
+        InvocationExpression invocation = assertInstanceOf(InvocationExpression.class,
+                Fxml2ExpressionParser.parse("f(value, {StaticResource key})"));
+        assertEquals(Fxml2ExpressionParser.LiteralKind.MARKUP_EXTENSION,
+                assertInstanceOf(Fxml2ExpressionParser.LiteralExpression.class,
+                        invocation.arguments().get(1)).kind());
+        assertThrows(Fxml2ExpressionParser.ParseException.class,
+                () -> Fxml2ExpressionParser.parse("f({StaticResource key} + value)"));
     }
 
     @Test
@@ -133,6 +173,8 @@ class Fxml2ExpressionParserTest {
                 () -> Fxml2ExpressionParser.parse("a<>(c)"));
         assertThrows(Fxml2ExpressionParser.ParseException.class,
                 () -> Fxml2ExpressionParser.parse("a<T,>(c)"));
+        assertThrows(Fxml2ExpressionParser.ParseException.class,
+                () -> Fxml2ExpressionParser.parse("a<String[]>(c)"));
     }
 
     private static BinaryExpression binary(String text, BinaryOperator operator) {

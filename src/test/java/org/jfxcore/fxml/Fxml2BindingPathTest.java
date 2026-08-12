@@ -679,7 +679,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Hovering over {@code self} in {@code $self/foo} must resolve to a
+     * Hovering over {@code :element} in {@code $:element.foo} must resolve to a
      * {@link PsiField} whose type is the enclosing tag's class and whose name is
      * {@code "self"}: so IntelliJ's Java documentation provider renders
      * e.g. {@code VBox self} in the tooltip.
@@ -690,7 +690,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
         getFixture().configureByText("SelfHover.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
-                  <VBox minHeight="$se<caret>lf/prefWidth"/>
+                  <VBox minHeight="$:ele<caret>ment.prefWidth"/>
                 """
         ));
         ReadAction.run(() -> {
@@ -699,11 +699,11 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     getFixture().getFile(), offset, XmlAttributeValue.class, false);
             assertNotNull(attrVal);
             PsiElement resolved = resolveFirstReferenceAt(attrVal, offset);
-            assertNotNull(resolved, "Expected a resolved reference at 'self'");
+            assertNotNull(resolved, "Expected a resolved reference at ':element'");
             assertInstanceOf(PsiField.class, resolved,
                     "Expected a PsiField (LightFieldBuilder) for self, got: " + resolved.getClass());
             PsiField field = (PsiField) resolved;
-            assertEquals("self", field.getName(), "Field name should be the selector text");
+            assertEquals("element", field.getName(), "Field name should be the selector text");
             String typeName = field.getType().getPresentableText();
             assertEquals("VBox", typeName, "Field type should be the enclosing tag class (VBox)");
         });
@@ -721,7 +721,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
         getFixture().configureByText("ParentHover.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
-                  <VBox minHeight="$par<caret>ent/prefWidth"/>
+                  <VBox minHeight="$:par<caret>ent.prefWidth"/>
                 """
         ));
         ReadAction.run(() -> {
@@ -742,7 +742,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
     }
 
     /**
-     * Hovering over {@code this} in {@code $this.foo} must resolve to a
+     * Hovering over {@code :root} in {@code $:root.foo} must resolve to a
      * {@link PsiField} whose type is the code-behind class and whose name is
      * {@code "this"}.
      */
@@ -753,7 +753,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
         getFixture().configureByText("ThisHover.fxml", fxml(
                 "javafx.scene.layout.VBox",
                 """
-                  <VBox minHeight="$thi<caret>s.prefWidth"/>
+                  <VBox minHeight="$:ro<caret>ot.prefWidth"/>
                 """
         ));
         ReadAction.run(() -> {
@@ -762,11 +762,11 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                     getFixture().getFile(), offset, XmlAttributeValue.class, false);
             assertNotNull(attrVal);
             PsiElement resolved = resolveFirstReferenceAt(attrVal, offset);
-            assertNotNull(resolved, "Expected a resolved reference at 'this'");
+            assertNotNull(resolved, "Expected a resolved reference at ':root'");
             assertInstanceOf(PsiField.class, resolved,
                     "Expected a PsiField (LightFieldBuilder) for this, got: " + resolved.getClass());
             PsiField field = (PsiField) resolved;
-            assertEquals("this", field.getName(), "Field name should be 'this'");
+            assertEquals("root", field.getName(), "Field name should be 'root'");
             String typeName = field.getType().getPresentableText();
             // Root target -> code-behind class TestView, not the XML tag class BorderPane
             assertEquals("TestView", typeName, "Field type for root target should be the code-behind class");
@@ -860,7 +860,7 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
                 "javafx.scene.layout.VBox",
                 """
                   <VBox>
-                    <minHeight><fx:Observe source="par<caret>ent/prefWidth"/></minHeight>
+                    <minHeight><fx:Observe source=":par<caret>ent.prefWidth"/></minHeight>
                   </VBox>
                 """
         ));
@@ -871,11 +871,11 @@ class Fxml2BindingPathTest extends Fxml2TestBase {
             assertNotNull(attrVal, "Expected XmlAttributeValue at caret");
             PsiElement resolved = resolveFirstReferenceAt(attrVal, offset);
             assertNotNull(resolved,
-                    "source=\"parent/prefWidth\" - 'parent' token must resolve to a LightField");
+                    "source=\":parent.prefWidth\" - ':parent' token must resolve to a LightField");
             assertInstanceOf(PsiField.class, resolved,
                     "Expected a PsiField (LightFieldBuilder) for parent, got: " + resolved.getClass());
             PsiField field = (PsiField) resolved;
-            assertEquals("parent", field.getName(), "Field name should be the selector text 'parent'");
+            assertEquals("parent", field.getName(), "Field name should be the selector text ':parent'");
         });
     }
 

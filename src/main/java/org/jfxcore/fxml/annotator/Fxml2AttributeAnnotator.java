@@ -254,7 +254,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         PsiClass startClass = Fxml2BindingPathResolver.resolveStartClass(null, fxTag, xmlFile);
         if (startClass == null) return;
 
-        // Parse context selector if present (e.g. "self/caption", "parent/caption")
+        // Parse a context selector if present.
         Fxml2BindingExpressionParser.ContextSelector selector =
                 Fxml2BindingExpressionParser.parseContextSelector(path);
         String remainingPath = selector != null ? selector.remainingPath() : path;
@@ -1416,12 +1416,12 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         // which splits on both '.' and '::' and tracks which segments must not be unwrapped.
         // No pre-processing of :: is needed here.
 
-        // Parse context selector (self/, parent/, this.)
+        // Parse a context selector.
         Fxml2BindingExpressionParser.ContextSelector selector =
                 Fxml2BindingExpressionParser.parseContextSelector(strippedPath);
         String path = selector != null ? selector.remainingPath() : strippedPath;
 
-        // Get the context tag for self/parent resolution
+        // Get the context tag for selector resolution.
         XmlTag contextTag = null;
         if (attrVal.getParent() instanceof com.intellij.psi.xml.XmlAttribute attr
                 && attr.getParent() instanceof XmlTag t) {
@@ -1439,7 +1439,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             return;
         }
 
-        // If the path is empty after stripping the selector (e.g. bare "self/"), nothing to validate
+        // If the path is empty after stripping the selector, there is nothing to validate.
         if (path.isBlank()) return;
 
         // Function-call syntax: a '(' that is NOT immediately preceded by '.'

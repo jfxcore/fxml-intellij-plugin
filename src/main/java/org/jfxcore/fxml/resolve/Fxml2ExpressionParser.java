@@ -20,7 +20,7 @@ public final class Fxml2ExpressionParser {
     public record TypeArgument(@NotNull String text, @NotNull Span span) {}
 
     public sealed interface Expression permits PathExpression, MemberExpression,
-            InvocationExpression, ContextSelectorExpression, LiteralExpression,
+            AttachedPropertyExpression, InvocationExpression, ContextSelectorExpression, LiteralExpression,
             UnaryExpression, BinaryExpression, GroupedExpression {
         @NotNull Span span();
         @NotNull String source();
@@ -52,6 +52,13 @@ public final class Fxml2ExpressionParser {
         }
     }
 
+    public record AttachedPropertyExpression(@Nullable Expression receiver,
+                                             @NotNull String declaringType,
+                                             @NotNull String property,
+                                             @NotNull SelectionOperator operator,
+                                             @NotNull Span span,
+                                             @NotNull String source) implements Expression {}
+
     public record InvocationExpression(@NotNull Expression target,
                                        @NotNull List<Expression> arguments,
                                        @NotNull Span span,
@@ -70,7 +77,7 @@ public final class Fxml2ExpressionParser {
                                             @NotNull Span span,
                                             @NotNull String source) implements Expression {}
 
-    public enum LiteralKind { STRING, NUMBER, TRUE, FALSE, NULL }
+    public enum LiteralKind { STRING, NUMBER, TRUE, FALSE, NULL, MARKUP_EXTENSION }
 
     public record LiteralExpression(@NotNull LiteralKind kind, @NotNull Span span,
                                     @NotNull String source) implements Expression {}
@@ -116,6 +123,18 @@ public final class Fxml2ExpressionParser {
         return expression;
     }
 
+    /** Parses only a context selector at the start of a possibly incomplete expression. */
+    public static @Nullable ContextSelectorExpression parseLeadingContextSelector(
+            @NotNull String source) {
+        if (!source.startsWith(":")) return null;
+        Parser parser = new Parser(source);
+        try {
+            return parser.parseContextSelector();
+        } catch (ParseException ignored) {
+            return null;
+        }
+    }
+
     private static final class Parser {
         private final String source;
         private int position;
@@ -152,13 +171,20 @@ public final class Fxml2ExpressionParser {
 
         private Expression parsePostfix() {
             Expression result = parsePrimary();
+            boolean pathChain = result instanceof PathExpression
+                    || result instanceof ContextSelectorExpression
+                    || result instanceof AttachedPropertyExpression;
             while (true) {
                 skipWhitespace();
                 if (peek("(")) {
+                    if (result instanceof AttachedPropertyExpression) {
+                        throw error("Unexpected token", position, position + 1);
+                    }
                     int start = result.span().start();
                     List<Expression> arguments = parseArguments();
                     result = new InvocationExpression(result, arguments,
                             new Span(start, position), source);
+                    pathChain = false;
                     continue;
                 }
 
@@ -168,6 +194,11 @@ public final class Fxml2ExpressionParser {
                 else return result;
 
                 skipWhitespace();
+                if (peek("(")) {
+                    if (!pathChain) throw error("Identifier expected", position, position);
+                    result = parseAttachedProperty(result, selection);
+                    continue;
+                }
                 PathExpression member = parseNamedPath();
                 result = new MemberExpression(result, member, selection,
                         new Span(result.span().start(), member.span().end()), source);
@@ -179,6 +210,7 @@ public final class Fxml2ExpressionParser {
             if (atEnd()) throw error("Expression expected", position, position);
             int start = position;
             if (consume("::")) {
+                if (peek("(")) return parseAttachedProperty(null, SelectionOperator.OBSERVABLE, start);
                 PathExpression selected = parseNamedPath();
                 return new PathExpression("::" + selected.name(), selected.typeArguments(),
                         new Span(start, selected.span().end()), source);
@@ -217,8 +249,7 @@ public final class Fxml2ExpressionParser {
             String typeName = null;
             Span typeSpan = null;
             Integer depth = null;
-            if (kind == ContextSelectorKind.PARENT && peek("<")) {
-                position++;
+            if (kind == ContextSelectorKind.PARENT && skipWhitespaceAndConsume("<")) {
                 skipWhitespace();
                 int typeStart = position;
                 typeName = readQualifiedIdentifier();
@@ -227,12 +258,13 @@ public final class Fxml2ExpressionParser {
                 require(">", "'>' expected");
                 typeSpan = new Span(typeStart, typeEnd);
             }
-            if (kind == ContextSelectorKind.PARENT && peek("(")) {
-                position++;
+            if (kind == ContextSelectorKind.PARENT && skipWhitespaceAndConsume("(")) {
                 skipWhitespace();
                 int numberStart = position;
+                if (peek("+") || peek("-")) position++;
+                int digitStart = position;
                 while (!atEnd() && Character.isDigit(source.charAt(position))) position++;
-                if (numberStart == position) throw error("Parent depth expected", position, position);
+                if (digitStart == position) throw error("Parent depth expected", position, position);
                 try {
                     depth = Integer.parseInt(source.substring(numberStart, position));
                 } catch (NumberFormatException ex) {
@@ -243,6 +275,27 @@ public final class Fxml2ExpressionParser {
             }
             return new ContextSelectorExpression(kind, typeName, depth, typeSpan,
                     new Span(start, position), source);
+        }
+
+        private AttachedPropertyExpression parseAttachedProperty(
+                @Nullable Expression receiver, @NotNull SelectionOperator operator) {
+            return parseAttachedProperty(receiver, operator,
+                    receiver != null ? receiver.span().start() : position);
+        }
+
+        private AttachedPropertyExpression parseAttachedProperty(
+                @Nullable Expression receiver, @NotNull SelectionOperator operator, int start) {
+            require("(", "'(' expected");
+            skipWhitespace();
+            int typeStart = position;
+            String qualified = readQualifiedIdentifier();
+            int separator = qualified.lastIndexOf('.');
+            if (separator < 0) throw error("'.' expected", typeStart, position);
+            skipWhitespace();
+            require(")", "')' expected");
+            return new AttachedPropertyExpression(receiver,
+                    qualified.substring(0, separator), qualified.substring(separator + 1),
+                    operator, new Span(start, position), source);
         }
 
         private PathExpression parseNamedPath() {
@@ -256,10 +309,10 @@ public final class Fxml2ExpressionParser {
             skipWhitespace();
             if (!peek("<")) return List.of();
             int checkpoint = position;
-            position++;
+            consume("<");
             skipWhitespace();
             if (peek(">")) {
-                position++;
+                consume(">");
                 if (isGenericFollower()) throw error("Type argument expected", checkpoint + 1, checkpoint + 1);
                 position = checkpoint;
                 return List.of();
@@ -309,18 +362,13 @@ public final class Fxml2ExpressionParser {
                 if (!isIdentifierStart()) return false;
                 readIdentifier();
             }
-            if (peek("<")) {
-                position++;
+            if (consume("<")) {
                 do {
                     skipWhitespace();
                     if (!parseTypeName()) return false;
                     skipWhitespace();
                 } while (consume(","));
                 if (!consume(">")) return false;
-            }
-            //noinspection StatementWithEmptyBody
-            while (consume("[]")) {
-                // The suffix is represented by the type argument's source span.
             }
             return true;
         }
@@ -343,11 +391,35 @@ public final class Fxml2ExpressionParser {
             if (consume(")")) return List.of();
             List<Expression> arguments = new ArrayList<>();
             while (true) {
-                arguments.add(parseExpression(0));
+                skipWhitespace();
+                arguments.add(peek("{") ? parseMarkupExtension() : parseExpression(0));
                 skipWhitespace();
                 if (consume(")")) return List.copyOf(arguments);
                 require(",", "',' or ')' expected");
             }
+        }
+
+        private LiteralExpression parseMarkupExtension() {
+            int start = position;
+            int depth = 0;
+            char quote = 0;
+            boolean escaped = false;
+            while (!atEnd()) {
+                char ch = source.charAt(position++);
+                if (quote != 0) {
+                    if (escaped) escaped = false;
+                    else if (ch == '\\') escaped = true;
+                    else if (ch == quote) quote = 0;
+                } else if (ch == '\'' || ch == '"') {
+                    quote = ch;
+                } else if (ch == '{') {
+                    depth++;
+                } else if (ch == '}' && --depth == 0) {
+                    return new LiteralExpression(
+                            LiteralKind.MARKUP_EXTENSION, new Span(start, position), source);
+                }
+            }
+            throw error("Markup extension is not closed", start, position);
         }
 
         private LiteralExpression parseStringLiteral() {
@@ -366,8 +438,19 @@ public final class Fxml2ExpressionParser {
 
         private LiteralExpression parseNumberLiteral() {
             int start = position;
-            while (!atEnd() && (Character.isDigit(source.charAt(position))
-                    || ".eEfFdDlL+-".indexOf(source.charAt(position)) >= 0)) position++;
+            while (!atEnd() && Character.isDigit(source.charAt(position))) position++;
+            if (!atEnd() && source.charAt(position) == '.') {
+                position++;
+                while (!atEnd() && Character.isDigit(source.charAt(position))) position++;
+            }
+            if (!atEnd() && (source.charAt(position) == 'e' || source.charAt(position) == 'E')) {
+                int exponentStart = position++;
+                if (!atEnd() && (source.charAt(position) == '+' || source.charAt(position) == '-')) position++;
+                int exponentDigits = position;
+                while (!atEnd() && Character.isDigit(source.charAt(position))) position++;
+                if (exponentDigits == position) position = exponentStart;
+            }
+            if (!atEnd() && "fFdDlL".indexOf(source.charAt(position)) >= 0) position++;
             return new LiteralExpression(LiteralKind.NUMBER, new Span(start, position), source);
         }
 
@@ -401,13 +484,28 @@ public final class Fxml2ExpressionParser {
         }
 
         private boolean consume(String token) {
-            if (!peek(token)) return false;
-            position += token.length();
+            String sourceToken = sourceToken(token);
+            if (!source.startsWith(sourceToken, position)) return false;
+            position += sourceToken.length();
             return true;
         }
 
+        private boolean skipWhitespaceAndConsume(@NotNull String token) {
+            int checkpoint = position;
+            skipWhitespace();
+            if (consume(token)) return true;
+            position = checkpoint;
+            return false;
+        }
+
         private boolean peek(String token) {
-            return source.startsWith(token, position);
+            return source.startsWith(sourceToken(token), position);
+        }
+
+        private @NotNull String sourceToken(@NotNull String token) {
+            if ("<".equals(token) && source.startsWith("&lt;", position)) return "&lt;";
+            if (">".equals(token) && source.startsWith("&gt;", position)) return "&gt;";
+            return token;
         }
 
         private void skipWhitespace() {
@@ -430,6 +528,8 @@ public final class Fxml2ExpressionParser {
             new OperatorToken("===", BinaryOperator.IDENTITY_EQUAL, 3),
             new OperatorToken("!=", BinaryOperator.NOT_EQUAL, 3),
             new OperatorToken("==", BinaryOperator.EQUAL, 3),
+            new OperatorToken("&lt;=", BinaryOperator.LESS_OR_EQUAL, 4),
+            new OperatorToken("&gt;=", BinaryOperator.GREATER_OR_EQUAL, 4),
             new OperatorToken("<=", BinaryOperator.LESS_OR_EQUAL, 4),
             new OperatorToken(">=", BinaryOperator.GREATER_OR_EQUAL, 4),
             new OperatorToken("&&", BinaryOperator.AND, 2),
@@ -438,6 +538,8 @@ public final class Fxml2ExpressionParser {
             new OperatorToken("/", BinaryOperator.DIVIDE, 6),
             new OperatorToken("+", BinaryOperator.ADD, 5),
             new OperatorToken("-", BinaryOperator.SUBTRACT, 5),
+            new OperatorToken("&lt;", BinaryOperator.LESS, 4),
+            new OperatorToken("&gt;", BinaryOperator.GREATER, 4),
             new OperatorToken("<", BinaryOperator.LESS, 4),
             new OperatorToken(">", BinaryOperator.GREATER, 4));
 }

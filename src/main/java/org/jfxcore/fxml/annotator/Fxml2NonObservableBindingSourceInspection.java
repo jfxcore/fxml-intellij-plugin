@@ -112,7 +112,7 @@ public final class Fxml2NonObservableBindingSourceInspection extends LocalInspec
         String rawPath = attrVal.getValue();
         if (rawPath.isBlank()) return;
 
-        // Resolve start class (handles self/, parent/, etc.)
+        // Resolve the start class, including a context selector.
         PsiClass startClass = Fxml2BindingPathResolver.resolveStartClass(null, fxTag, xmlFile);
         if (startClass == null) return;
 

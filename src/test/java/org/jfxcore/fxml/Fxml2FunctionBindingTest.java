@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Examples from the documentation ({@code binding/function-binding.md}):
  * <pre>{@code
- * <Button text="${String.format('Width: %.0f', self/width)}"/>
+ * <Button text="${String.format('Width: %.0f', :element.width)}"/>
  * <Button textFill="${Color(path.to.red, path.to.green, path.to.blue, 1)}"/>
  * <TextField text="#{method(value); inverseMethod=inverseMethod}"/>
  * }</pre>
@@ -108,7 +108,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * {@code ${String.format('Width: %.0f', self/width)}}: calling a static method
+     * {@code ${String.format('Width: %.0f', :element.width)}}: calling a static method
      * with a string literal argument and a path argument. Should produce no error.
      */
     @Test
@@ -116,7 +116,7 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
         getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.control.Button",
                 """
-                  <Button text="${String.format('Width: %.0f', self/prefWidth)}"/>
+                  <Button text="${String.format('Width: %.0f', :element.prefWidth)}"/>
                 """
         ));
         getFixture().checkHighlighting(false, false, false);

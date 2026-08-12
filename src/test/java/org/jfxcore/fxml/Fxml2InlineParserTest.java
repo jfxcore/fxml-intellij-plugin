@@ -207,7 +207,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Compiler: {@code ${parent<VBox>/prefWidth}}: type context selector using the new
+     * Compiler: {@code ${:parent<VBox>.prefWidth}}: typed parent selector using the current
      * angle-bracket syntax should be parsed as a valid binding expression.
      * The {@code &lt;VBox&gt;} XML-entity form is used here so the attribute value is
      * well-formed XML; {@code XmlAttributeValue.getValue()} returns the unescaped form.
@@ -218,7 +218,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
                 "javafx.scene.layout.VBox",
                 """
                   <VBox>
-                    <VBox prefWidth="${parent&lt;VBox&gt;/prefWidth}"/>
+                    <VBox prefWidth="${:parent&lt;VBox&gt;.prefWidth}"/>
                   </VBox>
                 """
         ));
@@ -226,7 +226,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     }
 
     /**
-     * Compiler: {@code $parent<VBox>/prefWidth}: compact {@code $}-notation with the new
+     * Compiler: {@code $:parent<VBox>.prefWidth}: compact {@code $}-notation with the current
      * angle-bracket type context selector must NOT be rejected as a malformed type witness.
      */
     @Test
@@ -235,7 +235,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
                 "javafx.scene.layout.VBox",
                 """
                   <VBox>
-                    <VBox prefWidth="$parent&lt;VBox&gt;/prefWidth"/>
+                    <VBox prefWidth="$:parent&lt;VBox&gt;.prefWidth"/>
                   </VBox>
                 """
         ));
@@ -243,7 +243,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
     }
 
     /**
-     * Compiler: {@code ${parent<VBox>[1]/prefWidth}}: type context selector with
+     * Compiler: {@code ${:parent<VBox>(2).prefWidth}}: typed context selector with
      * numeric index uses the new {@code parent<Type>[N]} syntax.
      */
     @Test
@@ -253,7 +253,7 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
                 """
                   <VBox>
                     <VBox>
-                      <VBox prefWidth="${parent&lt;VBox&gt;[1]/prefWidth}"/>
+                      <VBox prefWidth="${:parent&lt;VBox&gt;(2).prefWidth}"/>
                     </VBox>
                   </VBox>
                 """
