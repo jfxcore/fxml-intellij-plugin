@@ -1335,33 +1335,16 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 String message = error.message();
                 int errorOffset = error.errorOffset();
                 int errorLength = error.errorLength();
-                TextRange attrRange = attrVal.getTextRange();
-                int docBase = attrRange.getStartOffset() + 1; // +1 to skip opening quote
                 // When the error covers the entire value (offset=0, length=value.length()),
                 // expand to include the surrounding quotes so the whole attribute value is highlighted.
                 if (errorOffset == 0 && errorLength == rawValue.length()) {
                     holder.newAnnotation(HighlightSeverity.ERROR, message)
-                            .range(attrRange)
+                            .range(attrVal)
                             .create();
                     return;
                 }
-                int errStart = docBase + errorOffset;
-                int errEnd = errorLength > 0 ? errStart + errorLength : errStart;
-                int valEnd = attrVal.getTextRange().getEndOffset() - 1;
-                errStart = Math.min(errStart, valEnd);
-                // Guard: when errStart is at or past valEnd (e.g. "'}' expected" at errorOffset==value.length()),
-                // Math.clamp(errEnd, errStart+1, valEnd) would throw IllegalArgumentException because min>max.
-                // Fall back to highlighting the whole attribute value (including surrounding quotes).
-                if (errStart >= valEnd) {
-                    holder.newAnnotation(HighlightSeverity.ERROR, message)
-                            .range(attrRange)
-                            .create();
-                    return;
-                }
-                errEnd = Math.clamp(errEnd, errStart + 1, valEnd);
-                holder.newAnnotation(HighlightSeverity.ERROR, message)
-                        .range(new TextRange(errStart, errEnd))
-                        .create();
+                annotateValueError(attrVal, holder, message,
+                        new TextRange(errorOffset, errorOffset + errorLength));
                 return;
             }
             case Fxml2BindingExpressionParser.MissingBindingPath(String intrinsicName) -> {
@@ -1384,6 +1367,16 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             default -> { /* ParsedExpression: fall through to path validation */ }
         }
         Fxml2BindingExpressionParser.ParsedExpression expr = (Fxml2BindingExpressionParser.ParsedExpression) parsed;
+
+        try {
+            expr.expression();
+        } catch (org.jfxcore.fxml.resolve.Fxml2ExpressionParser.ParseException error) {
+            int errorStart = expr.pathOffset() + error.span().start();
+            int errorEnd = expr.pathOffset() + error.span().end();
+            annotateValueError(attrVal, holder, error.getMessage(),
+                    new TextRange(errorStart, errorEnd));
+            return;
+        }
 
         // Boolean operator applicability: ! / !! must not be used with content binding kinds.
         // fx:Evaluate/Observe/Push/Synchronize ..source are not applicable here
@@ -1533,5 +1526,27 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             }
         }
 
+    }
+
+    private static void annotateValueError(
+            @NotNull XmlAttributeValue attributeValue,
+            @NotNull AnnotationHolder holder,
+            @NotNull String message,
+            @NotNull TextRange relativeRange) {
+        TextRange valueRange = attributeValue.getTextRange();
+        int contentStart = valueRange.getStartOffset() + 1;
+        int contentEnd = valueRange.getEndOffset() - 1;
+        int start = Math.min(contentStart + relativeRange.getStartOffset(), contentEnd);
+        if (start >= contentEnd) {
+            holder.newAnnotation(HighlightSeverity.ERROR, message)
+                    .range(attributeValue)
+                    .create();
+            return;
+        }
+
+        int end = contentStart + relativeRange.getEndOffset();
+        holder.newAnnotation(HighlightSeverity.ERROR, message)
+                .range(new TextRange(start, Math.clamp(end, start + 1, contentEnd)))
+                .create();
     }
 }

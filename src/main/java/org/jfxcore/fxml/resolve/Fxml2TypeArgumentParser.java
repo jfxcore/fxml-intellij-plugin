@@ -22,6 +22,42 @@ import java.util.List;
  */
 public final class Fxml2TypeArgumentParser {
 
+    enum Delimiter {
+        OPEN("&lt;"), CLOSE("&gt;"), NONE("");
+
+        private final String encoded;
+
+        Delimiter(@NotNull String encoded) {
+            this.encoded = encoded;
+        }
+
+        int length(@NotNull String source, int offset) {
+            return this == NONE ? 0 : source.startsWith(encoded, offset) ? encoded.length() : 1;
+        }
+    }
+
+    static @NotNull Delimiter delimiterAt(@NotNull String source, int offset) {
+        if (source.startsWith("&lt;", offset) || source.charAt(offset) == '<') {
+            return Delimiter.OPEN;
+        }
+        if (source.startsWith("&gt;", offset) || source.charAt(offset) == '>') {
+            return Delimiter.CLOSE;
+        }
+        return Delimiter.NONE;
+    }
+
+    private static int bracketAt(@NotNull String text, int offset) {
+        return switch (delimiterAt(text, offset)) {
+            case OPEN -> 1;
+            case CLOSE -> -1;
+            case NONE -> 0;
+        };
+    }
+
+    private static int bracketLength(@NotNull String text, int offset) {
+        return delimiterAt(text, offset).length(text, offset);
+    }
+
     private Fxml2TypeArgumentParser() {}
 
     /**
@@ -239,13 +275,13 @@ public final class Fxml2TypeArgumentParser {
         int depth = 1;
         int i = from;
         while (i < text.length()) {
-            int bracket = bracketAt(text, i);
-            if (bracket > 0) {
+            Delimiter delimiter = delimiterAt(text, i);
+            if (delimiter == Delimiter.OPEN) {
                 depth++;
-            } else if (bracket < 0 && --depth == 0) {
+            } else if (delimiter == Delimiter.CLOSE && --depth == 0) {
                 return i;
             }
-            i += bracket != 0 ? bracketLength(text, i) : 1;
+            i += delimiter == Delimiter.NONE ? 1 : delimiter.length(text, i);
         }
         return -1;
     }
@@ -258,23 +294,6 @@ public final class Fxml2TypeArgumentParser {
         if (s < e) {
             result.add(new TypeArg(text.substring(s, e), s));
         }
-    }
-
-    /** {@code 1} for an opening bracket at {@code i}, {@code -1} for a closing one, {@code 0} otherwise. */
-    private static int bracketAt(@NotNull String text, int i) {
-        char c = text.charAt(i);
-        if (c == '<') return 1;
-        if (c == '>') return -1;
-        if (c == '&') {
-            if (text.startsWith("&lt;", i)) return 1;
-            if (text.startsWith("&gt;", i)) return -1;
-        }
-        return 0;
-    }
-
-    /** Length in characters of the bracket at {@code i} (1 for literal, 4 for an entity). */
-    private static int bracketLength(@NotNull String text, int i) {
-        return text.charAt(i) == '&' ? 4 : 1;
     }
 
     /** Length of the XML entity starting at {@code i}, or {@code 0} if there is none. */

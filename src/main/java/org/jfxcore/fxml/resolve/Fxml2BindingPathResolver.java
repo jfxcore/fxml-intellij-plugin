@@ -670,11 +670,13 @@ public final class Fxml2BindingPathResolver {
         List<Segment> segs = new ArrayList<>();
         if (funcPath.isBlank()) return segs;
 
-        int lastDot = funcPath.lastIndexOf('.');
+        String lookupPath = withoutTypeArguments(funcPath);
+
+        int lastDot = lookupPath.lastIndexOf('.');
         if (lastDot > 0) {
-            String qualifier = funcPath.substring(0, lastDot);
-            String methodName = funcPath.substring(lastDot + 1);
-            int methodOffset = lastDot + 1;
+            String qualifier = lookupPath.substring(0, lastDot);
+            String methodName = lookupPath.substring(lastDot + 1);
+            int methodOffset = funcPath.lastIndexOf(methodName);
 
             // 1. Try the qualifier as an instance path against the binding context.
             List<Segment> qualSegs = resolve(qualifier, startClass, scope, kind, xmlFile);
@@ -701,9 +703,9 @@ public final class Fxml2BindingPathResolver {
             }
 
             // 3. Try the whole function path as a constructor (class) reference.
-            PsiClass ctorClass = resolveClass(funcPath, scope, startClass.getProject(), xmlFile);
+            PsiClass ctorClass = resolveClass(lookupPath, scope, startClass.getProject(), xmlFile);
             if (ctorClass != null) {
-                return classQualifierSegments(funcPath, ctorClass, startClass.getProject());
+                return classQualifierSegments(lookupPath, ctorClass, startClass.getProject());
             }
 
             // Unresolved: emit the qualifier (best effort) and an unresolved method segment.
@@ -713,17 +715,37 @@ public final class Fxml2BindingPathResolver {
         }
 
         // Bare name: method on the binding context, or a constructor (class) reference.
-        if (firstMethodByName(startClass, funcPath) != null) {
-            segs.add(methodSegment(funcPath, startClass, 0));
+        if (firstMethodByName(startClass, lookupPath) != null) {
+            segs.add(methodSegment(lookupPath, startClass, 0));
             return segs;
         }
-        PsiClass cls = resolveClass(funcPath, scope, startClass.getProject(), xmlFile);
+        PsiClass cls = resolveClass(lookupPath, scope, startClass.getProject(), xmlFile);
         if (cls != null) {
-            segs.add(new Segment(funcPath, cls, cls, true, false, 0));
+            segs.add(new Segment(lookupPath, cls, cls, true, false, 0));
             return segs;
         }
-        segs.add(new Segment(funcPath, null, null, false, false, 0));
+        segs.add(new Segment(lookupPath, null, null, false, false, 0));
         return segs;
+    }
+
+    private static @NotNull String withoutTypeArguments(@NotNull String path) {
+        StringBuilder result = new StringBuilder(path.length());
+        int depth = 0;
+        for (int offset = 0; offset < path.length();) {
+            Fxml2TypeArgumentParser.Delimiter delimiter =
+                    Fxml2TypeArgumentParser.delimiterAt(path, offset);
+            if (delimiter == Fxml2TypeArgumentParser.Delimiter.OPEN) {
+                depth++;
+                offset += delimiter.length(path, offset);
+            } else if (delimiter == Fxml2TypeArgumentParser.Delimiter.CLOSE && depth > 0) {
+                depth--;
+                offset += delimiter.length(path, offset);
+            } else {
+                if (depth == 0) result.append(path.charAt(offset));
+                offset++;
+            }
+        }
+        return result.toString();
     }
 
     /**

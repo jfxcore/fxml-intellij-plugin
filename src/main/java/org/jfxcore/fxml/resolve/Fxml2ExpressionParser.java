@@ -4,7 +4,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
+import java.util.Optional;
 
 /** Parses the expression carried by an FXML/2 binding notation. */
 public final class Fxml2ExpressionParser {
@@ -21,6 +24,109 @@ public final class Fxml2ExpressionParser {
     }
 
     public record TypeArgument(@NotNull String text, @NotNull Span span) {
+    }
+
+    /** Describes the type-name slot containing a caret at the end of an incomplete expression. */
+    public record TypeArgumentCaret(@NotNull String ownerName, @NotNull String prefix,
+                                    int prefixStart, int argumentIndex, int depth) {
+    }
+
+    private record TypeArgumentFrame(@NotNull String ownerName, int contentStart,
+                                     int argumentIndex, int activeArgumentStart) {
+
+        TypeArgumentFrame nextArgument(int start) {
+            return new TypeArgumentFrame(ownerName, contentStart, argumentIndex + 1, start);
+        }
+    }
+
+    /**
+     * Locates an unfinished type argument at the end of editor text. A generic opening delimiter
+     * is recognized only when it directly follows a name, which keeps ordinary spaced comparison
+     * expressions out of type-name completion.
+     */
+    public static @NotNull Optional<TypeArgumentCaret> locateTypeArgumentCaret(
+            @NotNull String source) {
+        Deque<TypeArgumentFrame> frames = new ArrayDeque<>();
+        char quote = 0;
+        boolean escaped = false;
+        for (int offset = 0; offset < source.length();) {
+            char ch = source.charAt(offset);
+            if (quote != 0) {
+                if (escaped) {
+                    escaped = false;
+                } else if (ch == '\\') {
+                    escaped = true;
+                } else if (ch == quote) {
+                    quote = 0;
+                }
+                offset++;
+                continue;
+            }
+            if (ch == '\'' || ch == '"') {
+                quote = ch;
+                offset++;
+                continue;
+            }
+
+            Fxml2TypeArgumentParser.Delimiter delimiter =
+                    Fxml2TypeArgumentParser.delimiterAt(source, offset);
+            int delimiterLength = delimiter.length(source, offset);
+            if (delimiter == Fxml2TypeArgumentParser.Delimiter.OPEN && offset > 0
+                    && Character.isJavaIdentifierPart(source.charAt(offset - 1))) {
+                int ownerStart = offset - 1;
+                while (ownerStart > 0 && Character.isJavaIdentifierPart(source.charAt(ownerStart - 1))) {
+                    ownerStart--;
+                }
+                int contentStart = offset + delimiterLength;
+                frames.push(new TypeArgumentFrame(
+                        source.substring(ownerStart, offset), contentStart, 0, contentStart));
+                offset = contentStart;
+                continue;
+            }
+
+            if (delimiter == Fxml2TypeArgumentParser.Delimiter.CLOSE && !frames.isEmpty()) {
+                frames.pop();
+                offset += delimiterLength;
+                continue;
+            }
+            if (ch == ',' && !frames.isEmpty()) {
+                TypeArgumentFrame frame = frames.pop();
+                frames.push(frame.nextArgument(offset + 1));
+            }
+            offset++;
+        }
+
+        if (frames.isEmpty()) {
+            return Optional.empty();
+        }
+        TypeArgumentFrame frame = frames.peek();
+        int prefixStart = frame.activeArgumentStart();
+        while (prefixStart < source.length() && Character.isWhitespace(source.charAt(prefixStart))) {
+            prefixStart++;
+        }
+        String prefix = source.substring(prefixStart);
+        if (!isPartialTypeName(prefix)) {
+            return Optional.empty();
+        }
+        return Optional.of(new TypeArgumentCaret(
+                frame.ownerName(), prefix, prefixStart, frame.argumentIndex(), frames.size()));
+    }
+
+    private static boolean isPartialTypeName(@NotNull String text) {
+        if (text.isEmpty()) return true;
+        boolean expectIdentifierStart = true;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (expectIdentifierStart) {
+                if (!Character.isJavaIdentifierStart(ch)) return false;
+                expectIdentifierStart = false;
+            } else if (ch == '.') {
+                expectIdentifierStart = true;
+            } else if (!Character.isJavaIdentifierPart(ch)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public sealed interface Expression permits PathExpression, MemberExpression,
@@ -364,7 +470,7 @@ public final class Fxml2ExpressionParser {
             if (peek(">")) {
                 consume(">");
                 if (isGenericFollower()) {
-                    throw error("Type argument expected", checkpoint + 1, checkpoint + 1);
+                    throw error("Type argument expected", checkpoint, position);
                 }
                 position = checkpoint;
                 return List.of();
@@ -520,6 +626,7 @@ public final class Fxml2ExpressionParser {
             }
             if (!atEnd() && source.charAt(position) == '.') {
                 position++;
+                //noinspection WhileCanBeDoWhile
                 while (!atEnd() && Character.isDigit(source.charAt(position))) {
                     position++;
                 }

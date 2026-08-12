@@ -17,6 +17,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class Fxml2ExpressionParserTest {
@@ -178,6 +179,38 @@ class Fxml2ExpressionParserTest {
                 () -> Fxml2ExpressionParser.parse("a<T,>(c)"));
         assertThrows(Fxml2ExpressionParser.ParseException.class,
                 () -> Fxml2ExpressionParser.parse("a<String[]>(c)"));
+    }
+
+    @Test
+    void locatesCaretInsideIncompleteTypeWitnesses() {
+        var first = Fxml2ExpressionParser.locateTypeArgumentCaret("convert<Str");
+        assertTrue(first.isPresent());
+        assertEquals("convert", first.orElseThrow().ownerName());
+        assertEquals("Str", first.orElseThrow().prefix());
+        assertEquals(0, first.orElseThrow().argumentIndex());
+        assertEquals(1, first.orElseThrow().depth());
+
+        var second = Fxml2ExpressionParser.locateTypeArgumentCaret("Box<String, Int");
+        assertTrue(second.isPresent());
+        assertEquals("Int", second.orElseThrow().prefix());
+        assertEquals(1, second.orElseThrow().argumentIndex());
+
+        var nested = Fxml2ExpressionParser.locateTypeArgumentCaret("convert<List<Str");
+        assertTrue(nested.isPresent());
+        assertEquals("List", nested.orElseThrow().ownerName());
+        assertEquals("Str", nested.orElseThrow().prefix());
+        assertEquals(2, nested.orElseThrow().depth());
+
+        var encoded = Fxml2ExpressionParser.locateTypeArgumentCaret("convert&lt;java.lang.Str");
+        assertTrue(encoded.isPresent());
+        assertEquals("java.lang.Str", encoded.orElseThrow().prefix());
+    }
+
+    @Test
+    void comparisonPrefixesAreNotTypeWitnessCompletionContexts() {
+        assertTrue(Fxml2ExpressionParser.locateTypeArgumentCaret("a < Str").isEmpty());
+        assertTrue(Fxml2ExpressionParser.locateTypeArgumentCaret("a < b + C").isEmpty());
+        assertTrue(Fxml2ExpressionParser.locateTypeArgumentCaret("convert<String>.").isEmpty());
     }
 
     private static BinaryExpression binary(String text, BinaryOperator operator) {

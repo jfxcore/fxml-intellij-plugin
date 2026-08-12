@@ -59,6 +59,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
+import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
@@ -1319,6 +1320,15 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 @NotNull XmlFile xmlFile,
                 @Nullable PsiType targetPropType,
                 @NotNull CompletionResultSet result) {
+            var typeArgumentCaret = Fxml2ExpressionParser.locateTypeArgumentCaret(pathExpr);
+            if (typeArgumentCaret.isPresent()) {
+                Fxml2ExpressionParser.TypeArgumentCaret caret = typeArgumentCaret.orElseThrow();
+                addBindingClassNameCompletions(
+                        caret.prefix(), xmlFile, result,
+                        typeArgumentConstraint(caret, tag, xmlFile));
+                return;
+            }
+
             Fxml2BindingPathResolver.CaretLocation loc = Fxml2BindingPathResolver.locateCaret(pathExpr);
             switch (loc.kind()) {
                 case FUNCTION_ARGUMENT -> {
@@ -1640,6 +1650,14 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 @NotNull String partial,
                 @NotNull XmlFile xmlFile,
                 @NotNull CompletionResultSet result) {
+            addBindingClassNameCompletions(partial, xmlFile, result, TypeArgumentConstraint.NONE);
+        }
+
+        private static void addBindingClassNameCompletions(
+                @NotNull String partial,
+                @NotNull XmlFile xmlFile,
+                @NotNull CompletionResultSet result,
+                @NotNull TypeArgumentConstraint constraint) {
             if (partial.isEmpty()) return;
             Project project = xmlFile.getProject();
             GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
@@ -1656,6 +1674,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 PsiClass cls = Fxml2ImportResolver.resolve(simpleName, xmlFile);
                 if (cls == null) continue;
                 if (Fxml2AddImportFix.shouldSkipClass(cls, cls.getQualifiedName(), runtimeRoots, false)) continue;
+                if (constraint.rejects(cls)) continue;
                 int tier = Fxml2AddImportFix.candidateTier(cls);
                 classResult.addElement(PrioritizedLookupElement.withPriority(
                         LookupElementBuilder.create(cls, simpleName)
@@ -1672,6 +1691,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 for (PsiClass cls : cache.getClassesByName(name, allScope)) {
                     String fqn = cls.getQualifiedName();
                     if (Fxml2AddImportFix.shouldSkipClass(cls, fqn, runtimeRoots, false)) continue;
+                    if (constraint.rejects(cls)) continue;
                     boolean needsImport = Fxml2ImportResolver.resolve(name, xmlFile) == null;
                     int tier = Fxml2AddImportFix.candidateTier(cls);
                     classResult.addElement(PrioritizedLookupElement.withPriority(
@@ -1682,6 +1702,58 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                             -tier));
                     offered.add(name);
                 }
+            }
+        }
+
+        private static @NotNull TypeArgumentConstraint typeArgumentConstraint(
+                @NotNull Fxml2ExpressionParser.TypeArgumentCaret caret,
+                @NotNull XmlTag tag,
+                @NotNull XmlFile xmlFile) {
+            List<List<PsiType>> alternatives = new ArrayList<>();
+            PsiClass genericClass = Fxml2ImportResolver.resolve(caret.ownerName(), xmlFile);
+            if (genericClass != null) {
+                PsiTypeParameter[] classParameters = genericClass.getTypeParameters();
+                if (caret.argumentIndex() < classParameters.length) {
+                    alternatives.add(List.of(
+                            classParameters[caret.argumentIndex()].getExtendsListTypes()));
+                } else {
+                    int constructorIndex = caret.argumentIndex() - classParameters.length;
+                    for (PsiMethod constructor : genericClass.getConstructors()) {
+                        PsiTypeParameter[] constructorParameters = constructor.getTypeParameters();
+                        if (constructorIndex < constructorParameters.length) {
+                            alternatives.add(List.of(
+                                    constructorParameters[constructorIndex].getExtendsListTypes()));
+                        }
+                    }
+                }
+            }
+
+            if (caret.depth() == 1) {
+                PsiClass owner = Fxml2BindingPathResolver.resolveStartClass(null, tag, xmlFile);
+                if (owner != null) {
+                    for (PsiMethod method : owner.findMethodsByName(caret.ownerName(), true)) {
+                        PsiTypeParameter[] parameters = method.getTypeParameters();
+                        if (caret.argumentIndex() < parameters.length) {
+                            alternatives.add(List.of(
+                                    parameters[caret.argumentIndex()].getExtendsListTypes()));
+                        }
+                    }
+                }
+            }
+
+            return alternatives.isEmpty() ? TypeArgumentConstraint.NONE
+                    : new TypeArgumentConstraint(List.copyOf(alternatives));
+        }
+
+        private record TypeArgumentConstraint(@NotNull List<List<PsiType>> alternatives) {
+            private static final TypeArgumentConstraint NONE = new TypeArgumentConstraint(List.of());
+
+            boolean rejects(@NotNull PsiClass candidate) {
+                if (alternatives.isEmpty()) return false;
+                PsiType candidateType = JavaPsiFacade.getElementFactory(candidate.getProject())
+                        .createType(candidate);
+                return alternatives.stream().noneMatch(bounds -> bounds.stream()
+                        .allMatch(bound -> bound.isAssignableFrom(candidateType)));
             }
         }
 

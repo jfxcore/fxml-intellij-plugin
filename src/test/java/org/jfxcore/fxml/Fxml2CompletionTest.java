@@ -2626,6 +2626,99 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 "Expected property 'width' in argument completions, got: " + names);
     }
 
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingFunctionTypeWitnessCompletion() {
+        getFixture().configureByText("FnTypeWitness.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"${String.format&lt;Str<caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains("format&lt;String"));
+            return;
+        }
+        assertTrue(displayNames(items).contains("String"),
+                "Expected String in type-witness completions, got: " + displayNames(items));
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void nestedBindingFunctionTypeWitnessCompletion() {
+        getFixture().configureByText("FnNestedTypeWitness.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"${String.format&lt;java.util.List&lt;Str<caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains("List&lt;String"));
+            return;
+        }
+        assertTrue(displayNames(items).contains("String"),
+                "Expected String in nested type-witness completions, got: " + displayNames(items));
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingTypeWitnessCompletionHonorsMethodBound() {
+        getFixture().addFileToProject("test/BoundedCompletionView.java",
+                """
+                package test;
+                public class BoundedCompletionView extends javafx.scene.layout.VBox {
+                    public <T extends Number> T numberValue() { return null; }
+                }
+                """);
+        getFixture().configureByText("FnBoundedTypeWitness.fxml",
+                """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <?import javafx.scene.layout.VBox?>
+                <VBox xmlns="http://javafx.com/javafx"
+                      xmlns:fx="http://jfxcore.org/fxml/2.0"
+                      fx:subclass="test.BoundedCompletionView"
+                      prefWidth="${numberValue&lt;In<caret>}"/>
+                """);
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains("numberValue&lt;Integer"));
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("Integer"), "Expected Integer for T extends Number, got: " + names);
+        assertFalse(names.contains("InputStream"),
+                "Expected non-Number classes to be filtered from T extends Number, got: " + names);
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void constructorTypeWitnessCompletionHonorsConstructorBound() {
+        getFixture().addFileToProject("test/WitnessBox.java",
+                """
+                package test;
+                public class WitnessBox<T> {
+                    public <W extends Number> WitnessBox(T value, W witness) {}
+                }
+                """);
+        getFixture().configureByText("FnConstructorWitness.fxml",
+                """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <?import javafx.scene.layout.VBox?>
+                <?import test.WitnessBox?>
+                <VBox xmlns="http://javafx.com/javafx"
+                      xmlns:fx="http://jfxcore.org/fxml/2.0"
+                      prefWidth="${WitnessBox&lt;String, In<caret>}"/>
+                """);
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains("String, Integer"));
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("Integer"),
+                "Expected Integer for constructor W extends Number, got: " + names);
+        assertFalse(names.contains("InputStream"),
+                "Expected incompatible constructor witnesses to be filtered, got: " + names);
+    }
+
     /**
      * Inside a bidirectional binding, after the {@code ';'} separator with no {@code '='} typed
      * yet, the secondary-parameter keywords must be offered:

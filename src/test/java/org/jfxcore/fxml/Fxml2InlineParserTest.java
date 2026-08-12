@@ -202,6 +202,17 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    @Test
+    void emptyPostfixTypeWitnessProducesSpecificError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${message<error descr="Type argument expected"><></error>}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     // -----------------------------------------------------------------------
     // Angle-bracket type context selector (new syntax: parent<Type> and parent<Type>[N])
     // -----------------------------------------------------------------------
