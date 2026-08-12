@@ -52,6 +52,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * accepts plain fields, Java Beans getters ({@code getFoo()}/{@code isFoo()}), and
  * JavaFX Beans property getters ({@code fooProperty()}).
  */
+@SuppressWarnings("DuplicatedCode")
 public final class Fxml2BindingPathResolver {
 
     private Fxml2BindingPathResolver() {}
