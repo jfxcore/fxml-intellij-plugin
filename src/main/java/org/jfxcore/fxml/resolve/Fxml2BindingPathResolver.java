@@ -272,7 +272,19 @@ public final class Fxml2BindingPathResolver {
             return effectiveRootTagClass(xmlFile);
         }
 
-        if (selector.isSelf()) {
+        if (selector.isContext()) {
+            PsiClass contextClass = resolveContextClass(xmlFile);
+            if (contextClass != null) return contextClass;
+            PsiClass codeBehind = resolveCodeBehindClass(xmlFile);
+            return codeBehind != null ? codeBehind : effectiveRootTagClass(xmlFile);
+        }
+
+        if (selector.isRoot()) {
+            PsiClass codeBehind = resolveCodeBehindClass(xmlFile);
+            return codeBehind != null ? codeBehind : effectiveRootTagClass(xmlFile);
+        }
+
+        if (selector.isSelf() || selector.isElement()) {
             return resolveTagClass(contextTag);
         }
 
@@ -301,7 +313,13 @@ public final class Fxml2BindingPathResolver {
             return cur;
         }
 
-        if (selector.isSelf()) return contextTag;
+        if (selector.isSelf() || selector.isElement()) return contextTag;
+
+        if (selector.isRoot()) {
+            XmlTag cur = contextTag;
+            while (cur.getParentTag() != null) cur = cur.getParentTag();
+            return cur;
+        }
 
         if (selector.isParent()) {
             return findParentAncestorTag(selector, contextTag);
@@ -324,20 +342,27 @@ public final class Fxml2BindingPathResolver {
         List<XmlTag> ancestors = objectAncestors(contextTag);
 
         if (searchType != null) {
+            if (level != null && level == 0) {
+                PsiClass currentClass = resolveTagClass(contextTag);
+                return currentClass != null && typeNameMatches(currentClass, searchType)
+                        ? contextTag : null;
+            }
             int matchCount = 0;
-            int targetMatch = level != null ? level : 0;
+            int targetMatch = level != null ? level : 1;
             for (XmlTag ancestor : ancestors) {
                 PsiClass cls = resolveTagClass(ancestor);
                 if (cls != null && typeNameMatches(cls, searchType)) {
-                    if (matchCount == targetMatch) return ancestor;
                     matchCount++;
+                    if (matchCount == targetMatch) return ancestor;
                 }
             }
             return null;
         }
 
-        int idx = level != null ? level : 0;
-        return idx < ancestors.size() ? ancestors.get(idx) : null;
+        if (level != null && level == 0) return contextTag;
+        int depth = level != null ? level : 1;
+        int idx = depth - 1;
+        return idx >= 0 && idx < ancestors.size() ? ancestors.get(idx) : null;
     }
 
 

@@ -66,6 +66,9 @@ public final class Fxml2BindingExpressionParser {
         public boolean isParent() { return "parent".equals(selectorName); }
         /** {@code true} if the selector token is {@code this} (ROOT context, token consumed). */
         public boolean isThis() { return "this".equals(selectorText) && selectorName.isEmpty(); }
+        public boolean isContext() { return "context".equals(selectorName); }
+        public boolean isRoot() { return "root".equals(selectorName); }
+        public boolean isElement() { return "element".equals(selectorName); }
     }
 
     /**
@@ -86,6 +89,32 @@ public final class Fxml2BindingExpressionParser {
      * @param strippedPath path with boolean operators already removed
      */
     public static @Nullable ContextSelector parseContextSelector(@NotNull String strippedPath) {
+        if (strippedPath.startsWith(":")) {
+            try {
+                Fxml2ExpressionParser.Expression expression = Fxml2ExpressionParser.parse(strippedPath);
+                Fxml2ExpressionParser.Expression primary = expression;
+                while (primary instanceof Fxml2ExpressionParser.MemberExpression member) {
+                    primary = member.receiver();
+                }
+                if (primary instanceof Fxml2ExpressionParser.ContextSelectorExpression selector
+                        && selector.span().start() == 0) {
+                    int selectorEnd = selector.span().end();
+                    int remainingOffset = selectorEnd;
+                    if (remainingOffset < strippedPath.length()
+                            && strippedPath.charAt(remainingOffset) == '.') {
+                        remainingOffset++;
+                    }
+                    String selectorName = selector.kind().name().toLowerCase(java.util.Locale.ROOT);
+                    return new ContextSelector(
+                            strippedPath.substring(0, selectorEnd), selectorName,
+                            selector.typeName(), selector.depth(), remainingOffset,
+                            strippedPath.substring(remainingOffset), remainingOffset);
+                }
+            } catch (Fxml2ExpressionParser.ParseException ignored) {
+                return null;
+            }
+        }
+
         // "this.foo": the FXML compiler simply skips the "this" token and resolves
         // the rest against the ROOT context (code-behind class).  We represent this as
         // a null selector (default ROOT) with the "this." prefix consumed so callers
@@ -264,6 +293,11 @@ public final class Fxml2BindingExpressionParser {
         /** The offset of {@link #strippedPath()} within the raw value (quotes excluded, 0-based). */
         public int strippedPathOffset() {
             return pathOffset + operatorLength();
+        }
+
+        /** Parses the complete source expression using the current expression grammar. */
+        public @NotNull Fxml2ExpressionParser.Expression expression() {
+            return Fxml2ExpressionParser.parse(path);
         }
     }
 
@@ -498,19 +532,6 @@ public final class Fxml2BindingExpressionParser {
             String path = value.substring(1).trim();
             if (path.isEmpty()) {
                 return new MissingBindingPath("fx:Evaluate");
-            }
-            // A type-witness '<' or '&lt;' anywhere in the path is an error in compact
-            // $-notation: UNLESS it is the opening of a 'parent<Type>' context selector.
-            // E.g. $parent<Pane>/prefWidth is valid; $method<String> is not.
-            int opLen = path.startsWith("!!") ? 2 : path.startsWith("!") ? 1 : 0;
-            String pathAfterOp = path.substring(opLen); // stripped of any boolean operator
-            int angleBracket = Fxml2TypeArgumentParser.indexOfOpeningBracket(pathAfterOp, 0);
-            if (angleBracket >= 0 && !isParentContextSelectorAngle(pathAfterOp, angleBracket)) {
-                return new ParseError("'>' expected", 0, value.length());
-            }
-            // Comma in a $path means mixing binding with comma-separated coercion: compiler error.
-            if (path.contains(",")) {
-                return new ParseError("A comma-separated argument list cannot contain binding expressions", 0, value.length());
             }
             return new ParsedExpression(path, value.indexOf(path), 1,
                     org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind.EVALUATE);
