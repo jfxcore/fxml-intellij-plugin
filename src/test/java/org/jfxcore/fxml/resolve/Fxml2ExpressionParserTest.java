@@ -114,6 +114,13 @@ class Fxml2ExpressionParserTest {
         assertEquals(BinaryOperator.ADD, addition.operator());
         assertEquals(List.of("b", "c"), addition.left().typeArguments().stream()
                 .map(Fxml2ExpressionParser.TypeArgument::text).toList());
+
+        assertEquals(List.of("a < b", "c > d"),
+                Fxml2BindingPathResolver.functionArguments("m(a < b, c > d)").stream()
+                        .map(Fxml2BindingPathResolver.FunctionArgument::text).toList());
+        assertEquals(List.of("a < b, c > +d"),
+                Fxml2BindingPathResolver.functionArguments("n(a < b, c > +d)").stream()
+                        .map(Fxml2BindingPathResolver.FunctionArgument::text).toList());
     }
 
     @Test

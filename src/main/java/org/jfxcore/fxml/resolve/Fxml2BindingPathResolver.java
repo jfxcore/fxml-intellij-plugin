@@ -548,6 +548,17 @@ public final class Fxml2BindingPathResolver {
      * function call or has no arguments.
      */
     public static @NotNull List<FunctionArgument> functionArguments(@NotNull String path) {
+        try {
+            Fxml2ExpressionParser.Expression expression = Fxml2ExpressionParser.parse(path);
+            if (expression instanceof Fxml2ExpressionParser.InvocationExpression invocation) {
+                return invocation.arguments().stream()
+                        .map(argument -> new FunctionArgument(
+                                argument.text(), argument.span().start()))
+                        .toList();
+            }
+        } catch (Fxml2ExpressionParser.ParseException ignored) {
+            // Incomplete expressions use the tolerant scanner below for editor completion.
+        }
         int parenIdx = functionCallParenIndex(path);
         if (parenIdx < 0) return List.of();
         int closeIdx = matchingCloseParen(path, parenIdx);
