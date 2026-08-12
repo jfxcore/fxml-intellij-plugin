@@ -1579,8 +1579,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Completing inside an empty binding value should offer {@code self/}
-     * and {@code parent/} as context selector prefixes.
+     * Completing inside an empty binding value should offer all context selectors.
      */
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
@@ -1594,34 +1593,33 @@ class Fxml2CompletionTest extends Fxml2TestBase {
         LookupElement[] items = getFixture().completeBasic();
         assertNotNull(items, "Expected binding context selector completions");
         List<String> names = lookupStrings(items);
-        assertTrue(names.contains("self/"),
-                "Expected 'self/' in binding completions, got: " + names);
-        assertTrue(names.contains("parent/"),
-                "Expected 'parent/' in binding completions, got: " + names);
+        assertTrue(names.containsAll(List.of(":context", ":root", ":element", ":parent")),
+                "Expected context selectors in binding completions, got: " + names);
     }
 
     /**
-     * Completing {@code se<caret>} inside a binding expression should offer {@code self/}.
+     * Completing {@code :el<caret>} inside a binding expression should offer {@code :element}.
      */
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
-    void bindingContextSelectorSelfPrefixCompletion() {
+    void bindingContextSelectorElementPrefixCompletion() {
         getFixture().configureByText("BindingSelf.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
-                  <Label text="${se<caret>}"/>
+                  <Label text="${:el<caret>}"/>
                 """
         ));
         LookupElement[] items = getFixture().completeBasic();
         if (items == null) {
             // auto-inserted
             String text = getFixture().getEditor().getDocument().getText();
-            assertTrue(text.contains("self/"), "Expected 'self/' to be auto-inserted, got: " + text);
+            assertTrue(text.contains(":element"),
+                    "Expected ':element' to be auto-inserted, got: " + text);
             return;
         }
         List<String> names = lookupStrings(items);
-        assertTrue(names.contains("self/"),
-                "Expected 'self/' in binding completions for 'se', got: " + names);
+        assertTrue(names.contains(":element"),
+                "Expected ':element' in binding completions for ':el', got: " + names);
     }
 
     // -----------------------------------------------------------------------

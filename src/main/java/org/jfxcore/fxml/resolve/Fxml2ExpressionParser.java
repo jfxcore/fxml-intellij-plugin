@@ -177,6 +177,11 @@ public final class Fxml2ExpressionParser {
             skipWhitespace();
             if (atEnd()) throw error("Expression expected", position, position);
             int start = position;
+            if (consume("::")) {
+                PathExpression selected = parseNamedPath();
+                return new PathExpression("::" + selected.name(), selected.typeArguments(),
+                        new Span(start, selected.span().end()), source);
+            }
             char ch = source.charAt(position);
             if (ch == '(') {
                 position++;

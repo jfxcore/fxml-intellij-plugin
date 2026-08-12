@@ -1382,7 +1382,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
 
         /**
          * Completes a binding name path (no enclosing unclosed parenthesis), offering: a
-         * {@code self/}/{@code parent/} context selector when none is typed yet; instance property
+         * context selector when none is typed yet; instance property
          * names, {@code fx:id} elements, and class names at the first segment; and static fields and
          * static methods on a class qualifier.  Class names and static methods make function-binding
          * expressions completable (e.g. {@code Str} -> {@code String}, {@code String.fo} ->
@@ -1395,26 +1395,21 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 @Nullable PsiType targetPropType,
                 @NotNull CompletionResultSet result) {
 
-            // Parse context selector (self/, parent/, etc.) from the stripped path
+            // Parse a context selector from the stripped path.
             Fxml2BindingExpressionParser.ContextSelector selector =
                     Fxml2BindingExpressionParser.parseContextSelector(strippedPath);
 
-            // Offer context selectors when the user hasn't typed one yet and the partial
-            // text could match "self" or "parent".
+            // Offer context selectors when the partial text can match one.
             if (selector == null) {
                 CompletionResultSet selectorResult = result.withPrefixMatcher(
                         new PlainPrefixMatcher(strippedPath, true));
-                if ("self".startsWith(strippedPath)) {
-                    selectorResult.addElement(LookupElementBuilder.create("self/")
-                            .withPresentableText("self/")
-                            .withIcon(AllIcons.Nodes.Unknown)
-                            .withTypeText("context selector"));
-                }
-                if ("parent".startsWith(strippedPath)) {
-                    selectorResult.addElement(LookupElementBuilder.create("parent/")
-                            .withPresentableText("parent/")
-                            .withIcon(AllIcons.Nodes.Unknown)
-                            .withTypeText("context selector"));
+                for (String contextSelector : List.of(
+                        ":context", ":root", ":element", ":parent")) {
+                    if (contextSelector.startsWith(strippedPath)) {
+                        selectorResult.addElement(LookupElementBuilder.create(contextSelector)
+                                .withIcon(AllIcons.Nodes.Unknown)
+                                .withTypeText("context selector"));
+                    }
                 }
             }
 
