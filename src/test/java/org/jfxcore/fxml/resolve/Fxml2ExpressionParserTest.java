@@ -16,6 +16,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class Fxml2ExpressionParserTest {
@@ -76,8 +77,10 @@ class Fxml2ExpressionParserTest {
                 Fxml2ExpressionParser.parse(":parent<Pane>.width"));
         assertEquals(":parent<Pane>", member.receiver().text());
         assertEquals("width", member.member().text());
-        assertEquals(":element", Fxml2ExpressionParser.parseLeadingContextSelector(
-                ":element.").text());
+
+        ContextSelectorExpression expr = Fxml2ExpressionParser.parseLeadingContextSelector(":element.");
+        assertNotNull(expr);
+        assertEquals(":element", expr.text());
     }
 
     @Test

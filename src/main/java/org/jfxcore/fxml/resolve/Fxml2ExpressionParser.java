@@ -9,20 +9,25 @@ import java.util.List;
 /** Parses the expression carried by an FXML/2 binding notation. */
 public final class Fxml2ExpressionParser {
 
-    private Fxml2ExpressionParser() {}
+    private Fxml2ExpressionParser() {
+    }
 
     public record Span(int start, int end) {
         public Span {
-            if (start < 0 || end < start) throw new IllegalArgumentException("Invalid source span");
+            if (start < 0 || end < start) {
+                throw new IllegalArgumentException("Invalid source span");
+            }
         }
     }
 
-    public record TypeArgument(@NotNull String text, @NotNull Span span) {}
+    public record TypeArgument(@NotNull String text, @NotNull Span span) {
+    }
 
     public sealed interface Expression permits PathExpression, MemberExpression,
             AttachedPropertyExpression, InvocationExpression, ContextSelectorExpression, LiteralExpression,
             UnaryExpression, BinaryExpression, GroupedExpression {
         @NotNull Span span();
+
         @NotNull String source();
 
         default @NotNull String text() {
@@ -41,7 +46,7 @@ public final class Fxml2ExpressionParser {
         }
     }
 
-    public enum SelectionOperator { VALUE, OBSERVABLE }
+    public enum SelectionOperator {VALUE, OBSERVABLE}
 
     public record MemberExpression(@NotNull Expression receiver, @NotNull PathExpression member,
                                    @NotNull SelectionOperator operator, @NotNull Span span,
@@ -57,7 +62,8 @@ public final class Fxml2ExpressionParser {
                                              @NotNull String property,
                                              @NotNull SelectionOperator operator,
                                              @NotNull Span span,
-                                             @NotNull String source) implements Expression {}
+                                             @NotNull String source) implements Expression {
+    }
 
     public record InvocationExpression(@NotNull Expression target,
                                        @NotNull List<Expression> arguments,
@@ -68,24 +74,27 @@ public final class Fxml2ExpressionParser {
         }
     }
 
-    public enum ContextSelectorKind { CONTEXT, ROOT, ELEMENT, PARENT }
+    public enum ContextSelectorKind {CONTEXT, ROOT, ELEMENT, PARENT}
 
     public record ContextSelectorExpression(@NotNull ContextSelectorKind kind,
                                             @Nullable String typeName,
                                             @Nullable Integer depth,
                                             @Nullable Span typeSpan,
                                             @NotNull Span span,
-                                            @NotNull String source) implements Expression {}
+                                            @NotNull String source) implements Expression {
+    }
 
-    public enum LiteralKind { STRING, NUMBER, TRUE, FALSE, NULL, MARKUP_EXTENSION }
+    public enum LiteralKind {STRING, NUMBER, TRUE, FALSE, NULL, MARKUP_EXTENSION}
 
     public record LiteralExpression(@NotNull LiteralKind kind, @NotNull Span span,
-                                    @NotNull String source) implements Expression {}
+                                    @NotNull String source) implements Expression {
+    }
 
-    public enum UnaryOperator { PLUS, NEGATE, NOT, BOOLIFY }
+    public enum UnaryOperator {PLUS, NEGATE, NOT, BOOLIFY}
 
     public record UnaryExpression(@NotNull UnaryOperator operator, @NotNull Expression operand,
-                                  @NotNull Span span, @NotNull String source) implements Expression {}
+                                  @NotNull Span span, @NotNull String source) implements Expression {
+    }
 
     public enum BinaryOperator {
         MULTIPLY, DIVIDE, ADD, SUBTRACT,
@@ -96,10 +105,12 @@ public final class Fxml2ExpressionParser {
 
     public record BinaryExpression(@NotNull Expression left, @NotNull BinaryOperator operator,
                                    @NotNull Expression right, @NotNull Span span,
-                                   @NotNull String source) implements Expression {}
+                                   @NotNull String source) implements Expression {
+    }
 
     public record GroupedExpression(@NotNull Expression expression, @NotNull Span span,
-                                    @NotNull String source) implements Expression {}
+                                    @NotNull String source) implements Expression {
+    }
 
     public static final class ParseException extends IllegalArgumentException {
         private final Span span;
@@ -119,14 +130,18 @@ public final class Fxml2ExpressionParser {
         Parser parser = new Parser(source);
         Expression expression = parser.parseExpression(0);
         parser.skipWhitespace();
-        if (!parser.atEnd()) throw parser.error("Unexpected token", parser.position, parser.position + 1);
+        if (!parser.atEnd()) {
+            throw parser.error("Unexpected token", parser.position, parser.position + 1);
+        }
         return expression;
     }
 
     /** Parses only a context selector at the start of a possibly incomplete expression. */
     public static @Nullable ContextSelectorExpression parseLeadingContextSelector(
             @NotNull String source) {
-        if (!source.startsWith(":")) return null;
+        if (!source.startsWith(":")) {
+            return null;
+        }
         Parser parser = new Parser(source);
         try {
             return parser.parseContextSelector();
@@ -148,7 +163,9 @@ public final class Fxml2ExpressionParser {
             while (true) {
                 skipWhitespace();
                 OperatorToken token = peekBinaryOperator();
-                if (token == null || token.precedence < minimumPrecedence) return left;
+                if (token == null || token.precedence < minimumPrecedence) {
+                    return left;
+                }
                 position += token.text.length();
                 Expression right = parseExpression(token.precedence + 1);
                 left = new BinaryExpression(left, token.operator, right,
@@ -160,11 +177,18 @@ public final class Fxml2ExpressionParser {
             skipWhitespace();
             int start = position;
             UnaryOperator operator = null;
-            if (consume("!!")) operator = UnaryOperator.BOOLIFY;
-            else if (consume("!")) operator = UnaryOperator.NOT;
-            else if (consume("+")) operator = UnaryOperator.PLUS;
-            else if (consume("-")) operator = UnaryOperator.NEGATE;
-            if (operator == null) return parsePostfix();
+            if (consume("!!")) {
+                operator = UnaryOperator.BOOLIFY;
+            } else if (consume("!")) {
+                operator = UnaryOperator.NOT;
+            } else if (consume("+")) {
+                operator = UnaryOperator.PLUS;
+            } else if (consume("-")) {
+                operator = UnaryOperator.NEGATE;
+            }
+            if (operator == null) {
+                return parsePostfix();
+            }
             Expression operand = parseUnary();
             return new UnaryExpression(operator, operand, new Span(start, operand.span().end()), source);
         }
@@ -189,13 +213,19 @@ public final class Fxml2ExpressionParser {
                 }
 
                 SelectionOperator selection;
-                if (consume("::")) selection = SelectionOperator.OBSERVABLE;
-                else if (consume(".")) selection = SelectionOperator.VALUE;
-                else return result;
+                if (consume("::")) {
+                    selection = SelectionOperator.OBSERVABLE;
+                } else if (consume(".")) {
+                    selection = SelectionOperator.VALUE;
+                } else {
+                    return result;
+                }
 
                 skipWhitespace();
                 if (peek("(")) {
-                    if (!pathChain) throw error("Identifier expected", position, position);
+                    if (!pathChain) {
+                        throw error("Identifier expected", position, position);
+                    }
                     result = parseAttachedProperty(result, selection);
                     continue;
                 }
@@ -207,10 +237,14 @@ public final class Fxml2ExpressionParser {
 
         private Expression parsePrimary() {
             skipWhitespace();
-            if (atEnd()) throw error("Expression expected", position, position);
+            if (atEnd()) {
+                throw error("Expression expected", position, position);
+            }
             int start = position;
             if (consume("::")) {
-                if (peek("(")) return parseAttachedProperty(null, SelectionOperator.OBSERVABLE, start);
+                if (peek("(")) {
+                    return parseAttachedProperty(null, SelectionOperator.OBSERVABLE, start);
+                }
                 PathExpression selected = parseNamedPath();
                 return new PathExpression("::" + selected.name(), selected.typeArguments(),
                         new Span(start, selected.span().end()), source);
@@ -223,9 +257,15 @@ public final class Fxml2ExpressionParser {
                 require(")", "')' expected");
                 return new GroupedExpression(nested, new Span(start, position), source);
             }
-            if (ch == ':') return parseContextSelector();
-            if (ch == '\'' || ch == '"') return parseStringLiteral();
-            if (Character.isDigit(ch)) return parseNumberLiteral();
+            if (ch == ':') {
+                return parseContextSelector();
+            }
+            if (ch == '\'' || ch == '"') {
+                return parseStringLiteral();
+            }
+            if (Character.isDigit(ch)) {
+                return parseNumberLiteral();
+            }
             PathExpression path = parseNamedPath();
             return switch (path.name()) {
                 case "true" -> new LiteralExpression(LiteralKind.TRUE, path.span(), source);
@@ -261,10 +301,16 @@ public final class Fxml2ExpressionParser {
             if (kind == ContextSelectorKind.PARENT && skipWhitespaceAndConsume("(")) {
                 skipWhitespace();
                 int numberStart = position;
-                if (peek("+") || peek("-")) position++;
+                if (peek("+") || peek("-")) {
+                    position++;
+                }
                 int digitStart = position;
-                while (!atEnd() && Character.isDigit(source.charAt(position))) position++;
-                if (digitStart == position) throw error("Parent depth expected", position, position);
+                while (!atEnd() && Character.isDigit(source.charAt(position))) {
+                    position++;
+                }
+                if (digitStart == position) {
+                    throw error("Parent depth expected", position, position);
+                }
                 try {
                     depth = Integer.parseInt(source.substring(numberStart, position));
                 } catch (NumberFormatException ex) {
@@ -290,7 +336,9 @@ public final class Fxml2ExpressionParser {
             int typeStart = position;
             String qualified = readQualifiedIdentifier();
             int separator = qualified.lastIndexOf('.');
-            if (separator < 0) throw error("'.' expected", typeStart, position);
+            if (separator < 0) {
+                throw error("'.' expected", typeStart, position);
+            }
             skipWhitespace();
             require(")", "')' expected");
             return new AttachedPropertyExpression(receiver,
@@ -307,13 +355,17 @@ public final class Fxml2ExpressionParser {
 
         private List<TypeArgument> speculateTypeArguments() {
             skipWhitespace();
-            if (!peek("<")) return List.of();
+            if (!peek("<")) {
+                return List.of();
+            }
             int checkpoint = position;
             consume("<");
             skipWhitespace();
             if (peek(">")) {
                 consume(">");
-                if (isGenericFollower()) throw error("Type argument expected", checkpoint + 1, checkpoint + 1);
+                if (isGenericFollower()) {
+                    throw error("Type argument expected", checkpoint + 1, checkpoint + 1);
+                }
                 position = checkpoint;
                 return List.of();
             }
@@ -335,10 +387,14 @@ public final class Fxml2ExpressionParser {
                 result.add(new TypeArgument(source.substring(argumentStart, argumentEnd),
                         new Span(argumentStart, argumentEnd)));
                 skipWhitespace();
-                if (!consume(",")) break;
+                if (!consume(",")) {
+                    break;
+                }
                 missingAfterComma = true;
                 skipWhitespace();
-                if (peek(">")) break;
+                if (peek(">")) {
+                    break;
+                }
                 missingAfterComma = false;
             }
             if (!consume(">")) {
@@ -349,26 +405,35 @@ public final class Fxml2ExpressionParser {
                 position = checkpoint;
                 return List.of();
             }
-            if (missingAfterComma) throw error("Type argument expected", position - 1, position - 1);
+            if (missingAfterComma) {
+                throw error("Type argument expected", position - 1, position - 1);
+            }
             return List.copyOf(result);
         }
 
         @SuppressWarnings("BooleanMethodIsAlwaysInverted")
         private boolean parseTypeName() {
-            if (!isIdentifierStart()) return false;
+            if (!isIdentifierStart()) {
+                return false;
+            }
             readIdentifier();
             //noinspection WhileCanBeDoWhile
             while (consume(".")) {
-                if (!isIdentifierStart()) return false;
+                if (!isIdentifierStart()) {
+                    return false;
+                }
                 readIdentifier();
             }
             if (consume("<")) {
                 do {
                     skipWhitespace();
-                    if (!parseTypeName()) return false;
+                    if (!parseTypeName()) {
+                        return false;
+                    }
                     skipWhitespace();
                 } while (consume(","));
-                if (!consume(">")) return false;
+
+                return consume(">");
             }
             return true;
         }
@@ -388,13 +453,17 @@ public final class Fxml2ExpressionParser {
         private List<Expression> parseArguments() {
             require("(", "'(' expected");
             skipWhitespace();
-            if (consume(")")) return List.of();
+            if (consume(")")) {
+                return List.of();
+            }
             List<Expression> arguments = new ArrayList<>();
             while (true) {
                 skipWhitespace();
                 arguments.add(peek("{") ? parseMarkupExtension() : parseExpression(0));
                 skipWhitespace();
-                if (consume(")")) return List.copyOf(arguments);
+                if (consume(")")) {
+                    return List.copyOf(arguments);
+                }
                 require(",", "',' or ')' expected");
             }
         }
@@ -407,9 +476,13 @@ public final class Fxml2ExpressionParser {
             while (!atEnd()) {
                 char ch = source.charAt(position++);
                 if (quote != 0) {
-                    if (escaped) escaped = false;
-                    else if (ch == '\\') escaped = true;
-                    else if (ch == quote) quote = 0;
+                    if (escaped) {
+                        escaped = false;
+                    } else if (ch == '\\') {
+                        escaped = true;
+                    } else if (ch == quote) {
+                        quote = 0;
+                    }
                 } else if (ch == '\'' || ch == '"') {
                     quote = ch;
                 } else if (ch == '{') {
@@ -428,29 +501,45 @@ public final class Fxml2ExpressionParser {
             boolean escaped = false;
             while (!atEnd()) {
                 char ch = source.charAt(position++);
-                if (escaped) escaped = false;
-                else if (ch == '\\') escaped = true;
-                else if (ch == quote) return new LiteralExpression(
-                        LiteralKind.STRING, new Span(start, position), source);
+                if (escaped) {
+                    escaped = false;
+                } else if (ch == '\\') {
+                    escaped = true;
+                } else if (ch == quote) {
+                    return new LiteralExpression(
+                            LiteralKind.STRING, new Span(start, position), source);
+                }
             }
             throw error("String literal is not closed", start, position);
         }
 
         private LiteralExpression parseNumberLiteral() {
             int start = position;
-            while (!atEnd() && Character.isDigit(source.charAt(position))) position++;
+            while (!atEnd() && Character.isDigit(source.charAt(position))) {
+                position++;
+            }
             if (!atEnd() && source.charAt(position) == '.') {
                 position++;
-                while (!atEnd() && Character.isDigit(source.charAt(position))) position++;
+                while (!atEnd() && Character.isDigit(source.charAt(position))) {
+                    position++;
+                }
             }
             if (!atEnd() && (source.charAt(position) == 'e' || source.charAt(position) == 'E')) {
                 int exponentStart = position++;
-                if (!atEnd() && (source.charAt(position) == '+' || source.charAt(position) == '-')) position++;
+                if (!atEnd() && (source.charAt(position) == '+' || source.charAt(position) == '-')) {
+                    position++;
+                }
                 int exponentDigits = position;
-                while (!atEnd() && Character.isDigit(source.charAt(position))) position++;
-                if (exponentDigits == position) position = exponentStart;
+                while (!atEnd() && Character.isDigit(source.charAt(position))) {
+                    position++;
+                }
+                if (exponentDigits == position) {
+                    position = exponentStart;
+                }
             }
-            if (!atEnd() && "fFdDlL".indexOf(source.charAt(position)) >= 0) position++;
+            if (!atEnd() && "fFdDlL".indexOf(source.charAt(position)) >= 0) {
+                position++;
+            }
             return new LiteralExpression(LiteralKind.NUMBER, new Span(start, position), source);
         }
 
@@ -458,14 +547,20 @@ public final class Fxml2ExpressionParser {
             int start = position;
             readIdentifier();
             //noinspection WhileCanBeDoWhile
-            while (consume(".")) readIdentifier();
+            while (consume(".")) {
+                readIdentifier();
+            }
             return source.substring(start, position);
         }
 
         private @NotNull String readIdentifier() {
-            if (!isIdentifierStart()) throw error("Identifier expected", position, position);
+            if (!isIdentifierStart()) {
+                throw error("Identifier expected", position, position);
+            }
             int start = position++;
-            while (!atEnd() && Character.isJavaIdentifierPart(source.charAt(position))) position++;
+            while (!atEnd() && Character.isJavaIdentifierPart(source.charAt(position))) {
+                position++;
+            }
             return source.substring(start, position);
         }
 
@@ -475,17 +570,25 @@ public final class Fxml2ExpressionParser {
         }
 
         private @Nullable OperatorToken peekBinaryOperator() {
-            for (OperatorToken token : OPERATORS) if (peek(token.text)) return token;
+            for (OperatorToken token : OPERATORS) {
+                if (peek(token.text)) {
+                    return token;
+                }
+            }
             return null;
         }
 
         private void require(String token, String message) {
-            if (!consume(token)) throw error(message, position, position);
+            if (!consume(token)) {
+                throw error(message, position, position);
+            }
         }
 
         private boolean consume(String token) {
             String sourceToken = sourceToken(token);
-            if (!source.startsWith(sourceToken, position)) return false;
+            if (!source.startsWith(sourceToken, position)) {
+                return false;
+            }
             position += sourceToken.length();
             return true;
         }
@@ -493,7 +596,9 @@ public final class Fxml2ExpressionParser {
         private boolean skipWhitespaceAndConsume(@NotNull String token) {
             int checkpoint = position;
             skipWhitespace();
-            if (consume(token)) return true;
+            if (consume(token)) {
+                return true;
+            }
             position = checkpoint;
             return false;
         }
@@ -503,13 +608,19 @@ public final class Fxml2ExpressionParser {
         }
 
         private @NotNull String sourceToken(@NotNull String token) {
-            if ("<".equals(token) && source.startsWith("&lt;", position)) return "&lt;";
-            if (">".equals(token) && source.startsWith("&gt;", position)) return "&gt;";
+            if ("<".equals(token) && source.startsWith("&lt;", position)) {
+                return "&lt;";
+            }
+            if (">".equals(token) && source.startsWith("&gt;", position)) {
+                return "&gt;";
+            }
             return token;
         }
 
         private void skipWhitespace() {
-            while (!atEnd() && Character.isWhitespace(source.charAt(position))) position++;
+            while (!atEnd() && Character.isWhitespace(source.charAt(position))) {
+                position++;
+            }
         }
 
         private boolean atEnd() {
@@ -521,7 +632,8 @@ public final class Fxml2ExpressionParser {
         }
     }
 
-    private record OperatorToken(String text, BinaryOperator operator, int precedence) {}
+    private record OperatorToken(String text, BinaryOperator operator, int precedence) {
+    }
 
     private static final List<OperatorToken> OPERATORS = List.of(
             new OperatorToken("!==", BinaryOperator.IDENTITY_NOT_EQUAL, 3),
