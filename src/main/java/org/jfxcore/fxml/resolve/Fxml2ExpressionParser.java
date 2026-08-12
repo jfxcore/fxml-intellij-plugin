@@ -102,6 +102,7 @@ public final class Fxml2ExpressionParser {
             this.span = span;
         }
 
+        @SuppressWarnings("unused")
         public @NotNull Span span() {
             return span;
         }
@@ -299,9 +300,11 @@ public final class Fxml2ExpressionParser {
             return List.copyOf(result);
         }
 
+        @SuppressWarnings("BooleanMethodIsAlwaysInverted")
         private boolean parseTypeName() {
             if (!isIdentifierStart()) return false;
             readIdentifier();
+            //noinspection WhileCanBeDoWhile
             while (consume(".")) {
                 if (!isIdentifierStart()) return false;
                 readIdentifier();
@@ -315,7 +318,10 @@ public final class Fxml2ExpressionParser {
                 } while (consume(","));
                 if (!consume(">")) return false;
             }
-            while (consume("[]")) { /* array suffix */ }
+            //noinspection StatementWithEmptyBody
+            while (consume("[]")) {
+                // The suffix is represented by the type argument's source span.
+            }
             return true;
         }
 
@@ -368,6 +374,7 @@ public final class Fxml2ExpressionParser {
         private @NotNull String readQualifiedIdentifier() {
             int start = position;
             readIdentifier();
+            //noinspection WhileCanBeDoWhile
             while (consume(".")) readIdentifier();
             return source.substring(start, position);
         }
@@ -379,6 +386,7 @@ public final class Fxml2ExpressionParser {
             return source.substring(start, position);
         }
 
+        @SuppressWarnings("BooleanMethodIsAlwaysInverted")
         private boolean isIdentifierStart() {
             return !atEnd() && Character.isJavaIdentifierStart(source.charAt(position));
         }

@@ -99,23 +99,28 @@ public final class Fxml2EvaluateInitializationOrderInspection
     private static void collectRiskySelectors(
             @NotNull Fxml2ExpressionParser.Expression expression,
             @NotNull List<Fxml2ExpressionParser.ContextSelectorExpression> result) {
-        if (expression instanceof Fxml2ExpressionParser.ContextSelectorExpression selector) {
-            if (selector.kind() == Fxml2ExpressionParser.ContextSelectorKind.ELEMENT
-                    || selector.kind() == Fxml2ExpressionParser.ContextSelectorKind.PARENT) {
-                result.add(selector);
+        switch (expression) {
+            case Fxml2ExpressionParser.ContextSelectorExpression selector -> {
+                if (selector.kind() == Fxml2ExpressionParser.ContextSelectorKind.ELEMENT
+                        || selector.kind() == Fxml2ExpressionParser.ContextSelectorKind.PARENT) {
+                    result.add(selector);
+                }
             }
-        } else if (expression instanceof Fxml2ExpressionParser.MemberExpression member) {
-            collectRiskySelectors(member.receiver(), result);
-        } else if (expression instanceof Fxml2ExpressionParser.InvocationExpression invocation) {
-            collectRiskySelectors(invocation.target(), result);
-            invocation.arguments().forEach(argument -> collectRiskySelectors(argument, result));
-        } else if (expression instanceof Fxml2ExpressionParser.UnaryExpression unary) {
-            collectRiskySelectors(unary.operand(), result);
-        } else if (expression instanceof Fxml2ExpressionParser.BinaryExpression binary) {
-            collectRiskySelectors(binary.left(), result);
-            collectRiskySelectors(binary.right(), result);
-        } else if (expression instanceof Fxml2ExpressionParser.GroupedExpression grouped) {
-            collectRiskySelectors(grouped.expression(), result);
+            case Fxml2ExpressionParser.MemberExpression member ->
+                    collectRiskySelectors(member.receiver(), result);
+            case Fxml2ExpressionParser.InvocationExpression invocation -> {
+                collectRiskySelectors(invocation.target(), result);
+                invocation.arguments().forEach(argument -> collectRiskySelectors(argument, result));
+            }
+            case Fxml2ExpressionParser.UnaryExpression unary ->
+                    collectRiskySelectors(unary.operand(), result);
+            case Fxml2ExpressionParser.BinaryExpression binary -> {
+                collectRiskySelectors(binary.left(), result);
+                collectRiskySelectors(binary.right(), result);
+            }
+            case Fxml2ExpressionParser.GroupedExpression grouped ->
+                    collectRiskySelectors(grouped.expression(), result);
+            default -> { }
         }
     }
 

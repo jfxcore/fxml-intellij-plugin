@@ -91,8 +91,8 @@ public final class Fxml2BindingExpressionParser {
     public static @Nullable ContextSelector parseContextSelector(@NotNull String strippedPath) {
         if (strippedPath.startsWith(":")) {
             try {
-                Fxml2ExpressionParser.Expression expression = Fxml2ExpressionParser.parse(strippedPath);
-                Fxml2ExpressionParser.Expression primary = expression;
+                Fxml2ExpressionParser.Expression primary =
+                        Fxml2ExpressionParser.parse(strippedPath);
                 while (primary instanceof Fxml2ExpressionParser.MemberExpression member) {
                     primary = member.receiver();
                 }
@@ -211,23 +211,6 @@ public final class Fxml2BindingExpressionParser {
         String remaining = afterParent.substring(close + 2); // after "]/"
         return new ContextSelector(selectorText, "parent", null, level,
                 selectorLen, remaining, selectorLen);
-    }
-
-    /**
-     * Returns {@code true} when the {@code '<'} (or {@code '&lt;'}) at position
-     * {@code anglePos} within {@code pathAfterOp} is the opening angle bracket of a
-     * {@code parent<Type>} context selector, rather than the start of a type witness.
-     *
-     * <p>The angle bracket is part of a context selector if and only if it occurs
-     * immediately after the keyword {@code "parent"} (i.e. at position 6): meaning the
-     * expression is {@code parent<...>...} rather than {@code someMethod<...>...}.
-     *
-     * @param pathAfterOp the path string with any leading boolean operator already stripped
-     * @param anglePos    position of the {@code '<'} or start of {@code '&lt;'} in {@code pathAfterOp}
-     */
-    private static boolean isParentContextSelectorAngle(@NotNull String pathAfterOp, int anglePos) {
-        // The '<' (or '&lt;') must be immediately after the six characters of "parent".
-        return anglePos == 6 && pathAfterOp.startsWith("parent");
     }
 
     /**
@@ -532,6 +515,15 @@ public final class Fxml2BindingExpressionParser {
             String path = value.substring(1).trim();
             if (path.isEmpty()) {
                 return new MissingBindingPath("fx:Evaluate");
+            }
+            if (path.contains(",")) {
+                try {
+                    Fxml2ExpressionParser.parse(path);
+                } catch (Fxml2ExpressionParser.ParseException ignored) {
+                    return new ParseError(
+                            "A comma-separated argument list cannot contain binding expressions",
+                            0, value.length());
+                }
             }
             return new ParsedExpression(path, value.indexOf(path), 1,
                     org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind.EVALUATE);

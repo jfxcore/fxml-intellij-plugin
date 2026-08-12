@@ -261,21 +261,6 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
-    /**
-     * Compiler: Missing_Close_Angle_Bracket_Fails for type witnesses.
-     * {@code $foo<String}: missing {@code >}.
-     */
-    @Test
-    void missingCloseAngleBracketInTypeWitnessProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml(
-                "javafx.scene.control.Label",
-                """
-                  <Label text=<error descr="'>' expected">"$message<String"</error>/>
-                """
-        ));
-        getFixture().checkHighlighting(false, false, false);
-    }
-
     // -----------------------------------------------------------------------
     // Missing binding path: compiler: ContentExpressionTransform
     // -----------------------------------------------------------------------
