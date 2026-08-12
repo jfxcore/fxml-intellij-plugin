@@ -1622,6 +1622,38 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 "Expected ':element' in binding completions for ':el', got: " + names);
     }
 
+    /**
+     * A completed context selector is not itself a path separator. Property completion must wait
+     * until the user types a dot so accepting an item cannot concatenate it with the selector.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingContextSelectorRequiresPathSeparatorForPropertyCompletion() {
+        getFixture().configureByText("BindingSelectorWithoutSeparator.fxml", fxml(
+                "javafx.scene.layout.VBox\njavafx.scene.control.Label",
+                """
+                  <VBox><Label visible="${:parent<caret>}"/></VBox>
+                """
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        if (items != null) {
+            List<String> names = lookupStrings(items);
+            assertFalse(names.contains("prefHeight"),
+                    "Parent properties must not be offered before a path separator, got: " + names);
+        }
+
+        getFixture().configureByText("BindingSelectorWithSeparator.fxml", fxml(
+                "javafx.scene.layout.VBox\njavafx.scene.control.Label",
+                """
+                  <VBox><Label visible="${:parent.<caret>}"/></VBox>
+                """
+        ));
+        LookupElement[] separatedItems = getFixture().completeBasic();
+        assertNotNull(separatedItems, "Expected parent properties after a path separator");
+        assertTrue(lookupStrings(separatedItems).contains("prefHeight"),
+                "Expected parent properties after a path separator");
+    }
+
     // -----------------------------------------------------------------------
     // fx:factory attribute value completion
     // -----------------------------------------------------------------------

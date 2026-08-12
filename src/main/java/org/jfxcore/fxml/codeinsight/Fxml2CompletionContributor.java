@@ -127,18 +127,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
         if (origPos != null) {
             XmlProcessingInstruction pi = ImportPiCompletionProvider.findEnclosingImportPi(origPos);
             if (pi != null) {
-                ASTNode dataNode = pi.getNode().findChildByType(XmlTokenType.XML_TAG_CHARACTERS);
-                String typed = "";
-                if (dataNode != null) {
-                    int dataStart = dataNode.getStartOffset();
-                    if (caretOffset >= dataStart) {
-                        int caretInData = caretOffset - dataStart;
-                        String dataText = dataNode.getText();
-                        if (caretInData <= dataText.length()) {
-                            typed = dataText.substring(0, caretInData).trim();
-                        }
-                    }
-                }
+                String typed = importPrefixAtCaret(pi, caretOffset);
                 // Suppress all other contributors (no-op consumer), then provide our FQN items.
                 result.runRemainingContributors(parameters, r -> { /* discard all default items */ });
                 FqnClassNameCompletionProvider.completeFqn(parameters, result, typed);
@@ -255,6 +244,18 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
         }
 
         super.fillCompletionVariants(parameters, result);
+    }
+
+    private static @NotNull String importPrefixAtCaret(
+            @NotNull XmlProcessingInstruction instruction, int caretOffset) {
+        ASTNode dataNode = instruction.getNode().findChildByType(XmlTokenType.XML_TAG_CHARACTERS);
+        if (dataNode == null) return "";
+
+        int dataStart = dataNode.getStartOffset();
+        int caretInData = caretOffset - dataStart;
+        String dataText = dataNode.getText();
+        if (caretInData < 0 || caretInData > dataText.length()) return "";
+        return dataText.substring(0, caretInData).trim();
     }
 
     /**
@@ -708,13 +709,8 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
      * inserts the {@code {ClassName } text (already placed by the lookup item) and
      * adds an {@code <?import fqn?>} PI for the class if not yet present.
      */
-    private static final class MarkupExtensionImportInsertHandler implements InsertHandler<LookupElement> {
-        private final PsiClass myClass;
-
-        MarkupExtensionImportInsertHandler(@NotNull PsiClass cls) {
-            this.myClass = cls;
-        }
-
+    private record MarkupExtensionImportInsertHandler(
+            @NotNull PsiClass myClass) implements InsertHandler<LookupElement> {
         @Override
         public void handleInsert(@NotNull InsertionContext context, @NotNull LookupElement item) {
             String fqn = myClass.getQualifiedName();
@@ -731,13 +727,8 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
      * imported.  The lookup element uses the simple name as its lookup string (so the prefix
      * matcher can match it), so the handler only needs to add the {@code <?import?>} PI.
      */
-    private static final class TypeArgImportInsertHandler implements InsertHandler<LookupElement> {
-        private final PsiClass myClass;
-
-        TypeArgImportInsertHandler(@NotNull PsiClass cls) {
-            this.myClass = cls;
-        }
-
+    private record TypeArgImportInsertHandler(
+            @NotNull PsiClass myClass) implements InsertHandler<LookupElement> {
         @Override
         public void handleInsert(@NotNull InsertionContext context, @NotNull LookupElement item) {
             String fqn = myClass.getQualifiedName();
@@ -1411,6 +1402,13 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                                 .withTypeText("context selector"));
                     }
                 }
+            }
+
+            // A context selector selects the object that begins the path, but does not itself
+            // separate that object from a property name. Wait for the explicit dot before
+            // offering properties so accepting a completion cannot concatenate the two names.
+            if (selector != null && strippedPath.length() == selector.selectorText().length()) {
+                return;
             }
 
             // The actual property path is what follows the selector
