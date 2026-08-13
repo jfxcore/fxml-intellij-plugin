@@ -205,6 +205,52 @@ class Fxml2ValueSequenceReferenceTest extends Fxml2TestBase {
         assertEquals("DoubleValue", assertInstanceOf(com.intellij.psi.PsiClass.class, target).getName());
     }
 
+    // -----------------------------------------------------------------------
+    // Markup extension content
+    // -----------------------------------------------------------------------
+
+    /** A parameter that follows a separator resolves to the parameter it names. */
+    @Test
+    void parameterAfterASeparatorResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.shape.Polygon\ntest.DoubleValue",
+                """
+                  <Polygon points="0, {DoubleValue 50; va<caret>lue=60}"/>
+                """
+        ));
+        PsiElement target = resolveAtCaret();
+        assertEquals("value", assertInstanceOf(com.intellij.psi.PsiParameter.class, target).getName());
+    }
+
+    /**
+     * A comma separates the values of one parameter, so an assignment that follows a comma is a
+     * value rather than a parameter and names nothing.
+     */
+    @Test
+    void assignmentAfterACommaIsNotAParameter() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.shape.Polygon\ntest.DoubleValue",
+                """
+                  <Polygon points="0, {DoubleValue value=50, va<caret>lue=60}"/>
+                """
+        ));
+        assertNull(resolveAtCaret());
+    }
+
+    /** A binding expression among the values of a parameter is navigable. */
+    @Test
+    void bindingExpressionInAParameterValueListResolves() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\norg.jfxcore.markup.resource.StaticResource",
+                """
+                  <Label text="{StaticResource greeting; formatArguments=Jane, $in<caret>set}"/>
+                """
+        ));
+        PsiElement target = resolveSegmentAtCaret();
+        assertEquals("setInset",
+                assertInstanceOf(com.intellij.psi.PsiMethod.class, target).getName());
+    }
+
     /**
      * A separator in the value of a property that takes a single value is part of the literal, so
      * the value keeps its whole-value treatment and the text after the separator is not an item.

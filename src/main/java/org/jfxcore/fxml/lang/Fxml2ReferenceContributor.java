@@ -45,6 +45,7 @@ import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionOperands;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionContentParser;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
 import org.jfxcore.fxml.resolve.Fxml2TagResolver;
@@ -691,175 +692,83 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
 
     /**
-     * Scans the params section of a markup extension and adds:
+     * Scans the content of a markup extension, i.e. the text after its class name, and adds:
      * <ul>
-     *   <li>A {@link Fxml2BindingSegmentReference} for each {@code key} in a
-     *       {@code key=value} pair, resolving to the matching {@code @NamedArg}
-     *       parameter or setter on {@code extClass}.</li>
-     *   <li>Binding notation + segment references for any {@code ${path}} or
-     *       {@code $path} expression (same paths as {@link BindingReferenceProvider}).</li>
+     *   <li>A {@link Fxml2BindingSegmentReference} for the name of each named parameter,
+     *       resolving to the matching {@code @NamedArg} parameter or setter on
+     *       {@code extClass}.</li>
+     *   <li>The references of every value in the content, which is a markup extension in its own
+     *       right when it uses one of the expression notations or a declared prefix.</li>
      * </ul>
      *
-     * @param paramsPart      the params substring (e.g. {@code "resourceKey; formatArguments=foo, ${vm.text}"})
-     * @param paramsPartInRaw offset of {@code paramsPart[0]} within {@code rawValue} (0-indexed)
+     * <p>Parameters are separated by {@code ';'} or by a line break, whereas a comma separates the
+     * values of one parameter, so an assignment that follows a comma is a value rather than a
+     * parameter and gets no name reference.
+     *
+     * @param content      the content of the extension
+     *                     (e.g. {@code "resourceKey; formatArguments=foo, ${vm.text}"})
+     * @param contentInRaw offset of {@code content} within {@code rawValue} (0-indexed)
      */
     private static void collectMarkupExtParamRefs(
             @NotNull List<PsiReference> refs,
             @NotNull XmlAttributeValue attrVal,
-            @NotNull String paramsPart,
-            int paramsPartInRaw,
+            @NotNull String content,
+            int contentInRaw,
             @NotNull PsiClass extClass,
             @Nullable XmlTag contextTag,
             @NotNull XmlFile xmlFile) {
 
-        int cursor = 0;
-        int len = paramsPart.length();
-        while (cursor < len) {
-            char c = paramsPart.charAt(cursor);
-
-            // Skip whitespace/separators
-            if (Character.isWhitespace(c) || c == ',' || c == ';') {
-                cursor++;
-                continue;
-            }
-
-            // Binding expression: '$' prefix.
-            // Must be checked before the Java-identifier branch because '$' is a valid
-            // Java identifier start character, but here it always signals a binding.
-            if (c == '$') {
-                int exprEnd = findMarkupExtBindingEnd(paramsPart, cursor);
-                if (exprEnd > cursor) {
-                    addMarkupExtBindingRefs(refs, attrVal,
-                            paramsPart.substring(cursor, exprEnd),
-                            paramsPartInRaw + cursor, contextTag, xmlFile);
-                    cursor = exprEnd;
-                } else {
-                    cursor++;
-                }
-                continue;
-            }
-
-            // Java identifier: either a parameter key (key=value) or a positional value
-            if (Character.isJavaIdentifierStart(c)) {
-                int identStart = cursor;
-                while (cursor < len && Character.isJavaIdentifierPart(paramsPart.charAt(cursor))) {
-                    cursor++;
-                }
-                String ident = paramsPart.substring(identStart, cursor);
-
-                // Skip whitespace
-                int wsEnd = cursor;
-                while (wsEnd < len && Character.isWhitespace(paramsPart.charAt(wsEnd))) wsEnd++;
-
-                if (wsEnd < len && paramsPart.charAt(wsEnd) == '=') {
-                    // key=value pair: emit a reference for the key name
-                    PsiElement decl = resolveMarkupExtParam(ident, extClass);
+        for (var section : Fxml2MarkupExtensionContentParser.parse(content)) {
+            switch (section) {
+                case Fxml2MarkupExtensionContentParser.NamedParameter param -> {
+                    PsiElement decl = resolveMarkupExtParam(param.name(), extClass);
+                    int nameStart = 1 + contentInRaw + param.offset();
                     refs.add(new Fxml2BindingSegmentReference(attrVal,
-                            new TextRange(1 + paramsPartInRaw + identStart,
-                                    1 + paramsPartInRaw + cursor),
-                            decl));
-                    cursor = wsEnd + 1; // skip '='
-                    // Advance past the value, collecting binding refs when needed
-                    cursor = skipMarkupExtValue(refs, attrVal, paramsPart, cursor, len,
-                            paramsPartInRaw, contextTag, xmlFile);
-                } else {
-                    // Positional default-property value: no reference emitted, advance past it
-                    cursor = wsEnd;
+                            new TextRange(nameStart, nameStart + param.name().length()), decl));
+                    collectMarkupExtValueRefs(refs, attrVal, param.value(),
+                            contentInRaw + param.valueOffset(), contextTag, xmlFile);
                 }
-                continue;
+                case Fxml2MarkupExtensionContentParser.PositionalValue value ->
+                        collectMarkupExtValueRefs(refs, attrVal, value.text(),
+                                contentInRaw + value.offset(), contextTag, xmlFile);
             }
-
-            cursor++;
         }
     }
 
     /**
-     * Advances past a markup-extension parameter value starting at {@code start}.
-     * If the value is a binding expression ({@code ${path}} or {@code $path}), binding
-     * references are added via {@link #addMarkupExtBindingRefs}.
+     * Adds the references of the values a section of markup extension content assigns.  The
+     * section is a value list, so each of its items is resolved on its own, and an item that is a
+     * binding expression or a markup extension contributes the references of that form.
      *
-     * @return the cursor position after the value
+     * @param valueInRaw offset of {@code value} within {@code rawValue} (0-indexed)
      */
-    private static int skipMarkupExtValue(
+    private static void collectMarkupExtValueRefs(
             @NotNull List<PsiReference> refs,
             @NotNull XmlAttributeValue attrVal,
-            @NotNull String paramsPart,
-            int start,
-            int limit,
-            int paramsPartInRaw,
+            @NotNull String value,
+            int valueInRaw,
             @Nullable XmlTag contextTag,
             @NotNull XmlFile xmlFile) {
 
-        if (start >= limit) return start;
-        char c = paramsPart.charAt(start);
-
-        // Binding expression value
-        if (c == '$') {
-            int exprEnd = findMarkupExtBindingEnd(paramsPart, start);
-            if (exprEnd > start) {
-                addMarkupExtBindingRefs(refs, attrVal,
-                        paramsPart.substring(start, exprEnd),
-                        paramsPartInRaw + start, contextTag, xmlFile);
-                return exprEnd;
-            }
-        }
-
-        // Quoted string
-        if (c == '"' || c == '\'') {
-            int cursor = start + 1;
-            while (cursor < limit && paramsPart.charAt(cursor) != c) cursor++;
-            return cursor < limit ? cursor + 1 : limit;
-        }
-
-        // Plain literal: scan to next whitespace/comma/semicolon
-        int cursor = start;
-        while (cursor < limit
-                && !Character.isWhitespace(paramsPart.charAt(cursor))
-                && paramsPart.charAt(cursor) != ','
-                && paramsPart.charAt(cursor) != ';') {
-            cursor++;
-        }
-
-        // A parameter value may itself be a markup extension in prefix notation.
         java.util.Map<Character, String> prefixMappings =
                 Fxml2ImportResolver.parsePrefixMappings(xmlFile);
-        if (prefixMappings.containsKey(c)) {
-            PrefixShorthandReferenceProvider.collectPrefixShorthandRefs(
-                    refs, attrVal, paramsPart.substring(start, cursor),
-                    paramsPartInRaw + start, prefixMappings, xmlFile);
-        }
-        return cursor;
-    }
 
-    /**
-     * Returns the end offset (exclusive) of a binding expression starting at {@code start}:
-     * <ul>
-     *   <li>{@code ${...}}: finds the matching {@code }</li>
-     *   <li>{@code $path}: scans to the next whitespace, comma, or semicolon</li>
-     * </ul>
-     * Returns {@code start} if no binding expression is detected or the expression is malformed.
-     */
-    private static int findMarkupExtBindingEnd(@NotNull String s, int start) {
-        if (start >= s.length() || s.charAt(start) != '$') return start;
-        int next = start + 1;
-        if (next < s.length() && s.charAt(next) == '{') {
-            // ${...}: find the matching }
-            int depth = 0;
-            for (int i = next; i < s.length(); i++) {
-                if (s.charAt(i) == '{') depth++;
-                else if (s.charAt(i) == '}') { if (--depth == 0) return i + 1; }
+        for (var item : Fxml2ValueSequenceParser.split(value, prefixMappings)) {
+            if (!item.isMarkupExtension()) continue;
+            int itemInRaw = valueInRaw + item.offset();
+            char first = item.text().charAt(0);
+
+            if (first == '{') {
+                MarkupExtensionReferenceProvider.collectMarkupExtensionRefs(
+                        refs, attrVal, item.text(), itemInRaw, xmlFile);
+            } else if (prefixMappings.containsKey(first)) {
+                PrefixShorthandReferenceProvider.collectPrefixShorthandRefs(
+                        refs, attrVal, item.text(), itemInRaw, prefixMappings, xmlFile);
+            } else {
+                addMarkupExtBindingRefs(
+                        refs, attrVal, item.text(), itemInRaw, contextTag, xmlFile);
             }
-            return start; // unmatched brace
         }
-        // $path: scan to next separator
-        int end = next;
-        while (end < s.length()
-                && !Character.isWhitespace(s.charAt(end))
-                && s.charAt(end) != ','
-                && s.charAt(end) != ';') {
-            end++;
-        }
-        return Math.max(end, start);
     }
 
     /**

@@ -37,6 +37,7 @@ import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionOperands;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionContentParser;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
@@ -983,78 +984,87 @@ public final class Fxml2AttributeAnnotator implements Annotator {
     }
 
     /**
-     * Validates that each {@code key=value} parameter in a markup extension invocation
-     * corresponds to a known {@code @NamedArg} constructor parameter, a JavaFX property
+     * Validates the content of a markup extension invocation: each named parameter has to
+     * correspond to a known {@code @NamedArg} constructor parameter, a JavaFX property
      * ({@code xyzProperty()} method), or a getter/setter pair ({@code getXyz}/{@code setXyz})
      * on the extension class.
      *
-     * @param paramsPart      portion of the inner extension text after the class name
-     * @param paramsPartInRaw offset of {@code paramsPart} within the raw attribute value (no quotes)
+     * <p>Parameters are separated by {@code ';'} or by a line break.  An assignment that follows a
+     * comma stands in the value list of the parameter before it, where the markup language expects
+     * a value, and is reported as a parameter that misses its separator.
+     *
+     * @param content      the content of the extension, i.e. the text after its class name
+     * @param contentInRaw offset of {@code content} within the raw attribute value (no quotes)
      */
     private static void annotateMarkupExtensionParams(
             @NotNull XmlAttributeValue attrVal,
-            @NotNull String paramsPart,
-            int paramsPartInRaw,
+            @NotNull String content,
+            int contentInRaw,
             @NotNull PsiClass extClass,
             @NotNull AnnotationHolder holder) {
 
         java.util.Set<String> knownParams = collectKnownExtensionParams(extClass);
         if (knownParams.isEmpty()) return;
 
-        int cursor = 0;
-        while (cursor < paramsPart.length()) {
-            // Skip whitespace and separators
-            while (cursor < paramsPart.length()
-                    && (Character.isWhitespace(paramsPart.charAt(cursor))
-                        || paramsPart.charAt(cursor) == ','
-                        || paramsPart.charAt(cursor) == ';')) {
-                cursor++;
-            }
-            if (cursor >= paramsPart.length()) break;
-
-            if (!Character.isJavaIdentifierStart(paramsPart.charAt(cursor))) {
-                cursor++;
-                continue;
-            }
-            int identStart = cursor;
-            while (cursor < paramsPart.length() && Character.isJavaIdentifierPart(paramsPart.charAt(cursor))) {
-                cursor++;
-            }
-            String ident = paramsPart.substring(identStart, cursor);
-
-            int wsAfterIdent = cursor;
-            while (wsAfterIdent < paramsPart.length() && Character.isWhitespace(paramsPart.charAt(wsAfterIdent))) {
-                wsAfterIdent++;
-            }
-
-            if (wsAfterIdent < paramsPart.length() && paramsPart.charAt(wsAfterIdent) == '=') {
-                if (!knownParams.contains(ident)) {
-                    int rawOffset = paramsPartInRaw + identStart;
-                    int docIdStart = attrVal.getTextRange().getStartOffset() + 1 + rawOffset;
-                    int docIdEnd = docIdStart + ident.length();
-                    holder.newAnnotation(HighlightSeverity.ERROR,
-                            "Unknown markup extension parameter '" + ident + "'")
-                            .range(new TextRange(docIdStart, docIdEnd))
-                            .create();
-                }
-                cursor = wsAfterIdent + 1; // skip '='
-                // Skip the value (may be quoted or unquoted)
-                while (cursor < paramsPart.length()
-                        && !Character.isWhitespace(paramsPart.charAt(cursor))
-                        && paramsPart.charAt(cursor) != ',' && paramsPart.charAt(cursor) != ';') {
-                    if (paramsPart.charAt(cursor) == '"' || paramsPart.charAt(cursor) == '\'') {
-                        char q = paramsPart.charAt(cursor++);
-                        while (cursor < paramsPart.length() && paramsPart.charAt(cursor) != q) cursor++;
-                        if (cursor < paramsPart.length()) cursor++;
-                    } else {
-                        cursor++;
+        int docBase = attrVal.getTextRange().getStartOffset() + 1 + contentInRaw;
+        for (var section : Fxml2MarkupExtensionContentParser.parse(content)) {
+            switch (section) {
+                case Fxml2MarkupExtensionContentParser.NamedParameter param -> {
+                    if (!knownParams.contains(param.name())) {
+                        int start = docBase + param.offset();
+                        holder.newAnnotation(HighlightSeverity.ERROR,
+                                        "Unknown markup extension parameter '" + param.name() + "'")
+                                .range(new TextRange(start, start + param.name().length()))
+                                .create();
                     }
+                    annotateMisplacedParams(
+                            attrVal, param.value(), contentInRaw + param.valueOffset(), holder);
                 }
-            } else {
-                // Positional default-property value (e.g. "{Resource /path/to/image.jpg}"): valid, skip.
-                cursor = wsAfterIdent;
+                case Fxml2MarkupExtensionContentParser.PositionalValue value ->
+                        annotateMisplacedParams(
+                                attrVal, value.text(), contentInRaw + value.offset(), holder);
             }
         }
+    }
+
+    /**
+     * Reports an assignment that stands in a value list, where the markup language expects a value.
+     * Its name is a parameter of the extension that misses the {@code ';'} in front of it.
+     *
+     * @param valueInRaw offset of {@code value} within the raw attribute value (no quotes)
+     */
+    private static void annotateMisplacedParams(
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull String value,
+            int valueInRaw,
+            @NotNull AnnotationHolder holder) {
+
+        var items = Fxml2ValueSequenceParser.split(value, java.util.Map.of());
+        for (int i = 1; i < items.size(); i++) {
+            var item = items.get(i);
+            int nameLength = assignedNameLength(item.text());
+            if (nameLength == 0) continue;
+
+            int start = attrVal.getTextRange().getStartOffset() + 1 + valueInRaw + item.offset();
+            holder.newAnnotation(HighlightSeverity.ERROR,
+                            "Expected ';' before parameter '" + item.text().substring(0, nameLength)
+                            + "'")
+                    .range(new TextRange(start, start + nameLength))
+                    .create();
+        }
+    }
+
+    /**
+     * Returns the length of the name assigned by {@code text}, or {@code 0} when {@code text} does
+     * not start with an identifier followed by {@code '='}.
+     */
+    private static int assignedNameLength(@NotNull String text) {
+        if (text.isEmpty() || !Character.isJavaIdentifierStart(text.charAt(0))) return 0;
+        int end = 1;
+        while (end < text.length() && Character.isJavaIdentifierPart(text.charAt(end))) end++;
+        int afterName = end;
+        while (afterName < text.length() && Character.isWhitespace(text.charAt(afterName))) afterName++;
+        return afterName < text.length() && text.charAt(afterName) == '=' ? end : 0;
     }
 
     /**

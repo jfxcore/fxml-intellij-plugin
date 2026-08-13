@@ -151,13 +151,11 @@ public final class Fxml2ValueSequenceParser {
             int end,
             @NotNull Map<Character, String> prefixMappings) {
 
-        int begin = start;
-        while (begin < end && Character.isWhitespace(value.charAt(begin))) begin++;
-        int finish = end;
-        while (finish > begin && Character.isWhitespace(value.charAt(finish - 1))) finish--;
-        if (begin >= finish) return;
+        Fxml2TextSpan span = Fxml2TextSpan.trimmed(value, start, end);
+        if (span.isEmpty()) return;
 
-        String text = value.substring(begin, finish);
+        int begin = span.start();
+        String text = span.textOf(value);
         ItemKind kind = Fxml2BindingExpressionParser.looksLikeBindingExpression(text, prefixMappings)
                 ? ItemKind.MARKUP_EXTENSION
                 : ItemKind.LITERAL;
