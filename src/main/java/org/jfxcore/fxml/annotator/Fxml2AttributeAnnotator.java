@@ -885,10 +885,16 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                     .findClass(extensionName, xmlFile.getResolveScope());
         }
         if (extClass == null) {
-            holder.newAnnotation(HighlightSeverity.ERROR,
+            // A name that no import resolves may denote a class that is only missing its import,
+            // so the fix that adds it is offered alongside the diagnostic.  The name is that of
+            // the extension class itself, which is instantiated like a tag.
+            var builder = holder.newAnnotation(HighlightSeverity.ERROR,
                     "Cannot resolve symbol '" + extensionName + "'")
-                    .range(nameRange)
-                    .create();
+                    .range(nameRange);
+            if (!extensionName.contains(".")) {
+                builder = builder.withFix(new Fxml2AddImportFix(extensionName));
+            }
+            builder.create();
             return;
         }
 
