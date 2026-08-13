@@ -28,7 +28,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.codeinsight.Fxml2AddImportFix;
 import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.descriptors.Fxml2PropertyTagDescriptor;
-import org.jfxcore.fxml.descriptors.Fxml2StaticPropertyAttributeDescriptor;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
@@ -491,7 +490,7 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
         // Array-typed properties accept comma-separated list values.
         // Collection-typed properties (ObservableList, List, ...) are handled separately.
         if (rawValue.contains(",")) {
-            PsiType propType = resolvePropType(attr, attrName, tag);
+            PsiType propType = resolvePropType(attr, PsiSubstitutor.EMPTY);
             if (propType instanceof PsiArrayType) {
                 return; // Array properties always accept any value (single or list)
             }
@@ -525,7 +524,7 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
         }
 
         // Resolution says invalid: compute propType for a meaningful error message.
-        PsiType propType = resolvePropType(attr, attrName, tag, typeSubstitutor);
+        PsiType propType = resolvePropType(attr, typeSubstitutor);
         String simplePropName = attrName.contains(".")
                 ? attrName.substring(attrName.lastIndexOf('.') + 1) : attrName;
 
@@ -594,62 +593,19 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
     }
 
     /**
-     * Resolves the {@link PsiType} of the property named {@code attrName} on the given tag,
-     * taking into account static, chained-instance, and plain-instance forms.
+     * Resolves the {@link PsiType} of the property the attribute assigns, taking into account
+     * static, chained-instance, and plain-instance forms, and applies {@code typeSubstitutor}
+     * to it (e.g. T -> Double for fx:typeArguments).
      * Returns {@code null} when the type cannot be determined.
      */
     private static @Nullable PsiType resolvePropType(
             @NotNull XmlAttribute attr,
-            @NotNull String attrName,
-            @NotNull XmlTag tag) {
-        return resolvePropType(attr, attrName, tag, PsiSubstitutor.EMPTY);
-    }
-
-    /**
-     * Like {@link #resolvePropType(XmlAttribute, String, XmlTag)} but also applies
-     * {@code typeSubstitutor} to the resolved type (e.g. T -> Double for fx:typeArguments).
-     */
-    private static @Nullable PsiType resolvePropType(
-            @NotNull XmlAttribute attr,
-            @NotNull String attrName,
-            @NotNull XmlTag tag,
             @NotNull PsiSubstitutor typeSubstitutor) {
-        PsiType raw = resolvePropTypeRaw(attr, attrName, tag);
+        PsiType raw = Fxml2AttributeValueResolver.attributeTargetType(attr, /* xmlFile= */ null);
         if (raw == null) return null;
         if (typeSubstitutor.getSubstitutionMap().isEmpty()) return raw;
         PsiType substituted = typeSubstitutor.substitute(raw);
         return substituted != null ? substituted : raw;
-    }
-
-    /**
-     * Core type resolution without substitution.
-     */
-    private static @Nullable PsiType resolvePropTypeRaw(
-            @NotNull XmlAttribute attr,
-            @NotNull String attrName,
-            @NotNull XmlTag tag) {
-        if (attrName.contains(".")) {
-            if (attr.getDescriptor() instanceof Fxml2StaticPropertyAttributeDescriptor sd) {
-                PsiClass declaringClass = sd.getDeclaringClass();
-                if (declaringClass == null) return null;
-                return Fxml2AttributeValueResolver.staticPropertyType(
-                        declaringClass, attrName.substring(attrName.lastIndexOf('.') + 1));
-            }
-            // Chained instance property
-            if (!(tag.getDescriptor() instanceof Fxml2ClassTagDescriptor cd)) return null;
-            PsiClass ownerClass = cd.getPsiClass();
-            if (ownerClass == null) return null;
-            Object[] chain = Fxml2XmlUtil.resolveChainedPropertyOwner(ownerClass, attrName);
-            if (chain == null) return null;
-            List<String> siblingAttrs = Fxml2NamedArgResolver.collectAttributeNames(tag);
-            return Fxml2AttributeValueResolver.propertyType(
-                    (PsiClass) chain[0], (String) chain[1], siblingAttrs);
-        }
-        if (!(tag.getDescriptor() instanceof Fxml2ClassTagDescriptor cd)) return null;
-        PsiClass ownerClass = cd.getPsiClass();
-        if (ownerClass == null) return null;
-        List<String> siblingAttrs = Fxml2NamedArgResolver.collectAttributeNames(tag);
-        return Fxml2AttributeValueResolver.propertyType(ownerClass, attrName, siblingAttrs);
     }
 
     /**
@@ -680,11 +636,11 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
             PsiClass ownerClass = ptd.getOwnerClass();
             if (ownerClass == null) return;
             Fxml2AttributeValueResolver.Result result =
-                    Fxml2AttributeValueResolver.resolveStatic(ownerClass, ptd.getPropertyName(), text);
+                    Fxml2AttributeValueResolver.resolveStatic(
+                            ownerClass, ptd.getPropertyName(), text, xmlFile);
             if (!result.valid()) {
                 PsiType propType = Fxml2AttributeValueResolver.staticPropertyType(ownerClass, ptd.getPropertyName());
-                holder.registerProblem(token,
-                        Fxml2XmlUtil.buildCoercionErrorMessage(text, ptd.getPropertyName(), propType));
+                reportTextContentError(token, text, ptd.getPropertyName(), propType, result, holder);
             }
             return;
         }
@@ -699,18 +655,44 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
         String propertyPath = Fxml2XmlUtil.buildPropertyPath(propTag, classTag);
         if (propertyPath == null) return;
 
-        Object[] chain = Fxml2XmlUtil.resolveChainedPropertyOwner(ownerClass, propertyPath);
+        Fxml2XmlUtil.ChainedProperty chain =
+                Fxml2XmlUtil.resolveChainedProperty(ownerClass, propertyPath);
         if (chain == null) return;
-        PsiClass current = (PsiClass) chain[0];
-        String lastProp = (String) chain[1];
+        PsiClass current = chain.ownerClass();
+        String lastProp = chain.propertyName();
 
         Fxml2AttributeValueResolver.Result result =
                 Fxml2AttributeValueResolver.resolve(current, lastProp, text, scope);
         if (!result.valid()) {
             PsiType propType = Fxml2AttributeValueResolver.propertyType(current, lastProp, List.of());
-            holder.registerProblem(token,
-                    Fxml2XmlUtil.buildCoercionErrorMessage(text, lastProp, propType));
+            reportTextContentError(token, text, lastProp, propType, result, holder);
         }
+    }
+
+    /**
+     * Reports a text content that could not be converted, on the item that failed when the text is
+     * a value sequence and on the whole text otherwise.
+     *
+     * @param text the trimmed text content, which the item ranges of {@code result} are relative to
+     */
+    private static void reportTextContentError(
+            @NotNull XmlToken token,
+            @NotNull String text,
+            @NotNull String propertyName,
+            @Nullable PsiType propType,
+            @NotNull Fxml2AttributeValueResolver.Result result,
+            @NotNull ProblemsHolder holder) {
+
+        if (result.itemFailure() instanceof Fxml2AttributeValueResolver.ItemFailure(
+                TextRange itemRange, String itemText, PsiType requiredType)) {
+            // The item range is relative to the trimmed text, the problem range to the token.
+            int textOffset = Math.max(token.getText().indexOf(text), 0);
+            holder.registerProblem(token, itemRange.shiftRight(textOffset),
+                    Fxml2XmlUtil.buildCoercionErrorMessage(itemText, propertyName, requiredType));
+            return;
+        }
+        holder.registerProblem(token,
+                Fxml2XmlUtil.buildCoercionErrorMessage(text, propertyName, propType));
     }
 
 }

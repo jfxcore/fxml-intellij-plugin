@@ -46,6 +46,48 @@ class Fxml2ValueSequenceTest extends Fxml2TestBase {
                 """);
     }
 
+    @BeforeEach
+    void addMarkupExtensionMocks() {
+        getFixture().addClass("""
+                package org.jfxcore.markup;
+                public interface MarkupExtension {
+                    interface Supplier<T> extends MarkupExtension {
+                        @java.lang.annotation.Target(java.lang.annotation.ElementType.METHOD)
+                        @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.CLASS)
+                        @interface ReturnType {
+                            Class<?>[] value() default {};
+                        }
+                        T get(MarkupContext context);
+                    }
+                }
+                """);
+        getFixture().addClass("package org.jfxcore.markup; public interface MarkupContext {}");
+        getFixture().addClass("""
+                package test;
+                import javafx.beans.NamedArg;
+                import org.jfxcore.markup.MarkupContext;
+                import org.jfxcore.markup.MarkupExtension;
+                public class StringSupplier implements MarkupExtension.Supplier<Object> {
+                    public StringSupplier(@NamedArg("key") String key) {}
+                    @Override
+                    @MarkupExtension.Supplier.ReturnType(String.class)
+                    public Object get(MarkupContext context) { return null; }
+                }
+                """);
+        getFixture().addClass("""
+                package test;
+                import javafx.beans.NamedArg;
+                import org.jfxcore.markup.MarkupContext;
+                import org.jfxcore.markup.MarkupExtension;
+                public class NumberSupplier implements MarkupExtension.Supplier<Object> {
+                    public NumberSupplier(@NamedArg("key") String key) {}
+                    @Override
+                    @MarkupExtension.Supplier.ReturnType(Double.class)
+                    public Object get(MarkupContext context) { return null; }
+                }
+                """);
+    }
+
     // -----------------------------------------------------------------------
     // Implicit construction from a comma-separated list
     // -----------------------------------------------------------------------
@@ -81,6 +123,21 @@ class Fxml2ValueSequenceTest extends Fxml2TestBase {
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane padding="10, $inset, 10, $inset"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * An argument list may begin with a binding expression: each argument is resolved against
+     * its own parameter type, so a comma after an expression separates arguments.
+     */
+    @Test
+    void expressionAsTheFirstItemOfAnImplicitConstructorListProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane",
+                """
+                  <GridPane padding="$inset,20,10,20"/>
                 """
         ));
         getFixture().checkHighlighting(false, false, false);
@@ -157,6 +214,77 @@ class Fxml2ValueSequenceTest extends Fxml2TestBase {
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane padding="10, <error descr="Cannot coerce 'wide' to double">wide</error>, 10, 20"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Static property attributes
+    // -----------------------------------------------------------------------
+
+    /** A static property attribute takes a value sequence like a plain property attribute. */
+    @Test
+    void literalItemsInStaticPropertyListProduceNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane\njavafx.scene.control.Label",
+                """
+                  <Label GridPane.margin="10, 20, 10, 20"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** An item of a static property attribute is reported against its parameter type. */
+    @Test
+    void invalidItemInStaticPropertyListIsReportedOnThatItem() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane\njavafx.scene.control.Label",
+                """
+                  <Label GridPane.margin="10, <error descr="Cannot coerce 'wide' to double">wide</error>, 10, 20"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Markup extension item types
+    // -----------------------------------------------------------------------
+
+    /** An extension whose return type fits the item type supplies that item. */
+    @Test
+    void markupExtensionItemOfTheItemTypeProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.StringSupplier",
+                """
+                  <Label styleClass="header, {StringSupplier key=accent}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** An extension that cannot produce the item type is reported on the item that uses it. */
+    @Test
+    void markupExtensionItemOfAnotherTypeProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.NumberSupplier",
+                """
+                  <Label styleClass="header, {<error descr="Markup extension 'NumberSupplier' is not applicable to 'styleClass': supported types are Double">NumberSupplier</error> key=accent}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A value that is a single item is offered to the property before it is offered to a
+     * constructor parameter, so it is checked against the property type.
+     */
+    @Test
+    void markupExtensionAsTheWholeValueIsCheckedAgainstThePropertyType() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.StringSupplier",
+                """
+                  <Label text="{StringSupplier key=greeting}"/>
                 """
         ));
         getFixture().checkHighlighting(false, false, false);

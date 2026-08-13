@@ -15,10 +15,13 @@ import com.intellij.psi.PsiTypes;
 import com.intellij.psi.PsiWildcardType;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.PsiUtil;
+import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
+import org.jfxcore.fxml.descriptors.Fxml2StaticPropertyAttributeDescriptor;
 
 import java.util.Collection;
 import java.util.List;
@@ -358,11 +361,9 @@ public final class Fxml2AttributeValueResolver {
         // The value may be a sequence of values, one per collected item or constructor argument.
         // Collected items are resolved here; arguments only after the conversions that take the
         // whole value (a named color, an enum constant) have had their chance.
-        List<Fxml2ValueSequenceParser.ValueItem> items = Fxml2ValueSequenceParser.split(
-                value, xmlFile != null ? Fxml2ImportResolver.parsePrefixMappings(xmlFile) : Map.of());
-        Fxml2ValueTargetResolver.ValueTarget target =
-                Fxml2ValueTargetResolver.resolveTarget(propType, items.size(), scope);
-        if (target instanceof Fxml2ValueTargetResolver.Items(PsiType collectedType)) {
+        ValueSequence sequence = splitValue(propType, value, scope, xmlFile);
+        List<Fxml2ValueSequenceParser.ValueItem> items = sequence.items();
+        if (sequence.target() instanceof Fxml2ValueTargetResolver.Items(PsiType collectedType)) {
             return resolveSequenceItems(collectedType, items, ownerClass, scope);
         }
 
@@ -395,7 +396,7 @@ public final class Fxml2AttributeValueResolver {
         if (r != null) return r;
 
         if (propClass != null && Fxml2NamedArgResolver.hasNamedArgConstructor(propClass)) {
-            return target instanceof Fxml2ValueTargetResolver.Arguments arguments
+            return sequence.target() instanceof Fxml2ValueTargetResolver.Arguments arguments
                     ? resolveArguments(arguments, items, propClass, scope)
                     : Result.INVALID;
         }
@@ -423,6 +424,34 @@ public final class Fxml2AttributeValueResolver {
         if (propType == null || typeSubstitutor.getSubstitutionMap().isEmpty()) return propType;
         PsiType substituted = typeSubstitutor.substitute(propType);
         return substituted != null ? substituted : propType;
+    }
+
+    /**
+     * A value split into its items, together with what those items are assigned to.
+     *
+     * @param items  the items of the value
+     * @param target what the items are assigned to, for a value of that many items
+     */
+    private record ValueSequence(@NotNull List<Fxml2ValueSequenceParser.ValueItem> items,
+                                 Fxml2ValueTargetResolver.@NotNull ValueTarget target) {}
+
+    /**
+     * Splits {@code value} into its items and resolves what they are assigned to.
+     *
+     * @param xmlFile the containing file, whose prefix declarations tell a prefix-shorthand markup
+     *                extension item apart from a literal item; when {@code null} only the
+     *                built-in notations are recognized
+     */
+    private static @NotNull ValueSequence splitValue(
+            @NotNull PsiType propType,
+            @NotNull String value,
+            @NotNull GlobalSearchScope scope,
+            @Nullable XmlFile xmlFile) {
+
+        List<Fxml2ValueSequenceParser.ValueItem> items = Fxml2ValueSequenceParser.split(
+                value, xmlFile != null ? Fxml2ImportResolver.parsePrefixMappings(xmlFile) : Map.of());
+        return new ValueSequence(
+                items, Fxml2ValueTargetResolver.resolveTarget(propType, items.size(), scope));
     }
 
     /**
@@ -585,6 +614,48 @@ public final class Fxml2AttributeValueResolver {
     }
 
     /**
+     * Returns the type the value of {@code attr} is assigned to, for all three attribute forms:
+     * a plain property name, a static property ({@code GridPane.margin}) and a chained property
+     * ({@code labelFor.text}).
+     *
+     * @param xmlFile the containing file, whose {@code fx:typeArguments} substitute the type
+     *                parameters of a plain property; when {@code null} the declared type is
+     *                returned unsubstituted
+     * @return the type, or {@code null} when the attribute is not a property attribute, its owner
+     *         does not resolve to a class, or its type cannot be determined
+     */
+    public static @Nullable PsiType attributeTargetType(
+            @NotNull XmlAttribute attr, @Nullable XmlFile xmlFile) {
+
+        String attrName = attr.getName();
+        if (Fxml2XmlUtil.isNonPropertyAttribute(attrName)) return null;
+        if (!(attr.getParent() instanceof XmlTag tag)) return null;
+
+        if (attrName.contains(".")
+                && attr.getDescriptor() instanceof Fxml2StaticPropertyAttributeDescriptor descriptor) {
+            PsiClass declaringClass = descriptor.getDeclaringClass();
+            return declaringClass == null ? null : staticPropertyType(
+                    declaringClass, attrName.substring(attrName.lastIndexOf('.') + 1));
+        }
+
+        if (!(tag.getDescriptor() instanceof Fxml2ClassTagDescriptor tagDescriptor)) return null;
+        PsiClass ownerClass = tagDescriptor.getPsiClass();
+        if (ownerClass == null) return null;
+        Collection<String> siblingAttributes = Fxml2NamedArgResolver.collectAttributeNames(tag);
+
+        if (attrName.contains(".")) {
+            Fxml2XmlUtil.ChainedProperty chained =
+                    Fxml2XmlUtil.resolveChainedProperty(ownerClass, attrName);
+            return chained == null ? null : propertyType(
+                    chained.ownerClass(), chained.propertyName(), siblingAttributes);
+        }
+
+        if (xmlFile == null) return propertyType(ownerClass, attrName, siblingAttributes);
+        return substitutedPropertyType(ownerClass, attrName, siblingAttributes,
+                buildTagTypeSubstitutor(ownerClass, tag, xmlFile));
+    }
+
+    /**
      * Resolves a literal value for a <em>static</em> property attribute (e.g. {@code VBox.vgrow="ALWAYS"}).
      * The value type is derived from the second parameter of the static setter
      * ({@code static void setName(Node, T)}).
@@ -592,7 +663,8 @@ public final class Fxml2AttributeValueResolver {
     public static @NotNull Result resolveStatic(
             @NotNull PsiClass declaringClass,
             @NotNull String propertyName,
-            @NotNull String value) {
+            @NotNull String value,
+            @Nullable XmlFile xmlFile) {
         if (value.isBlank()) return Result.INVALID;
         if (Fxml2BindingExpressionParser.looksLikeBindingExpression(value)) return Result.STRING;
 
@@ -617,8 +689,23 @@ public final class Fxml2AttributeValueResolver {
         if ("java.lang.String".equals(typeName)) return Result.STRING;
 
         PsiClass propClass = PsiUtil.resolveClassInType(propType);
+
+        // The value may be a sequence of values, in the same order as for an instance property:
+        // collected items first, constructor arguments only after the conversions that take the
+        // whole value have had their chance.
+        GlobalSearchScope scope = declaringClass.getResolveScope();
+        ValueSequence sequence = splitValue(propType, value, scope, xmlFile);
+        if (sequence.target() instanceof Fxml2ValueTargetResolver.Items(PsiType itemType)) {
+            return resolveSequenceItems(itemType, sequence.items(), declaringClass, scope);
+        }
+
         Result r = resolveByType(propClass, value);
-        return r != null ? r : Result.STRING;
+        if (r != null) return r;
+        if (propClass != null
+                && sequence.target() instanceof Fxml2ValueTargetResolver.Arguments arguments) {
+            return resolveArguments(arguments, sequence.items(), propClass, scope);
+        }
+        return Result.STRING;
     }
 
     /**

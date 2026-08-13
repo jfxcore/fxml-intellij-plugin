@@ -79,7 +79,8 @@ public final class Fxml2XmlTextReferenceContributor extends PsiReferenceContribu
                 PsiClass ownerClass = ptd.getOwnerClass();
                 if (ownerClass == null) return PsiReference.EMPTY_ARRAY;
                 Fxml2AttributeValueResolver.Result result =
-                        Fxml2AttributeValueResolver.resolveStatic(ownerClass, ptd.getPropertyName(), text);
+                        Fxml2AttributeValueResolver.resolveStatic(
+                                ownerClass, ptd.getPropertyName(), text, xmlFile);
                 if (result.declaration() == null) return PsiReference.EMPTY_ARRAY;
                 return singleDeclReference(element, token.getTextLength(), result.declaration());
             }
@@ -95,10 +96,11 @@ public final class Fxml2XmlTextReferenceContributor extends PsiReferenceContribu
             String propertyPath = Fxml2XmlUtil.buildPropertyPath(propTag, classTag);
             if (propertyPath == null) return PsiReference.EMPTY_ARRAY;
 
-            Object[] chain = Fxml2XmlUtil.resolveChainedPropertyOwner(ownerClass, propertyPath);
+            Fxml2XmlUtil.ChainedProperty chain =
+                    Fxml2XmlUtil.resolveChainedProperty(ownerClass, propertyPath);
             if (chain == null) return PsiReference.EMPTY_ARRAY;
-            PsiClass finalClass = (PsiClass) chain[0];
-            String lastProp = (String) chain[1];
+            PsiClass finalClass = chain.ownerClass();
+            String lastProp = chain.propertyName();
 
             GlobalSearchScope scope = xmlFile.getResolveScope();
             Fxml2AttributeValueResolver.Result result =

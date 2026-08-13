@@ -30,6 +30,7 @@ import org.jfxcore.fxml.lang.Fxml2EventHandlerUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind;
 
+import org.jfxcore.fxml.resolve.Fxml2AttributeValueItems;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
@@ -39,6 +40,7 @@ import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
+import org.jfxcore.fxml.resolve.Fxml2ValueSequenceParser;
 import org.jfxcore.fxml.resolve.Fxml2WellKnownClasses;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
@@ -834,14 +836,18 @@ public final class Fxml2AttributeAnnotator implements Annotator {
      */
     private static void annotateMarkupExtension(
             @NotNull XmlAttributeValue attrVal,
+            @NotNull String rawValue,
+            int itemOffset,
             @NotNull String extensionName,
             int nameOffset,
             boolean hasTypeArg,
+            @Nullable PsiType targetType,
             @NotNull XmlFile xmlFile,
             @NotNull AnnotationHolder holder) {
 
         // Compute the document range of the extension name (inside the braces).
-        int docStart = attrVal.getTextRange().getStartOffset() + 1 + nameOffset; // +1 skip opening quote
+        // +1 skips the opening quote, the item offset the items in front of this one.
+        int docStart = attrVal.getTextRange().getStartOffset() + 1 + itemOffset + nameOffset;
         int docEnd   = docStart + extensionName.length();
         TextRange nameRange = new TextRange(docStart, docEnd);
 
@@ -871,7 +877,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         // If markupExtClass is null (library not on classpath), accept silently.
 
         // 3. (5.4) Validate parameter names in the extension expression.
-        String rawValue = attrVal.getValue(); // e.g. "{MyExtension param1=value1}"
+        // rawValue is one item of the attribute value, e.g. "{MyExtension param1=value1}".
         if (rawValue.length() > 2) {
             String inner = rawValue.substring(1, rawValue.length() - 1).trim();
             int firstSpace = indexOfWhitespaceME(inner);
@@ -879,8 +885,10 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 String paramsPart = inner.substring(firstSpace).trim();
                 int paramsPartInRaw = rawValue.indexOf(paramsPart, 1 + firstSpace);
                 if (paramsPartInRaw >= 0) {
-                    annotateMarkupExtensionParams(attrVal, paramsPart, paramsPartInRaw, extClass, holder);
-                    annotateMarkupExtensionBindingArgs(attrVal, paramsPart, paramsPartInRaw, xmlFile, holder);
+                    annotateMarkupExtensionParams(
+                            attrVal, paramsPart, itemOffset + paramsPartInRaw, extClass, holder);
+                    annotateMarkupExtensionBindingArgs(
+                            attrVal, paramsPart, itemOffset + paramsPartInRaw, xmlFile, holder);
                 }
             }
         }
@@ -890,7 +898,8 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 && attr.getParent() instanceof XmlTag tag) {
             String attrName = attr.getName();
             if (!Fxml2XmlUtil.isNonPropertyAttribute(attrName)) {
-                annotateMarkupExtensionReturnType(nameRange, extClass, attrName, tag, xmlFile, holder, hasTypeArg);
+                annotateMarkupExtensionReturnType(
+                        nameRange, extClass, attrName, tag, targetType, xmlFile, holder, hasTypeArg);
             }
         }
     }
@@ -913,14 +922,16 @@ public final class Fxml2AttributeAnnotator implements Annotator {
     private static void annotatePrefixShorthand(
             @NotNull XmlAttributeValue attrVal,
             @NotNull Fxml2BindingExpressionParser.PrefixShorthandExpression pse,
+            @NotNull String rawValue,
+            int itemOffset,
+            @Nullable PsiType targetType,
             @NotNull XmlFile xmlFile,
             @NotNull AnnotationHolder holder) {
 
-        // The prefix char is at raw-value offset 0 -> document offset = attrVal.start + 1 + 0
-        int docStart = attrVal.getTextRange().getStartOffset() + 1; // +1 skip opening quote
+        // The prefix char is at item offset 0; +1 skips the opening quote of the attribute value.
+        int docStart = attrVal.getTextRange().getStartOffset() + 1 + itemOffset;
         TextRange prefixRange = new TextRange(docStart, docStart + 1);
         // Full expression range (prefix char + default arg, e.g. "@path") used for return-type errors
-        String rawValue = attrVal.getValue();
         TextRange fullRange = new TextRange(docStart, docStart + rawValue.length());
 
         // 1. Resolve the mapped class.
@@ -959,14 +970,15 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 && attr.getParent() instanceof XmlTag tag) {
             String attrName = attr.getName();
             if (!Fxml2XmlUtil.isNonPropertyAttribute(attrName)) {
-                annotateMarkupExtensionReturnType(
-                        fullRange, extClass, attrName, tag, xmlFile, holder, /* hasTypeArg= */ false);
+                annotateMarkupExtensionReturnType(fullRange, extClass, attrName, tag, targetType,
+                        xmlFile, holder, /* hasTypeArg= */ false);
             }
         }
 
         // 4. Validate ; param=value arguments.
         if (pse.paramsPart() != null && !pse.paramsPart().isEmpty()) {
-            annotateMarkupExtensionParams(attrVal, pse.paramsPart(), pse.paramsOffset(), extClass, holder);
+            annotateMarkupExtensionParams(
+                    attrVal, pse.paramsPart(), itemOffset + pse.paramsOffset(), extClass, holder);
         }
     }
 
@@ -1241,6 +1253,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             @NotNull PsiClass extClass,
             @NotNull String attrName,
             @NotNull XmlTag tag,
+            @Nullable PsiType targetType,
             @NotNull XmlFile xmlFile,
             @NotNull AnnotationHolder holder,
             boolean hasTypeArg) {
@@ -1296,9 +1309,6 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         if (!(tag.getDescriptor() instanceof Fxml2ClassTagDescriptor cd)) return;
         PsiClass ownerClass = cd.getPsiClass();
         if (ownerClass == null) return;
-        java.util.List<String> siblingAttrs = Fxml2NamedArgResolver.collectAttributeNames(tag);
-        PsiType targetType = org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver.propertyType(
-                ownerClass, attrName, siblingAttrs);
         if (targetType == null) return;
 
         // When the extension also implements PropertyConsumer and the target attribute
@@ -1333,6 +1343,37 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                     + "': supported types are " + allowedNames)
                     .range(nameRange)
                     .create();
+        }
+    }
+
+    /**
+     * Validates one item of a value sequence that supplies its value through a markup extension.
+     * The extension is validated against the type of the item it supplies, so that an extension
+     * which does not produce that type is reported on the item that uses it.
+     *
+     * <p>An item that is a binding expression is not validated here: a binding path is resolved
+     * against the whole attribute value.
+     */
+    private static void annotateMarkupExtensionItem(
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull Fxml2AttributeValueItems.TypedItem typedItem,
+            @NotNull XmlFile xmlFile,
+            @NotNull AnnotationHolder holder) {
+
+        Fxml2ValueSequenceParser.ValueItem item = typedItem.item();
+        if (!item.isMarkupExtension()) return;
+
+        Object parsed = Fxml2BindingExpressionParser.parse(
+                item.text(), Fxml2ImportResolver.parsePrefixMappings(xmlFile));
+        switch (parsed) {
+            case Fxml2BindingExpressionParser.PrefixShorthandExpression pse ->
+                    annotatePrefixShorthand(attrVal, pse, item.text(), item.offset(),
+                            typedItem.requiredType(), xmlFile, holder);
+            case Fxml2BindingExpressionParser.MarkupExtensionExpression(
+                    String extensionName, int nameOffset, boolean hasTypeArg) ->
+                    annotateMarkupExtension(attrVal, item.text(), item.offset(), extensionName,
+                            nameOffset, hasTypeArg, typedItem.requiredType(), xmlFile, holder);
+            case null, default -> { }
         }
     }
 
@@ -1380,6 +1421,23 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             return;
         }
 
+        // A value that is a sequence of several items has one markup extension per item, each
+        // producing the type of the item it supplies.  A value that is a single item is validated
+        // below against the property type, because a single value is offered to the property
+        // before it is offered to a constructor parameter.
+        java.util.List<Fxml2AttributeValueItems.TypedItem> items =
+                Fxml2AttributeValueItems.resolveTypedItems(attrVal, xmlFile);
+        if (items.size() > 1) {
+            for (Fxml2AttributeValueItems.TypedItem typedItem : items) {
+                annotateMarkupExtensionItem(attrVal, typedItem, xmlFile, holder);
+            }
+            return;
+        }
+
+        PsiType valueTargetType = attrVal.getParent() instanceof XmlAttribute valueAttr
+                ? Fxml2AttributeValueResolver.attributeTargetType(valueAttr, xmlFile)
+                : null;
+
         Object parsed = Fxml2BindingExpressionParser.parse(rawValue,
                 Fxml2ImportResolver.parsePrefixMappings(xmlFile));
         switch (parsed) {
@@ -1409,12 +1467,14 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 return;
             }
             case Fxml2BindingExpressionParser.PrefixShorthandExpression pse -> {
-                annotatePrefixShorthand(attrVal, pse, xmlFile, holder);
+                annotatePrefixShorthand(attrVal, pse, rawValue, /* itemOffset= */ 0,
+                        valueTargetType, xmlFile, holder);
                 return;
             }
             case Fxml2BindingExpressionParser.MarkupExtensionExpression(
                     String extensionName, int nameOffset, boolean hasTypeArg) -> {
-                annotateMarkupExtension(attrVal, extensionName, nameOffset, hasTypeArg, xmlFile, holder);
+                annotateMarkupExtension(attrVal, rawValue, /* itemOffset= */ 0, extensionName,
+                        nameOffset, hasTypeArg, valueTargetType, xmlFile, holder);
                 return;
             }
             default -> { /* ParsedExpression: fall through to path validation */ }

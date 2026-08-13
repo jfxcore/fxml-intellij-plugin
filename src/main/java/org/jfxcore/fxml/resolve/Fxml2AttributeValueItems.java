@@ -1,19 +1,16 @@
 package org.jfxcore.fxml.resolve;
 
-import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiParameter;
-import com.intellij.psi.PsiSubstitutor;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
-import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.resolve.Fxml2ValueSequenceParser.ItemKind;
 import org.jfxcore.fxml.resolve.Fxml2ValueSequenceParser.ValueItem;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,13 +30,33 @@ public final class Fxml2AttributeValueItems {
     /**
      * Returns the items of {@code attrVal}.
      *
-     * <p>The result has a single item covering the whole value when the target takes one value,
-     * when the owning tag does not resolve to a class, or when the attribute names a static or
-     * chained property, whose target is not resolved here.
+     * <p>The result has a single item covering the whole value when the target takes one value or
+     * when the owning tag does not resolve to a class.
      *
      * @return the items in source order, empty when the value is blank
      */
     public static @NotNull List<ValueItem> resolveItems(
+            @NotNull XmlAttributeValue attrVal, @NotNull XmlFile xmlFile) {
+        return resolveTypedItems(attrVal, xmlFile).stream().map(TypedItem::item).toList();
+    }
+
+    /**
+     * An item of a value sequence together with the type it has to be converted to.
+     *
+     * @param requiredType the type the item has to be converted to, or {@code null} when it cannot
+     *                     be determined, which includes an item beyond the last one the target
+     *                     accepts
+     */
+    public record TypedItem(@NotNull ValueItem item, @Nullable PsiType requiredType) {}
+
+    /**
+     * Returns the items of {@code attrVal} together with the type each of them has to be converted
+     * to, which is the item type of a collected target and the parameter type of an implicitly
+     * constructed one.
+     *
+     * @return the items in source order, empty when the value is blank
+     */
+    public static @NotNull List<TypedItem> resolveTypedItems(
             @NotNull XmlAttributeValue attrVal, @NotNull XmlFile xmlFile) {
 
         String rawValue = attrVal.getValue();
@@ -47,9 +64,28 @@ public final class Fxml2AttributeValueItems {
 
         Map<Character, String> prefixMappings = Fxml2ImportResolver.parsePrefixMappings(xmlFile);
         List<ValueItem> items = Fxml2ValueSequenceParser.split(rawValue, prefixMappings);
-        return isSequence(attrVal, xmlFile, items.size())
-                ? items
-                : List.of(wholeValue(rawValue, prefixMappings));
+        Fxml2ValueTargetResolver.ValueTarget target = resolveTarget(attrVal, xmlFile, items.size());
+        if (target == null || target instanceof Fxml2ValueTargetResolver.Scalar) {
+            PsiType type = target instanceof Fxml2ValueTargetResolver.Scalar(PsiType scalarType)
+                    ? scalarType
+                    : null;
+            return List.of(new TypedItem(wholeValue(rawValue, prefixMappings), type));
+        }
+
+        List<TypedItem> typed = new ArrayList<>(items.size());
+        for (int i = 0; i < items.size(); i++) {
+            typed.add(new TypedItem(items.get(i), itemTypeAt(target, i)));
+        }
+        return typed;
+    }
+
+    /**
+     * Returns {@code true} when any item of {@code attrVal} is a markup extension, so the value
+     * does not denote a literal that spans the whole value.
+     */
+    public static boolean hasMarkupExtensionItem(
+            @NotNull XmlAttributeValue attrVal, @NotNull XmlFile xmlFile) {
+        return resolveItems(attrVal, xmlFile).stream().anyMatch(ValueItem::isMarkupExtension);
     }
 
     /**
@@ -117,42 +153,34 @@ public final class Fxml2AttributeValueItems {
     }
 
     /**
-     * Returns {@code true} when the target of {@code attrVal} takes a sequence of
-     * {@code itemCount} values rather than a single value.
-     */
-    private static boolean isSequence(
-            @NotNull XmlAttributeValue attrVal, @NotNull XmlFile xmlFile, int itemCount) {
-        Fxml2ValueTargetResolver.ValueTarget target = resolveTarget(attrVal, xmlFile, itemCount);
-        return target != null && !(target instanceof Fxml2ValueTargetResolver.Scalar);
-    }
-
-    /**
      * Resolves the target of the property {@code attrVal} belongs to, for a value of
      * {@code itemCount} items.
      *
-     * @return the target, or {@code null} when the owning tag does not resolve to a class, when
-     *         the attribute names a static or chained property, whose target is not resolved
-     *         here, or when the property type cannot be determined
+     * @return the target, or {@code null} when the owning tag does not resolve to a class or when
+     *         the property type cannot be determined
      */
     private static Fxml2ValueTargetResolver.@Nullable ValueTarget resolveTarget(
             @NotNull XmlAttributeValue attrVal, @NotNull XmlFile xmlFile, int itemCount) {
 
-        if (!(attrVal.getParent() instanceof XmlAttribute attr)) return null;
-        String attrName = attr.getName();
-        if (Fxml2XmlUtil.isNonPropertyAttribute(attrName) || attrName.contains(".")) return null;
-        if (!(attr.getParent() instanceof XmlTag tag)) return null;
-        if (!(tag.getDescriptor() instanceof Fxml2ClassTagDescriptor descriptor)) return null;
-
-        PsiClass ownerClass = descriptor.getPsiClass();
-        if (ownerClass == null) return null;
-
-        PsiSubstitutor substitutor =
-                Fxml2AttributeValueResolver.buildTagTypeSubstitutor(ownerClass, tag, xmlFile);
-        PsiType propType = Fxml2AttributeValueResolver.substitutedPropertyType(
-                ownerClass, attrName, Fxml2NamedArgResolver.collectAttributeNames(tag), substitutor);
+        PsiType propType = resolvePropertyType(attrVal, xmlFile);
         if (propType == null) return null;
-
         return Fxml2ValueTargetResolver.resolveTarget(propType, itemCount, xmlFile.getResolveScope());
+    }
+
+    /**
+     * Returns the type the value of {@code attrVal} is assigned to, for all three attribute forms:
+     * a plain property name, a static property ({@code GridPane.margin}) and a chained property
+     * ({@code labelFor.text}).
+     *
+     * @return the type, or {@code null} when the attribute is not a property attribute or its type
+     *         cannot be determined
+     */
+    public static @Nullable PsiType resolvePropertyType(
+            @NotNull XmlAttributeValue attrVal, @NotNull XmlFile xmlFile) {
+
+        return attrVal.getParent() instanceof XmlAttribute attr
+                ? Fxml2AttributeValueResolver.attributeTargetType(attr, xmlFile)
+                : null;
     }
 
     /** The whole value as a single item, preserving its leading and trailing whitespace offsets. */
