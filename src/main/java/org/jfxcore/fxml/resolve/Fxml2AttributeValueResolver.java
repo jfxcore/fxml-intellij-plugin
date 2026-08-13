@@ -413,7 +413,7 @@ public final class Fxml2AttributeValueResolver {
      * property declared as a type parameter resolves to the concrete type supplied by
      * {@code fx:typeArguments}.
      */
-    private static @Nullable PsiType substitutedPropertyType(
+    public static @Nullable PsiType substitutedPropertyType(
             @NotNull PsiClass ownerClass,
             @NotNull String propertyName,
             @NotNull Collection<String> siblingAttributes,
