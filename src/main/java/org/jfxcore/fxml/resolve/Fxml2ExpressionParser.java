@@ -460,8 +460,12 @@ public final class Fxml2ExpressionParser {
         }
 
         private List<TypeArgument> speculateTypeArguments() {
+            // The whitespace before a type argument list belongs to the list; a name that is not
+            // followed by one ends where its identifier ends.
+            int nameEnd = position;
             skipWhitespace();
             if (!peek("<")) {
+                position = nameEnd;
                 return List.of();
             }
             int checkpoint = position;
@@ -472,7 +476,7 @@ public final class Fxml2ExpressionParser {
                 if (isGenericFollower()) {
                     throw error("Type argument expected", checkpoint, position);
                 }
-                position = checkpoint;
+                position = nameEnd;
                 return List.of();
             }
 
@@ -482,11 +486,11 @@ public final class Fxml2ExpressionParser {
                 skipWhitespace();
                 int argumentStart = position;
                 if (!isIdentifierStart()) {
-                    position = checkpoint;
+                    position = nameEnd;
                     return List.of();
                 }
                 if (!parseTypeName()) {
-                    position = checkpoint;
+                    position = nameEnd;
                     return List.of();
                 }
                 int argumentEnd = position;
@@ -504,11 +508,11 @@ public final class Fxml2ExpressionParser {
                 missingAfterComma = false;
             }
             if (!consume(">")) {
-                position = checkpoint;
+                position = nameEnd;
                 return List.of();
             }
             if (!isGenericFollower()) {
-                position = checkpoint;
+                position = nameEnd;
                 return List.of();
             }
             if (missingAfterComma) {
@@ -751,6 +755,7 @@ public final class Fxml2ExpressionParser {
             new OperatorToken("&gt;=", BinaryOperator.GREATER_OR_EQUAL, 4),
             new OperatorToken("<=", BinaryOperator.LESS_OR_EQUAL, 4),
             new OperatorToken(">=", BinaryOperator.GREATER_OR_EQUAL, 4),
+            new OperatorToken("&amp;&amp;", BinaryOperator.AND, 2),
             new OperatorToken("&&", BinaryOperator.AND, 2),
             new OperatorToken("||", BinaryOperator.OR, 1),
             new OperatorToken("*", BinaryOperator.MULTIPLY, 6),

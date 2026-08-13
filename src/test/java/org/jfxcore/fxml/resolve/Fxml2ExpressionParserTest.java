@@ -213,6 +213,25 @@ class Fxml2ExpressionParserTest {
         assertTrue(Fxml2ExpressionParser.locateTypeArgumentCaret("convert<String>.").isEmpty());
     }
 
+    /**
+     * An attribute value spells {@code &&} in its escaped form, which is the only form XML admits
+     * for it.
+     */
+    @Test
+    void escapedLogicalAndIsAnOperator() {
+        BinaryExpression and = binary("ready &amp;&amp; valid", BinaryOperator.AND);
+        assertEquals("ready", and.left().text());
+        assertEquals("valid", and.right().text());
+    }
+
+    /** A name that carries no type argument list ends where its identifier ends. */
+    @Test
+    void aPathSpanEndsWithItsName() {
+        BinaryExpression product = binary("width * 0.7", BinaryOperator.MULTIPLY);
+        assertEquals("width", product.left().text());
+        assertEquals(5, product.left().span().end());
+    }
+
     private static BinaryExpression binary(String text, BinaryOperator operator) {
         BinaryExpression result = assertInstanceOf(BinaryExpression.class,
                 Fxml2ExpressionParser.parse(text));
