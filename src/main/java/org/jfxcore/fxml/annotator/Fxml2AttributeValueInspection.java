@@ -2,6 +2,7 @@ package org.jfxcore.fxml.annotator;
 
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiArrayType;
 import com.intellij.psi.PsiClass;
@@ -511,6 +512,17 @@ public final class Fxml2AttributeValueInspection extends LocalInspectionTool {
                 resolveAttributeValueWithSubstitutor(attrName, rawValue, tag, scope, typeSubstitutor, xmlFile);
         // result == null means the attribute owner could not be resolved; treat as valid.
         if (result == null || result.valid()) return;
+
+        // A single item of a value sequence failed to convert: report on that item, so that the
+        // items which do convert are not marked.
+        if (result.itemFailure() instanceof Fxml2AttributeValueResolver.ItemFailure(
+                TextRange itemRange, String itemText, PsiType requiredType)) {
+            // The item range is relative to the value text, the problem range to the element,
+            // which starts at the opening quote.
+            holder.registerProblem(attrVal, itemRange.shiftRight(1),
+                    Fxml2XmlUtil.buildCoercionErrorMessage(itemText, attrName, requiredType));
+            return;
+        }
 
         // Resolution says invalid: compute propType for a meaningful error message.
         PsiType propType = resolvePropType(attr, attrName, tag, typeSubstitutor);

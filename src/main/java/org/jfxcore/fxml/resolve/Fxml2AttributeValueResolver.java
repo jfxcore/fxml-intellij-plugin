@@ -40,11 +40,31 @@ public final class Fxml2AttributeValueResolver {
      * @param declaration the PSI element the value navigates to, or {@code null} if not navigatable
      *                    but still valid (e.g. primitives, strings)
      * @param valid       {@code true} if the value is valid for the property type
+     * @param itemFailure the item that made a value sequence invalid, or {@code null} when the
+     *                    value is valid or fails as a whole
      */
-    public record Result(@Nullable PsiElement declaration, boolean valid) {
+    public record Result(@Nullable PsiElement declaration, boolean valid,
+                         @Nullable ItemFailure itemFailure) {
+
         public static final Result INVALID = new Result(null, false);
         public static final Result STRING  = new Result(null, true);
+
+        public Result(@Nullable PsiElement declaration, boolean valid) {
+            this(declaration, valid, null);
+        }
     }
+
+    /**
+     * The item of a value sequence that could not be converted, so that it can be reported on
+     * its own rather than on the whole value.
+     *
+     * @param range        the item's range within the attribute value text
+     * @param text         the item text
+     * @param requiredType the type the item has to be converted to
+     */
+    public record ItemFailure(@NotNull com.intellij.openapi.util.TextRange range,
+                              @NotNull String text,
+                              @NotNull PsiType requiredType) {}
 
     /**
      * Resolves a literal attribute value against the given property.
@@ -422,10 +442,8 @@ public final class Fxml2AttributeValueResolver {
 
         if (itemType == null) return Result.STRING;
         for (Fxml2ValueSequenceParser.ValueItem item : items) {
-            if (item.isMarkupExtension()) continue;
-            if (!convertLiteralItem(itemType, item.text(), ownerClass, scope).valid()) {
-                return Result.INVALID;
-            }
+            Result failure = convertItem(item, itemType, ownerClass, scope);
+            if (failure != null) return failure;
         }
         return Result.STRING;
     }
@@ -486,13 +504,30 @@ public final class Fxml2AttributeValueResolver {
 
         List<PsiParameter> params = arguments.parameters();
         for (int i = 0; i < params.size() && i < items.size(); i++) {
-            Fxml2ValueSequenceParser.ValueItem item = items.get(i);
-            if (item.isMarkupExtension()) continue;
-            if (!convertLiteralItem(params.get(i).getType(), item.text(), targetClass, scope).valid()) {
-                return Result.INVALID;
-            }
+            Result failure = convertItem(items.get(i), params.get(i).getType(), targetClass, scope);
+            if (failure != null) return failure;
         }
         return new Result(targetClass, true);
+    }
+
+    /**
+     * Converts one item of a value sequence to {@code itemType}.
+     *
+     * @return {@code null} when the item is accepted, otherwise an invalid result that names the
+     *         item as the reason
+     */
+    private static @Nullable Result convertItem(
+            @NotNull Fxml2ValueSequenceParser.ValueItem item,
+            @NotNull PsiType itemType,
+            @NotNull PsiClass contextClass,
+            @NotNull GlobalSearchScope scope) {
+
+        // A markup extension item is resolved against the item type and accepted here.
+        if (item.isMarkupExtension()) return null;
+        if (convertLiteralItem(itemType, item.text(), contextClass, scope).valid()) return null;
+
+        var range = com.intellij.openapi.util.TextRange.from(item.offset(), item.text().length());
+        return new Result(null, false, new ItemFailure(range, item.text(), itemType));
     }
 
     /**

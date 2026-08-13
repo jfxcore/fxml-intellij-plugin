@@ -126,13 +126,37 @@ class Fxml2ValueSequenceTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
-    /** A literal item that cannot be converted to the element type is an error. */
+    /** A literal item that cannot be converted to the element type is an error on that item. */
     @Test
     void invalidLiteralItemInCollectionListProducesError() {
         getFixture().configureByText("TestView.fxml", fxml(
                 "javafx.scene.shape.Polygon",
                 """
-                  <Polygon points=<error descr="Cannot coerce '0, foo' to ObservableList<Double>">"0, foo"</error>/>
+                  <Polygon points="0, <error descr="Cannot coerce 'foo' to Double">foo</error>"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** The error marks the failing item, not the items that convert. */
+    @Test
+    void invalidLastItemInCollectionListIsReportedOnThatItem() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.shape.Polygon",
+                """
+                  <Polygon points="0, 50, 100, <error descr="Cannot coerce 'bar' to Double">bar</error>"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** An item of an implicit-constructor list is reported against its parameter type. */
+    @Test
+    void invalidItemInImplicitConstructorListIsReportedOnThatItem() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane",
+                """
+                  <GridPane padding="10, <error descr="Cannot coerce 'wide' to double">wide</error>, 10, 20"/>
                 """
         ));
         getFixture().checkHighlighting(false, false, false);
