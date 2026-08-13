@@ -32,8 +32,8 @@ import java.util.Map;
  *
  * <p>Whether a value is a sequence at all depends on the target: for a target that is neither a
  * collection, an array, nor implicitly constructible, a comma carries no special meaning and the
- * whole value is a single literal.  Callers make that decision and only invoke this parser for
- * sequence targets.
+ * whole value is a single literal.  {@link Fxml2ValueTargetResolver} makes that decision, and this
+ * parser is only invoked for sequence targets.
  */
 public final class Fxml2ValueSequenceParser {
 
@@ -108,7 +108,9 @@ public final class Fxml2ValueSequenceParser {
                         greedyItem = true;
                     }
                 }
-                case ',' -> {
+                case ',', '\n', '\r' -> {
+                    // A line break separates items just like a comma, so that a long sequence can
+                    // be spread over several lines.
                     if (depth == 0 && !greedyItem) {
                         addItem(items, value, start, i, prefixMappings);
                         start = i + 1;

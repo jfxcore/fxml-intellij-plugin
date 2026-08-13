@@ -272,18 +272,12 @@ public final class Fxml2AttributeValueResolver {
             return Result.STRING;
         }
 
-        PsiType propType = propertyType(ownerClass, propertyName, siblingAttributes);
+        // The type substitutor (e.g. from fx:typeArguments) is applied here, so that a property
+        // of type T is resolved to the concrete type (e.g. Double).
+        PsiType propType = substitutedPropertyType(
+                ownerClass, propertyName, siblingAttributes, typeSubstitutor);
         if (propType == null) {
             return Result.STRING;
-        }
-
-        // If a type substitutor is available (e.g. from fx:typeArguments), apply it now
-        // so that a property of type T is resolved to the concrete type (e.g. Double).
-        if (!typeSubstitutor.getSubstitutionMap().isEmpty()) {
-            PsiType substituted = typeSubstitutor.substitute(propType);
-            if (substituted != null && !substituted.equals(propType)) {
-                propType = substituted;
-            }
         }
 
         // Check static fields on the owner class/supertypes AND on the property type class
@@ -338,58 +332,18 @@ public final class Fxml2AttributeValueResolver {
             return parsePrimitive(typeName, value.trim());
         }
         if ("java.lang.String".equals(typeName) || "String".equals(typeName)) return Result.STRING;
-        // Read-only collection properties (e.g. ObservableList<String> styleClass) with no setter:
-        // accept any comma-separated string values: item type validation done below if resolvable.
-        // Array-typed properties (e.g. Object[] formatArguments) take a sequence of values, each
-        // converted to the component type on its own.  A single value forms a one-element array.
-        if (propType instanceof com.intellij.psi.PsiArrayType arrayType) {
-            return resolveSequenceItems(arrayType.getComponentType(), value, ownerClass, scope, xmlFile);
-        }
 
         PsiClass propClass = PsiUtil.resolveClassInType(propType);
 
-        // Collection/List property (e.g. ObservableList<String> styleClass):
-        // Try PsiUtil.extractIterableTypeParameter first; fall back to an explicit
-        // java.util.Collection isInheritor check for JavaFX class stubs where the
-        // Iterable supertype may not be fully resolved by the PSI type utilities.
-        {
-            PsiType itemType = PsiUtil.extractIterableTypeParameter(propType, false);
-            if (itemType == null && propClass != null) {
-                // Fallback: check the Collection supertype chain explicitly
-                JavaPsiFacade facadeLocal = JavaPsiFacade.getInstance(ownerClass.getProject());
-                PsiClass collClass = facadeLocal.findClass("java.util.Collection", scope);
-                if (collClass != null && (propClass.isInheritor(collClass, true) || propClass.equals(collClass))) {
-                    // Try to extract T from List<T>/Collection<T> via the raw classtype substitutor
-                    if (propType instanceof PsiClassType ct) {
-                        PsiClassType.ClassResolveResult res = ct.resolveGenerics();
-                        PsiClass cls = res.getElement();
-                        if (cls != null) {
-                            // Walk up to find Collection<T>
-                            itemType = extractCollectionTypeArg(cls, collClass, res.getSubstitutor());
-                        }
-                    }
-                }
-            }
-            if (itemType != null) {
-                String itemTypeName = itemType.getCanonicalText();
-                if ("java.lang.String".equals(itemTypeName) || "java.lang.Object".equals(itemTypeName)) {
-                    return Result.STRING;
-                }
-                // Unknown/unresolved item type: accept any value
-                if (itemType instanceof com.intellij.psi.PsiClassType ict &&
-                        ict.resolve() instanceof com.intellij.psi.PsiTypeParameter) {
-                    return Result.STRING;
-                }
-                return resolveSequenceItems(itemType, value, ownerClass, scope, xmlFile);
-            }
-            // propClass is a Collection subtype but item type unresolvable -> accept any value
-            if (propClass != null) {
-                JavaPsiFacade facadeLocal = JavaPsiFacade.getInstance(ownerClass.getProject());
-                PsiClass collClass = facadeLocal.findClass("java.util.Collection", scope);
-                if (collClass != null && propClass.isInheritor(collClass, true)) {
-                    return Result.STRING;
-                }
-            }
+        // The value may be a sequence of values, one per collected item or constructor argument.
+        // Collected items are resolved here; arguments only after the conversions that take the
+        // whole value (a named color, an enum constant) have had their chance.
+        List<Fxml2ValueSequenceParser.ValueItem> items = Fxml2ValueSequenceParser.split(
+                value, xmlFile != null ? Fxml2ImportResolver.parsePrefixMappings(xmlFile) : Map.of());
+        Fxml2ValueTargetResolver.ValueTarget target =
+                Fxml2ValueTargetResolver.resolveTarget(propType, items.size(), scope);
+        if (target instanceof Fxml2ValueTargetResolver.Items(PsiType collectedType)) {
+            return resolveSequenceItems(collectedType, items, ownerClass, scope);
         }
 
         JavaPsiFacade facade = JavaPsiFacade.getInstance(ownerClass.getProject());
@@ -421,7 +375,9 @@ public final class Fxml2AttributeValueResolver {
         if (r != null) return r;
 
         if (propClass != null && Fxml2NamedArgResolver.hasNamedArgConstructor(propClass)) {
-            return resolveImplicitConstruction(propClass, value, scope, xmlFile);
+            return target instanceof Fxml2ValueTargetResolver.Arguments arguments
+                    ? resolveArguments(arguments, items, propClass, scope)
+                    : Result.INVALID;
         }
         if (propClass != null) {
             String fqn = propClass.getQualifiedName();
@@ -433,30 +389,42 @@ public final class Fxml2AttributeValueResolver {
     }
 
     /**
+     * Returns the type of the named property with {@code typeSubstitutor} applied, so that a
+     * property declared as a type parameter resolves to the concrete type supplied by
+     * {@code fx:typeArguments}.
+     */
+    private static @Nullable PsiType substitutedPropertyType(
+            @NotNull PsiClass ownerClass,
+            @NotNull String propertyName,
+            @NotNull Collection<String> siblingAttributes,
+            @NotNull PsiSubstitutor typeSubstitutor) {
+
+        PsiType propType = propertyType(ownerClass, propertyName, siblingAttributes);
+        if (propType == null || typeSubstitutor.getSubstitutionMap().isEmpty()) return propType;
+        PsiType substituted = typeSubstitutor.substitute(propType);
+        return substituted != null ? substituted : propType;
+    }
+
+    /**
      * Resolves an attribute value that supplies the items of an array or collection target.
      *
      * <p>Every item is converted to {@code itemType} on its own.  A markup extension item is
-     * resolved against {@code itemType} and is therefore accepted here.  Items may also be spread
-     * over several lines, which the compiler treats like item separators.
+     * resolved against {@code itemType} and is therefore accepted here.
      *
-     * @param itemType the component type of the array, or the element type of the collection
+     * @param itemType the component type of the array, or the element type of the collection,
+     *                 or {@code null} when it cannot be resolved and any item is accepted
      */
     private static @NotNull Result resolveSequenceItems(
-            @NotNull PsiType itemType,
-            @NotNull String value,
+            @Nullable PsiType itemType,
+            @NotNull List<Fxml2ValueSequenceParser.ValueItem> items,
             @NotNull PsiClass ownerClass,
-            @NotNull GlobalSearchScope scope,
-            @Nullable XmlFile xmlFile) {
+            @NotNull GlobalSearchScope scope) {
 
-        Map<Character, String> prefixMappings = xmlFile != null
-                ? Fxml2ImportResolver.parsePrefixMappings(xmlFile) : Map.of();
-        for (String line : value.split("\\R")) {
-            for (Fxml2ValueSequenceParser.ValueItem item
-                    : Fxml2ValueSequenceParser.split(line, prefixMappings)) {
-                if (item.isMarkupExtension()) continue;
-                if (!convertLiteralItem(itemType, item.text(), ownerClass, scope).valid()) {
-                    return Result.INVALID;
-                }
+        if (itemType == null) return Result.STRING;
+        for (Fxml2ValueSequenceParser.ValueItem item : items) {
+            if (item.isMarkupExtension()) continue;
+            if (!convertLiteralItem(itemType, item.text(), ownerClass, scope).valid()) {
+                return Result.INVALID;
             }
         }
         return Result.STRING;
@@ -507,34 +475,24 @@ public final class Fxml2AttributeValueResolver {
      * parameter type, or a markup extension, which is resolved against the parameter type and is
      * therefore accepted here.
      *
-     * @return a valid result naming {@code targetClass} when some constructor accepts the sequence,
-     *         {@link Result#INVALID} when none does
+     * @return a valid result naming {@code targetClass} when the constructor accepts the sequence,
+     *         {@link Result#INVALID} when it does not
      */
-    private static @NotNull Result resolveImplicitConstruction(
+    private static @NotNull Result resolveArguments(
+            @NotNull Fxml2ValueTargetResolver.Arguments arguments,
+            @NotNull List<Fxml2ValueSequenceParser.ValueItem> items,
             @NotNull PsiClass targetClass,
-            @NotNull String value,
-            @NotNull GlobalSearchScope scope,
-            @Nullable XmlFile xmlFile) {
+            @NotNull GlobalSearchScope scope) {
 
-        List<Fxml2ValueSequenceParser.ValueItem> items = Fxml2ValueSequenceParser.split(
-                value, xmlFile != null ? Fxml2ImportResolver.parsePrefixMappings(xmlFile) : Map.of());
-        if (items.isEmpty()) return Result.INVALID;
-
-        for (PsiMethod constructor : Fxml2NamedArgResolver.namedArgConstructors(targetClass)) {
-            PsiParameter[] params = constructor.getParameterList().getParameters();
-            if (params.length != items.size()) continue;
-            boolean allFit = true;
-            for (int i = 0; i < params.length; i++) {
-                Fxml2ValueSequenceParser.ValueItem item = items.get(i);
-                if (item.isMarkupExtension()) continue;
-                if (!convertLiteralItem(params[i].getType(), item.text(), targetClass, scope).valid()) {
-                    allFit = false;
-                    break;
-                }
+        List<PsiParameter> params = arguments.parameters();
+        for (int i = 0; i < params.size() && i < items.size(); i++) {
+            Fxml2ValueSequenceParser.ValueItem item = items.get(i);
+            if (item.isMarkupExtension()) continue;
+            if (!convertLiteralItem(params.get(i).getType(), item.text(), targetClass, scope).valid()) {
+                return Result.INVALID;
             }
-            if (allFit) return new Result(targetClass, true);
         }
-        return Result.INVALID;
+        return new Result(targetClass, true);
     }
 
     /**
@@ -757,7 +715,7 @@ public final class Fxml2AttributeValueResolver {
 
         // Walk the substitutor chain to resolve T
         PsiSubstitutor sub = classType.resolveGenerics().getSubstitutor();
-        PsiSubstitutor composed = buildObservableSubstitutor(cls, observable, sub);
+        PsiSubstitutor composed = Fxml2TypeHierarchy.substitutorFor(cls, observable, sub);
         if (composed == null) return null;
         var typeParams = observable.getTypeParameters();
         if (typeParams.length == 0) return null;
@@ -818,37 +776,6 @@ public final class Fxml2AttributeValueResolver {
         }
         return null;
     }
-
-    /** Walks the supertype hierarchy composing substitutors to find ObservableValue's T. */
-    public static @Nullable PsiSubstitutor buildObservableSubstitutor(
-            @NotNull PsiClass cls, @NotNull PsiClass observable, @NotNull PsiSubstitutor substitutor) {
-        if (cls.equals(observable)) return substitutor;
-        for (PsiClassType superType : cls.getSuperTypes()) {
-            PsiClassType.ClassResolveResult r = superType.resolveGenerics();
-            PsiClass superCls = r.getElement();
-            if (superCls == null) continue;
-            PsiSubstitutor found = buildObservableSubstitutor(superCls, observable,
-                    composeSubstitutor(r.getSubstitutor(), substitutor));
-            if (found != null) return found;
-        }
-        return null;
-    }
-
-    /**
-     * Composes two substitutors: for each mapping in {@code inner}, applies {@code outer} to
-     * its value, producing a new substitutor that maps {@code inner}'s keys through {@code outer}.
-     * Used when walking supertype chains to accumulate the full type-argument substitution.
-     */
-    private static @NotNull PsiSubstitutor composeSubstitutor(
-            @NotNull PsiSubstitutor inner, @NotNull PsiSubstitutor outer) {
-        PsiSubstitutor composed = PsiSubstitutor.EMPTY;
-        for (var entry : inner.getSubstitutionMap().entrySet()) {
-            PsiType mapped = entry.getValue();
-            composed = composed.put(entry.getKey(), mapped != null ? outer.substitute(mapped) : null);
-        }
-        return composed;
-    }
-
 
     private static boolean isPrimitive(@NotNull String typeName) {
         return switch (typeName) {
@@ -991,29 +918,4 @@ public final class Fxml2AttributeValueResolver {
         return cls != null ? cls.findFieldByName(fieldName, false) : null;
     }
 
-    /**
-     * Walks the supertype chain from {@code cls} to find {@code Collection<T>} and returns T,
-     * applying the accumulated substitutor. Used as a fallback when
-     * {@link PsiUtil#extractIterableTypeParameter} fails on compiled class stubs.
-     */
-    private static @Nullable PsiType extractCollectionTypeArg(
-            @NotNull PsiClass cls,
-            @NotNull PsiClass collectionClass,
-            @NotNull PsiSubstitutor sub) {
-        if (cls.equals(collectionClass)) {
-            var params = collectionClass.getTypeParameters();
-            return params.length > 0 ? sub.substitute(params[0]) : null;
-        }
-        for (PsiClassType superType : cls.getSuperTypes()) {
-            PsiClassType.ClassResolveResult r = superType.resolveGenerics();
-            PsiClass superCls = r.getElement();
-            if (superCls == null) continue;
-            PsiSubstitutor composed = composeSubstitutor(r.getSubstitutor(), sub);
-            if (superCls.equals(collectionClass) || superCls.isInheritor(collectionClass, true)) {
-                PsiType result = extractCollectionTypeArg(superCls, collectionClass, composed);
-                if (result != null) return result;
-            }
-        }
-        return null;
-    }
 }

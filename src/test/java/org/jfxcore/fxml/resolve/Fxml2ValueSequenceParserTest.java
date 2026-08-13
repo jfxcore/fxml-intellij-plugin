@@ -96,6 +96,11 @@ class Fxml2ValueSequenceParserTest {
     }
 
     @Test
+    void lineBreaksSeparateItemsLikeCommas() {
+        assertEquals(List.of("1", "2", "3"), texts("1,\n2\n3"));
+    }
+
+    @Test
     void parameterSectionOfDelimitedNotationDoesNotConsumeTheRemainingItems() {
         assertEquals(List.of("${source; format=f}", "2"), texts("${source; format=f}, 2"));
     }
