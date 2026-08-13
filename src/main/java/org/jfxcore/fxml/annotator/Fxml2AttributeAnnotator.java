@@ -1571,7 +1571,9 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                             java.util.List<String> sibs = Fxml2NamedArgResolver.collectAttributeNames(contextTag);
                             PsiType targetType = org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver
                                     .propertyType(ownerClass, attrName, sibs);
-                            if (targetType != null && !targetType.isAssignableFrom(sourceType)
+                            if (targetType != null
+                                    && !org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver
+                                            .acceptsSourceType(targetType, sourceType)
                                     && !org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver
                                             .containsUnresolvedTypeParameter(targetType)) {
                                 // Highlight the value content only (exclude surrounding quotes)

@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Resolves a literal attribute value string to the PSI element it refers to,
@@ -339,14 +340,10 @@ public final class Fxml2AttributeValueResolver {
         if ("java.lang.String".equals(typeName) || "String".equals(typeName)) return Result.STRING;
         // Read-only collection properties (e.g. ObservableList<String> styleClass) with no setter:
         // accept any comma-separated string values: item type validation done below if resolvable.
-        if (isKnownCollectionFqn(typeName)) return Result.STRING;
-
-        // Array-typed properties (e.g. Object[] formatArguments): the compiler's list-parsing
-        // feature splits comma-separated values into array elements.
-        // Single values are also valid (a single-element array).  Any value is accepted here;
-        // comma-separated usage validation is enforced at the inspection layer.
-        if (propType instanceof com.intellij.psi.PsiArrayType) {
-            return Result.STRING;
+        // Array-typed properties (e.g. Object[] formatArguments) take a sequence of values, each
+        // converted to the component type on its own.  A single value forms a one-element array.
+        if (propType instanceof com.intellij.psi.PsiArrayType arrayType) {
+            return resolveSequenceItems(arrayType.getComponentType(), value, ownerClass, scope, xmlFile);
         }
 
         PsiClass propClass = PsiUtil.resolveClassInType(propType);
@@ -383,14 +380,7 @@ public final class Fxml2AttributeValueResolver {
                         ict.resolve() instanceof com.intellij.psi.PsiTypeParameter) {
                     return Result.STRING;
                 }
-                PsiClass itemClass = PsiUtil.resolveClassInType(itemType);
-                //noinspection RegExpSingleCharAlternation: \R is a multi-char linebreak matcher, not a single char
-                for (String token : value.split(",|\\R")) {
-                    if (token.isBlank()) continue;
-                    Result tokenResult = resolveByType(itemClass, token.trim());
-                    if (tokenResult == null || !tokenResult.valid()) return Result.INVALID;
-                }
-                return Result.STRING;
+                return resolveSequenceItems(itemType, value, ownerClass, scope, xmlFile);
             }
             // propClass is a Collection subtype but item type unresolvable -> accept any value
             if (propClass != null) {
@@ -427,30 +417,11 @@ public final class Fxml2AttributeValueResolver {
             return Result.INVALID;
         }
 
-        // Insets coercion, the compiler accepts:
-        //   single value:       "1"         -> Insets(topRightBottomLeft=1)
-        //   four values:        "1,2,3,4"   -> Insets(top=1,right=2,bottom=3,left=4)
-        //   anything else (e.g. two values) -> error
-        PsiClass insetsClass = facade.findClass("javafx.geometry.Insets", scope);
-        if (insetsClass != null && insetsClass.equals(propClass)) {
-            String[] parts = value.trim().split(",");
-            if (parts.length == 1 || parts.length == 4) {
-                boolean allNumeric = true;
-                for (String part : parts) {
-                    try { Double.parseDouble(part.trim()); }
-                    catch (NumberFormatException e) { allNumeric = false; break; }
-                }
-                if (allNumeric) return new Result(insetsClass, true);
-            }
-            return Result.INVALID;
-        }
-
-
         Result r = resolveByType(propClass, value);
         if (r != null) return r;
 
         if (propClass != null && Fxml2NamedArgResolver.hasNamedArgConstructor(propClass)) {
-            return Result.STRING;
+            return resolveImplicitConstruction(propClass, value, scope, xmlFile);
         }
         if (propClass != null) {
             String fqn = propClass.getQualifiedName();
@@ -459,6 +430,150 @@ public final class Fxml2AttributeValueResolver {
             }
         }
         return Result.INVALID;
+    }
+
+    /**
+     * Resolves an attribute value that supplies the items of an array or collection target.
+     *
+     * <p>Every item is converted to {@code itemType} on its own.  A markup extension item is
+     * resolved against {@code itemType} and is therefore accepted here.  Items may also be spread
+     * over several lines, which the compiler treats like item separators.
+     *
+     * @param itemType the component type of the array, or the element type of the collection
+     */
+    private static @NotNull Result resolveSequenceItems(
+            @NotNull PsiType itemType,
+            @NotNull String value,
+            @NotNull PsiClass ownerClass,
+            @NotNull GlobalSearchScope scope,
+            @Nullable XmlFile xmlFile) {
+
+        Map<Character, String> prefixMappings = xmlFile != null
+                ? Fxml2ImportResolver.parsePrefixMappings(xmlFile) : Map.of();
+        for (String line : value.split("\\R")) {
+            for (Fxml2ValueSequenceParser.ValueItem item
+                    : Fxml2ValueSequenceParser.split(line, prefixMappings)) {
+                if (item.isMarkupExtension()) continue;
+                if (!convertLiteralItem(itemType, item.text(), ownerClass, scope).valid()) {
+                    return Result.INVALID;
+                }
+            }
+        }
+        return Result.STRING;
+    }
+
+    /**
+     * Returns {@code true} when a value of {@code sourceType} can be assigned to a target of
+     * {@code targetType}, either directly or through one of the conversions that apply to a
+     * value-producing markup extension:
+     * <ul>
+     *   <li>the target is an array or collection and the value becomes its single item;</li>
+     *   <li>the target is implicitly constructed from the value through a single-parameter
+     *       {@code @NamedArg} constructor.</li>
+     * </ul>
+     */
+    public static boolean acceptsSourceType(
+            @NotNull PsiType targetType,
+            @NotNull PsiType sourceType) {
+
+        if (targetType.isAssignableFrom(sourceType)) return true;
+
+        // Single item of an array or collection target.
+        PsiType itemType = targetType instanceof com.intellij.psi.PsiArrayType at
+                ? at.getComponentType()
+                : PsiUtil.extractIterableTypeParameter(targetType, false);
+        if (itemType != null
+                && (containsUnresolvedTypeParameter(itemType) || itemType.isAssignableFrom(sourceType))) {
+            return true;
+        }
+
+        // Implicit construction from a single value.
+        PsiClass targetClass = PsiUtil.resolveClassInType(targetType);
+        if (targetClass == null) return false;
+        for (PsiMethod constructor : Fxml2NamedArgResolver.namedArgConstructors(targetClass)) {
+            PsiParameter[] params = constructor.getParameterList().getParameters();
+            if (params.length == 1 && isTypeCompatible(params[0].getType(), sourceType)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Resolves an attribute value that implicitly constructs an instance of {@code targetClass}
+     * from the parameters of one of its {@code @NamedArg} constructors.
+     *
+     * <p>The value is a sequence of items, one per constructor parameter:
+     * {@code padding="10"} selects the single-parameter constructor, {@code padding="10, 20, 10, 20"}
+     * the four-parameter one.  Each item is either a literal, which must be convertible to the
+     * parameter type, or a markup extension, which is resolved against the parameter type and is
+     * therefore accepted here.
+     *
+     * @return a valid result naming {@code targetClass} when some constructor accepts the sequence,
+     *         {@link Result#INVALID} when none does
+     */
+    private static @NotNull Result resolveImplicitConstruction(
+            @NotNull PsiClass targetClass,
+            @NotNull String value,
+            @NotNull GlobalSearchScope scope,
+            @Nullable XmlFile xmlFile) {
+
+        List<Fxml2ValueSequenceParser.ValueItem> items = Fxml2ValueSequenceParser.split(
+                value, xmlFile != null ? Fxml2ImportResolver.parsePrefixMappings(xmlFile) : Map.of());
+        if (items.isEmpty()) return Result.INVALID;
+
+        for (PsiMethod constructor : Fxml2NamedArgResolver.namedArgConstructors(targetClass)) {
+            PsiParameter[] params = constructor.getParameterList().getParameters();
+            if (params.length != items.size()) continue;
+            boolean allFit = true;
+            for (int i = 0; i < params.length; i++) {
+                Fxml2ValueSequenceParser.ValueItem item = items.get(i);
+                if (item.isMarkupExtension()) continue;
+                if (!convertLiteralItem(params[i].getType(), item.text(), targetClass, scope).valid()) {
+                    allFit = false;
+                    break;
+                }
+            }
+            if (allFit) return new Result(targetClass, true);
+        }
+        return Result.INVALID;
+    }
+
+    /**
+     * Converts a single literal item of a value sequence to {@code targetType}, which is a
+     * constructor parameter or a collection element rather than a property.
+     *
+     * <p>Types whose conversion rules the plugin does not model are accepted, so that an
+     * unmodelled conversion is not reported as an error.
+     *
+     * @param contextClass the class the value is assigned on, used as the resolution context
+     * @return a valid result, with the declaration the item navigates to when there is one
+     */
+    private static @NotNull Result convertLiteralItem(
+            @NotNull PsiType targetType,
+            @NotNull String literal,
+            @NotNull PsiClass contextClass,
+            @NotNull GlobalSearchScope scope) {
+
+        if (containsUnresolvedTypeParameter(targetType)) return Result.STRING;
+
+        String typeName = targetType.getCanonicalText();
+        if (isPrimitive(typeName)) {
+            PsiField specialField = resolveFloatingPointSpecialLiteral(
+                    typeName, literal, contextClass.getProject(), scope);
+            if (specialField != null) return new Result(specialField, true);
+            return parsePrimitive(typeName, literal);
+        }
+        if ("java.lang.String".equals(typeName)
+                || "java.lang.CharSequence".equals(typeName)
+                || "java.lang.Object".equals(typeName)) {
+            return Result.STRING;
+        }
+
+        PsiClass targetClass = PsiUtil.resolveClassInType(targetType);
+        if (targetClass == null) return Result.STRING;
+
+        Result byType = resolveByType(targetClass, literal);
+        // A null result means the conversion is not modelled by the plugin, which is accepted.
+        return byType != null ? byType : Result.STRING;
     }
 
     /**
@@ -734,26 +849,6 @@ public final class Fxml2AttributeValueResolver {
         return composed;
     }
 
-    /** Returns true if the canonical type name is a known collection/list type (with or without generics). */
-    private static boolean isKnownCollectionFqn(@NotNull String canonicalText) {
-        // Strip generics for the prefix check
-        int lt = canonicalText.indexOf('<');
-        String raw = lt >= 0 ? canonicalText.substring(0, lt) : canonicalText;
-        return switch (raw) {
-            case "javafx.collections.ObservableList",
-                 "javafx.collections.FXCollections",
-                 "java.util.List",
-                 "java.util.ArrayList",
-                 "java.util.LinkedList",
-                 "java.util.Collection",
-                 "java.util.Set",
-                 "java.util.HashSet",
-                 "java.util.LinkedHashSet",
-                 "java.util.SortedSet",
-                 "java.util.TreeSet" -> true;
-            default -> false;
-        };
-    }
 
     private static boolean isPrimitive(@NotNull String typeName) {
         return switch (typeName) {
