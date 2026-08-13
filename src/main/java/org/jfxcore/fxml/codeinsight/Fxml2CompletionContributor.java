@@ -56,6 +56,7 @@ import org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind;
 import org.jfxcore.fxml.lang.Fxml2ImportUtil;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
+import org.jfxcore.fxml.resolve.Fxml2AttributeValueItems;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
@@ -236,10 +237,19 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             int dummyIdx = raw.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER);
             if (dummyIdx < 0) dummyIdx = raw.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED);
             String value = (dummyIdx >= 0 ? raw.substring(0, dummyIdx) : raw).trim();
+            PsiType itemType = null;
+            if (attrVal.getContainingFile() instanceof XmlFile attrXmlFile) {
+                var caretItem = AttributeValueCompletionProvider.caretItem(attrVal, attrXmlFile, raw);
+                if (caretItem != null) {
+                    value = caretItem.text();
+                    itemType = caretItem.requiredType();
+                }
+            }
             if (!Fxml2BindingExpressionParser.looksLikeBindingExpression(value)
                     && shouldSuppressDefaultAttrValueCompletion(attr, attrTag)) {
                 result.runRemainingContributors(parameters, r -> { /* suppress default XML completion */ });
-                AttributeValueCompletionProvider.addLiteralValueCompletions(attr, attrTag, value, result);
+                AttributeValueCompletionProvider.addLiteralValueCompletions(
+                        attr, attrTag, value, itemType, result);
                 return;
             }
         }
@@ -1026,6 +1036,15 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             // hasn't typed yet and produce incorrect completions.
             String value = truncateAtDummy(rawValue).trim();
 
+            // When the value is a sequence, the caret belongs to one of its items, which is
+            // resolved against its own item type rather than against the property type.
+            Fxml2AttributeValueItems.CaretItem caretItem = caretItem(attrVal, xmlFile, rawValue);
+            PsiType itemType = null;
+            if (caretItem != null) {
+                value = caretItem.text();
+                itemType = caretItem.requiredType();
+            }
+
             // Check if this is a binding expression or markup extension invocation.
             // All open-brace expressions "{...}" are routed to addBindingPathCompletions,
             // which handles both intrinsic keywords and custom MarkupExtension classes.
@@ -1064,8 +1083,8 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 }
             }
 
-            // Otherwise offer enum/field constants for the property type
-            addLiteralValueCompletions(attr, tag, value, result);
+            // Otherwise offer enum/field constants for the property or item type
+            addLiteralValueCompletions(attr, tag, value, itemType, result);
         }
 
         // ----- Binding path completions -----
@@ -1913,10 +1932,15 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
 
         // ----- Literal value completions -----
 
+        /**
+         * Offers the values of the property, or of one item of its value sequence when
+         * {@code itemType} names the type that item requires.
+         */
         private static void addLiteralValueCompletions(
                 @NotNull XmlAttribute attr,
                 @NotNull XmlTag tag,
                 @NotNull String typedPrefix,
+                @Nullable PsiType itemType,
                 @NotNull CompletionResultSet result) {
 
             String attrName = attr.getLocalName();
@@ -1971,6 +1995,9 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                     if (substituted != null) propType = substituted;
                 }
             }
+
+            // An item of a value sequence is completed against the type that item requires.
+            if (itemType != null) propType = itemType;
 
             // Resolve enum/static field candidates.
             // propClass is null for primitive types (double, int, ...): those have no PsiClass.
@@ -2212,6 +2239,23 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 before = before + "}";
             }
             return before;
+        }
+
+        /**
+         * Returns the item of a value sequence the caret is in, or {@code null} when the target
+         * of the attribute takes a single value and the whole value therefore applies.
+         */
+        private static Fxml2AttributeValueItems.@Nullable CaretItem caretItem(
+                @NotNull XmlAttributeValue attrVal,
+                @NotNull XmlFile xmlFile,
+                @NotNull String rawValue) {
+
+            int idx = rawValue.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER);
+            if (idx < 0) idx = rawValue.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED);
+            String beforeCaret = idx >= 0 ? rawValue.substring(0, idx) : rawValue;
+            // The dummy identifier the caret inserts is kept, because the item being typed counts
+            // towards the length of the sequence even when it is still empty.
+            return Fxml2AttributeValueItems.resolveCaretItem(attrVal, xmlFile, rawValue, beforeCaret);
         }
     }
 
