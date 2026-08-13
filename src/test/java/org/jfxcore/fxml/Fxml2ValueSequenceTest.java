@@ -387,4 +387,63 @@ class Fxml2ValueSequenceTest extends Fxml2TestBase {
         ));
         getFixture().checkHighlighting(false, false, false);
     }
+
+    // -----------------------------------------------------------------------
+    // Imports used by an item
+    // -----------------------------------------------------------------------
+
+    /** A class named by a markup extension in a later item counts as a use of its import. */
+    @Test
+    void importUsedByAMarkupExtensionItemIsNotUnused() {
+        getFixture().enableInspections(new org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection());
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane\ntest.NumberSupplier",
+                """
+                  <GridPane padding="10, {NumberSupplier key=inset}, 10, 10"/>
+                """
+        ));
+        getFixture().checkHighlighting(true, false, false);
+    }
+
+    /**
+     * A class named by a markup extension that takes several parameters counts as a use of its
+     * import, alongside items that are literals and binding expressions.
+     */
+    @Test
+    void importUsedByAnExtensionAmongItemsOfEveryKindIsNotUnused() {
+        getFixture().addClass("""
+                package test;
+                import javafx.beans.NamedArg;
+                import org.jfxcore.markup.MarkupContext;
+                import org.jfxcore.markup.MarkupExtension;
+                public class ScaledSupplier implements MarkupExtension.Supplier<Object> {
+                    public ScaledSupplier(@NamedArg("value") double value,
+                                          @NamedArg("factor") double factor) {}
+                    @Override
+                    @MarkupExtension.Supplier.ReturnType(Double.class)
+                    public Object get(MarkupContext context) { return null; }
+                }
+                """);
+        getFixture().enableInspections(new org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection());
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane\ntest.ScaledSupplier",
+                """
+                  <GridPane padding="10, $inset, 10, {ScaledSupplier value=6; factor=2}"/>
+                """
+        ));
+        getFixture().checkHighlighting(true, false, false);
+    }
+
+    /** A class named by a binding expression in a later item counts as a use of its import. */
+    @Test
+    void importUsedByABindingExpressionItemIsNotUnused() {
+        getFixture().enableInspections(new org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection());
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane\njavafx.scene.input.KeyEvent",
+                """
+                  <GridPane padding="10, 10, 10, $KeyEvent.KEY_PRESSED"/>
+                """
+        ));
+        getFixture().checkHighlighting(true, false, false);
+    }
 }

@@ -16,6 +16,7 @@ import com.intellij.psi.PsiType;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiUtil;
 import com.intellij.psi.xml.XmlAttribute;
+import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlDocument;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlProcessingInstruction;
@@ -25,11 +26,13 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 import org.jfxcore.fxml.lang.Fxml2FileType;
+import org.jfxcore.fxml.resolve.Fxml2AttributeValueItems;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
+import org.jfxcore.fxml.resolve.Fxml2ValueSequenceParser;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
 import java.util.ArrayList;
@@ -267,10 +270,19 @@ public final class Fxml2UnusedImportsInspection extends XmlSuppressableInspectio
                     names.add(simpleNameOf(prefix));
                 }
             }
-            // Attribute value: scan binding expressions for static class references
+            // Attribute value: scan binding expressions for static class references.  A value that
+            // is a sequence names a class in any of its items, so each item is scanned on its own.
             String rawValue = attr.getValue();
             if (rawValue != null) {
-                collectClassNamesFromBindingValue(rawValue, names, xmlFile);
+                XmlAttributeValue attrVal = attr.getValueElement();
+                if (attrVal != null) {
+                    for (Fxml2ValueSequenceParser.ValueItem item
+                            : Fxml2AttributeValueItems.resolveItems(attrVal, xmlFile)) {
+                        collectClassNamesFromBindingValue(item.text(), names, xmlFile);
+                    }
+                } else {
+                    collectClassNamesFromBindingValue(rawValue, names, xmlFile);
+                }
             }
 
             // Plain (non-binding) attribute value for a Class<T> property: the value is
