@@ -40,6 +40,8 @@ import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser.ContextSelector;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
+import org.jfxcore.fxml.resolve.Fxml2ExpressionOperands;
+import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
@@ -643,7 +645,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         for (Fxml2TypeArgumentParser.TypeName typeName
                 : Fxml2TypeArgumentParser.allTypeNames(typeArgContent, contentStart)) {
             refs.addAll(List.of(buildFqnSegmentRefs(
-                    attrVal, typeName.name(), typeName.offset(), xmlFile, false)));
+                    attrVal, typeName.name(), 1 + typeName.offset(), xmlFile, false)));
         }
     }
 
@@ -1100,21 +1102,40 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 }
             }
 
-            // Context selector reference navigates to the target XmlTag.
-            if (selector != null && contextTag != null) {
-                // Position of the selector token within the attribute value text (1-based, after quote)
-                int selectorStart = 1 + expr.strippedPathOffset();
-                addSelectorRef(refs, attrVal, selectorStart, selector, contextTag, xmlFile.getProject());
+            // Offset of the expression source within the attribute value text (1-based, after quote).
+            int strippedBase = 1 + expr.strippedPathOffset();
+            Fxml2ExpressionParser.Expression expressionTree = parseExpressionTree(strippedPath);
+
+            // Class references for the types the expression names: the type argument an invocation
+            // is made with, and the type a parent selector searches for.
+            if (expressionTree != null) {
+                emitExpressionTypeNameRefs(refs, attrVal, expressionTree, strippedBase, xmlFile);
             }
 
-            // Path segment references.
-            // Walk strippedPath to get correct offsets: :: is a 2-char separator, . is 1 char.
-            // Function-call segments are scattered (function name + arguments) and carry their
-            // own offsets, so they are emitted directly rather than walked contiguously.
-            if (isFunctionCall) {
-                emitScatteredSegmentRefs(refs, attrVal, segments, pathBase);
+            if (expressionTree != null && !Fxml2ExpressionOperands.isPathExpression(expressionTree)) {
+                // An expression that combines values with operators is not one path: each operand
+                // names a value in its own right and is resolved against its own evaluation context.
+                for (Fxml2ExpressionOperands.Operand operand
+                        : Fxml2ExpressionOperands.operands(expressionTree, strippedBase)) {
+                    collectOperandRefs(refs, attrVal, operand, startClass, contextTag,
+                            xmlFile, expr.kind());
+                }
             } else {
-                emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
+                // Context selector reference navigates to the target XmlTag.
+                if (selector != null && contextTag != null) {
+                    addSelectorRef(refs, attrVal, strippedBase, selector, contextTag,
+                            xmlFile.getProject());
+                }
+
+                // Path segment references.
+                // Walk strippedPath to get correct offsets: :: is a 2-char separator, . is 1 char.
+                // Function-call segments are scattered (function name + arguments) and carry their
+                // own offsets, so they are emitted directly rather than walked contiguously.
+                if (isFunctionCall) {
+                    emitScatteredSegmentRefs(refs, attrVal, segments, pathBase);
+                } else {
+                    emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
+                }
             }
 
             // Secondary param references (e.g. inverseMethod= / format= / converter=).
@@ -1751,7 +1772,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             for (Fxml2TypeArgumentParser.TypeName typeName
                     : Fxml2TypeArgumentParser.allTypeNames(rawValue, 0)) {
                 refs.addAll(List.of(
-                        buildFqnSegmentRefs(attrVal, typeName.name(), typeName.offset(), xmlFile, true)));
+                        buildFqnSegmentRefs(attrVal, typeName.name(), 1 + typeName.offset(), xmlFile, true)));
             }
             return refs.isEmpty() ? PsiReference.EMPTY_ARRAY : refs.toArray(PsiReference.EMPTY_ARRAY);
         }
@@ -1793,7 +1814,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             if (!rawValue.contains(".")) return PsiReference.EMPTY_ARRAY;
             if (!Character.isJavaIdentifierStart(rawValue.charAt(0))) return PsiReference.EMPTY_ARRAY;
 
-            return buildFqnSegmentRefs(attrVal, rawValue, 0, xmlFile, false);
+            return buildFqnSegmentRefs(attrVal, rawValue, 1, xmlFile, false);
         }
     }
 
@@ -1804,10 +1825,9 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      *
      * @param attrVal          the enclosing {@link XmlAttributeValue} that hosts the references
      * @param fqn              the fully-qualified name fragment to walk (no leading/trailing whitespace)
-     * @param baseOffset       offset of {@code fqn}'s first character within the raw attribute value
-     *                         (i.e. within {@code attrVal.getValue()}. For a single-token value this
-     *                         is 0; for the N-th token in a comma-separated list it is the position of
-     *                         that token's first non-whitespace character within the full value string.
+     * @param baseOffset       offset of {@code fqn}'s first character within {@code attrVal.getText()},
+     *                         i.e. counting the opening quote, in the same coordinates as
+     *                         {@link #emitPathSegmentRefs} and {@link #emitScatteredSegmentRefs}
      * @param xmlFile          the containing FXML file (for project/scope resolution)
      * @param reportUnresolved if {@code true}, emits a hard {@link UnresolvedClassSegmentReference}
      *                         when a segment cannot be resolved (used by {@code fx:typeArguments}).
@@ -1835,8 +1855,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             boolean isLast = (i == segments.length - 1);
             int segStart = baseOffset + cursor;
             int segEnd   = segStart + seg.length();
-            // +1 accounts for the opening quote in XmlAttributeValue.getText()
-            TextRange range = new TextRange(1 + segStart, 1 + segEnd);
+            TextRange range = new TextRange(segStart, segEnd);
             String prefix = fqn.substring(0, cursor + seg.length());
 
             if (unresolvedEarly) {
@@ -2583,9 +2602,11 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             @NotNull Project project) {
         XmlTag targetTag = Fxml2BindingPathResolver.resolveContextSelectorTag(selector, contextTag);
         if (targetTag == null) return;
-        PsiElement resolved = makeSelectorNavElement(
-                selector.kind().name().toLowerCase(java.util.Locale.ROOT), targetTag, project);
-        int selectorEnd = selectorStart + selector.selectorText().length();
+        String kindName = selector.kind().name().toLowerCase(java.util.Locale.ROOT);
+        PsiElement resolved = makeSelectorNavElement(kindName, targetTag, project);
+        // Only the selector keyword itself, so that the type the selector searches for and the
+        // depth it is given navigate on their own.
+        int selectorEnd = selectorStart + 1 + kindName.length();
         refs.add(new PsiReferenceBase<>(attrVal, new TextRange(selectorStart, selectorEnd), /* soft= */ true) {
             @Override public @NotNull PsiElement resolve() { return resolved; }
         });
@@ -2643,6 +2664,84 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             @NotNull List<Fxml2BindingPathResolver.Segment> segments) {
         return !segments.isEmpty()
                 && segments.stream().allMatch(Fxml2BindingPathResolver.Segment::isResolved);
+    }
+
+    /**
+     * Parses the expression an attribute value carries, or returns {@code null} when the text is
+     * not (yet) a complete expression, in which case the callers fall back to resolving it as one
+     * path.
+     */
+    private static Fxml2ExpressionParser.@Nullable Expression parseExpressionTree(
+            @NotNull String source) {
+        if (source.isBlank()) return null;
+        try {
+            return Fxml2ExpressionParser.parse(source);
+        } catch (Fxml2ExpressionParser.ParseException ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Adds a class reference for every type name the expression names, so that the type argument
+     * of an invocation and the type of a {@code :parent} selector each navigate on their own.
+     * A name that is itself parameterized contributes a reference per nested name.
+     *
+     * @param base offset of the expression source within the attribute value text
+     */
+    private static void emitExpressionTypeNameRefs(
+            @NotNull List<PsiReference> refs,
+            @NotNull XmlAttributeValue attrVal,
+            Fxml2ExpressionParser.@NotNull Expression expression,
+            int base,
+            @NotNull XmlFile xmlFile) {
+
+        for (Fxml2ExpressionOperands.TypeName typeName
+                : Fxml2ExpressionOperands.typeNames(expression, base)) {
+            for (Fxml2TypeArgumentParser.TypeName nested
+                    : Fxml2TypeArgumentParser.allTypeNames(typeName.text(), typeName.offset())) {
+                refs.addAll(List.of(buildFqnSegmentRefs(
+                        attrVal, nested.name(), nested.offset(), xmlFile, /* participatesInRename= */ false)));
+            }
+        }
+    }
+
+    /**
+     * Adds the references of one operand of an expression.  A path operand is resolved against the
+     * evaluation context its own context selector names; a function-name operand resolves to the
+     * method or constructor that the invocation invokes.
+     */
+    private static void collectOperandRefs(
+            @NotNull List<PsiReference> refs,
+            @NotNull XmlAttributeValue attrVal,
+            Fxml2ExpressionOperands.@NotNull Operand operand,
+            @NotNull PsiClass startClass,
+            @Nullable XmlTag contextTag,
+            @NotNull XmlFile xmlFile,
+            Fxml2BindingNotationReference.@NotNull Kind kind) {
+
+        GlobalSearchScope scope = xmlFile.getResolveScope();
+        String text = operand.text();
+        if (operand.kind() == Fxml2ExpressionOperands.OperandKind.FUNCTION_NAME) {
+            emitScatteredSegmentRefs(refs, attrVal,
+                    Fxml2BindingPathResolver.resolveFunctionName(text, startClass, scope, kind, xmlFile),
+                    operand.offset());
+            return;
+        }
+
+        ContextSelector selector = Fxml2BindingExpressionParser.parseContextSelector(text);
+        PsiClass operandStartClass = startClass;
+        if (selector != null && contextTag != null) {
+            operandStartClass = Fxml2BindingPathResolver.resolveStartClass(selector, contextTag, xmlFile);
+            addSelectorRef(refs, attrVal, operand.offset(), selector, contextTag, xmlFile.getProject());
+        }
+        if (operandStartClass == null) return;
+
+        String path = selector != null ? selector.remainingPath() : text;
+        if (path.isBlank()) return;
+        int pathBase = operand.offset() + (selector != null ? selector.selectorLength() : 0);
+        emitPathSegmentRefs(refs, attrVal,
+                Fxml2BindingPathResolver.resolve(path, operandStartClass, scope, kind, xmlFile),
+                pathBase, path);
     }
 
     /**
