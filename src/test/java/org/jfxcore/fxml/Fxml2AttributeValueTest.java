@@ -352,6 +352,48 @@ class Fxml2AttributeValueTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    /**
+     * A member class of a generic owner may be named in {@code fx:typeArguments} by its
+     * simple name, without pinning the owner's type arguments.  Such an unqualified member
+     * type argument matches the fully parameterized member type of the bound source, so
+     * binding {@code ObservableList<Owner<String>.InventoryItem>} to a {@code ListView}
+     * declared with {@code fx:typeArguments="InventoryItem"} must not be reported as a
+     * type mismatch.
+     */
+    @Test
+    void memberTypeArgumentWithoutOwnerArguments_matchesBoundMemberType() {
+        getFixture().addClass("""
+                package test;
+                import javafx.beans.property.ListProperty;
+                import javafx.beans.property.SimpleListProperty;
+                import javafx.collections.FXCollections;
+                public class InventoryViewModel<T> {
+                    public class InventoryItem {}
+                    private final ListProperty<InventoryItem> items =
+                            new SimpleListProperty<>(FXCollections.observableArrayList());
+                    public ListProperty<InventoryItem> getItems() { return items; }
+                }
+                """);
+        getFixture().addClass("""
+                package test;
+                import javafx.scene.layout.BorderPane;
+                public class InventoryView extends BorderPane {
+                    public final InventoryViewModel<String> vm = new InventoryViewModel<>();
+                }
+                """);
+        getFixture().configureByText("InventoryView.fxml", fxml(
+                """
+                javafx.scene.control.ListView
+                test.InventoryViewModel.InventoryItem
+                """,
+                """
+                  <ListView fx:typeArguments="InventoryItem" items="${vm.items}"/>
+                """,
+                "test.InventoryView"
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     // -----------------------------------------------------------------------
     // List value (comma-separated) tests
     // -----------------------------------------------------------------------
