@@ -42,6 +42,7 @@ class Fxml2ValueSequenceTest extends Fxml2TestBase {
                     public DoubleProperty insetProperty() { return inset; }
                     public double getInset() { return inset.get(); }
                     public void setInset(double v) { inset.set(v); }
+                    public String getCaption() { return ""; }
                 }
                 """);
     }
@@ -214,6 +215,60 @@ class Fxml2ValueSequenceTest extends Fxml2TestBase {
                 "javafx.scene.layout.GridPane",
                 """
                   <GridPane padding="10, <error descr="Cannot coerce 'wide' to double">wide</error>, 10, 20"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    // -----------------------------------------------------------------------
+    // Binding expression items
+    // -----------------------------------------------------------------------
+
+    /** A path of an item is resolved against the code-behind class like any other path. */
+    @Test
+    void unresolvedPathInAnItemProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.shape.Polygon",
+                """
+                  <Polygon points="0, $<error descr="'nosuch' in test.TestView cannot be resolved">nosuch</error>, 100"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * An item supplies a value, so a notation that assigns to a property is not applicable to it.
+     */
+    @Test
+    void bidirectionalBindingItemProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.shape.Polygon",
+                """
+                  <Polygon points="0, <error descr="fx:Synchronize bindings are not applicable to an item of a value list">#{inset}</error>, 100"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** The unidirectional notation supplies a value and is applicable to an item. */
+    @Test
+    void unidirectionalBindingItemProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.shape.Polygon",
+                """
+                  <Polygon points="0, ${inset}, 100"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** The type an item produces has to be assignable to the item type. */
+    @Test
+    void itemOfAnotherTypeProducesError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.shape.Polygon",
+                """
+                  <Polygon points="0, <error descr="Incompatible types: 'String' cannot be assigned to 'Double'">$caption</error>, 100"/>
                 """
         ));
         getFixture().checkHighlighting(false, false, false);

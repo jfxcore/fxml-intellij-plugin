@@ -1347,14 +1347,11 @@ public final class Fxml2AttributeAnnotator implements Annotator {
     }
 
     /**
-     * Validates one item of a value sequence that supplies its value through a markup extension.
-     * The extension is validated against the type of the item it supplies, so that an extension
-     * which does not produce that type is reported on the item that uses it.
-     *
-     * <p>An item that is a binding expression is not validated here: a binding path is resolved
-     * against the whole attribute value.
+     * Validates one item of a value sequence that supplies its value through a markup extension
+     * or a binding expression.  The item is validated against the type of the item it supplies,
+     * so that an expression which does not produce that type is reported on the item that uses it.
      */
-    private static void annotateMarkupExtensionItem(
+    private static void annotateValueItem(
             @NotNull XmlAttributeValue attrVal,
             @NotNull Fxml2AttributeValueItems.TypedItem typedItem,
             @NotNull XmlFile xmlFile,
@@ -1373,7 +1370,66 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                     String extensionName, int nameOffset, boolean hasTypeArg) ->
                     annotateMarkupExtension(attrVal, item.text(), item.offset(), extensionName,
                             nameOffset, hasTypeArg, typedItem.requiredType(), xmlFile, holder);
+            case Fxml2BindingExpressionParser.ParsedExpression expr ->
+                    annotateBindingItem(attrVal, typedItem, expr, xmlFile, holder);
             case null, default -> { }
+        }
+    }
+
+    /**
+     * Validates one item of a value sequence that is a binding expression.
+     *
+     * <p>An item supplies a value rather than assigning to a property, so only the notations that
+     * produce a value are applicable to it: the one-time and the unidirectional notation.  The
+     * content notations and the reverse and bidirectional notations assign to a property, which an
+     * item is not.
+     *
+     * <p>A path that calls a function is left to the whole-value validation, whose function
+     * handling resolves the call and its arguments.
+     */
+    private static void annotateBindingItem(
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull Fxml2AttributeValueItems.TypedItem typedItem,
+            @NotNull Fxml2BindingExpressionParser.ParsedExpression expr,
+            @NotNull XmlFile xmlFile,
+            @NotNull AnnotationHolder holder) {
+
+        Fxml2ValueSequenceParser.ValueItem item = typedItem.item();
+        int itemDocStart = attrVal.getTextRange().getStartOffset() + 1 + item.offset();
+        TextRange itemRange = new TextRange(itemDocStart, itemDocStart + item.text().length());
+
+        Kind kind = expr.kind();
+        if (kind != Kind.EVALUATE && kind != Kind.OBSERVE) {
+            holder.newAnnotation(HighlightSeverity.ERROR,
+                            kind.intrinsicName() + " bindings are not applicable to an item of a "
+                            + "value list")
+                    .range(itemRange)
+                    .create();
+            return;
+        }
+
+        Fxml2BindingExpressionParser.ContextSelector selector =
+                Fxml2BindingExpressionParser.parseContextSelector(expr.strippedPath());
+        String path = selector != null ? selector.remainingPath() : expr.strippedPath();
+        if (path.isBlank()) return;
+        if (Fxml2BindingPathResolver.functionCallParenIndex(path) > 0) return;
+
+        XmlTag contextTag = attrVal.getParent() instanceof XmlAttribute attr
+                && attr.getParent() instanceof XmlTag tag ? tag : null;
+        PsiClass startClass = contextTag != null
+                ? Fxml2BindingPathResolver.resolveStartClass(selector, contextTag, xmlFile)
+                : Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
+        if (startClass == null) return;
+
+        var segments = Fxml2BindingPathResolver.resolve(
+                path, startClass, xmlFile.getResolveScope(), kind, xmlFile);
+
+        // Each segment is positioned relative to the item, which starts after the opening quote.
+        int base = 1 + item.offset() + expr.strippedPathOffset()
+                + (selector != null ? selector.selectorLength() : 0);
+        if (reportPathSegments(attrVal, segments, startClass, base, xmlFile, holder)) {
+            annotateBindingSourceType(
+                    segments, kind, typedItem.requiredType(), itemRange, holder);
         }
     }
 
@@ -1429,7 +1485,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 Fxml2AttributeValueItems.resolveTypedItems(attrVal, xmlFile);
         if (items.size() > 1) {
             for (Fxml2AttributeValueItems.TypedItem typedItem : items) {
-                annotateMarkupExtensionItem(attrVal, typedItem, xmlFile, holder);
+                annotateValueItem(attrVal, typedItem, xmlFile, holder);
             }
             return;
         }
@@ -1499,13 +1555,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             if (kind == Kind.EVALUATE_CONTENT || kind == Kind.OBSERVE_CONTENT
                     || kind == Kind.PUSH_CONTENT || kind == Kind.SYNCHRONIZE_CONTENT) {
                 String op = expr.operatorLength() == 2 ? "!!" : "!";
-                String kindLabel = switch (kind) {
-                    case EVALUATE_CONTENT    -> "fx:Evaluate";
-                    case OBSERVE_CONTENT     -> "fx:Observe";
-                    case PUSH_CONTENT        -> "fx:Push";
-                    case SYNCHRONIZE_CONTENT -> "fx:Synchronize";
-                    default -> kind.name().toLowerCase();
-                };
+                String kindLabel = kind.intrinsicName();
                 // Highlight the operator character(s) within the attribute value
                 int docBase = attrVal.getTextRange().getStartOffset() + 1; // skip opening quote
                 int opStart = docBase + expr.pathOffset();
@@ -1605,54 +1655,62 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             annotateSecondaryParams(attrVal, expr, startClass, xmlFile, holder);
         }
 
-        // For EVALUATE ($field) single-segment bindings: check that the resolved source type
-        // is assignable to the target property type.  This catches e.g. passing a String field
-        // to an EventHandler<ActionEvent> property.  We only do this for the simple one-segment
-        // case (no dots in path) so we don't duplicate the compiler's full type-inference engine.
-        if (allResolved && segments.size() == 1 && expr.kind() == Kind.EVALUATE && contextTag != null) {
-            Fxml2BindingPathResolver.Segment last = segments.getFirst();
-            PsiElement decl = last.declaration();
-            if (decl != null && decl.isValid()) {
-                // Use resolveDeclarationPsiType: correctly unwraps ObservableValue<T>->T and
-                // returns setter-parameter type (not void) for setter-resolved properties.
-                PsiType sourceType;
-                try {
-                    sourceType = org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver
-                            .resolveDeclarationPsiType(decl);
-                } catch (PsiInvalidElementAccessException ignored) {
-                    sourceType = null;
-                }
-                if (sourceType != null && attrVal.getParent() instanceof XmlAttribute targetAttr) {
-                    String attrName = targetAttr.getName();
-                    if (!Fxml2XmlUtil.isNonPropertyAttribute(attrName)) {
-                        PsiClass ownerClass = contextTag.getDescriptor() instanceof Fxml2ClassTagDescriptor cd
-                                ? cd.getPsiClass() : null;
-                        if (ownerClass != null) {
-                            java.util.List<String> sibs = Fxml2NamedArgResolver.collectAttributeNames(contextTag);
-                            PsiType targetType = org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver
-                                    .propertyType(ownerClass, attrName, sibs);
-                            if (targetType != null
-                                    && !org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver
-                                            .acceptsSourceType(targetType, sourceType)
-                                    && !org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver
-                                            .containsUnresolvedTypeParameter(targetType)) {
-                                // Highlight the value content only (exclude surrounding quotes)
-                                TextRange inner = new TextRange(
-                                        attrVal.getTextRange().getStartOffset() + 1,
-                                        attrVal.getTextRange().getEndOffset() - 1);
-                                holder.newAnnotation(HighlightSeverity.ERROR,
-                                        "Incompatible types: '" + sourceType.getPresentableText()
-                                        + "' cannot be assigned to '"
-                                        + targetType.getPresentableText() + "'")
-                                        .range(inner)
-                                        .create();
-                            }
-                        }
-                    }
-                }
-            }
+        // The source type of the expression must be assignable to the property it is assigned to.
+        if (allResolved && contextTag != null
+                && attrVal.getParent() instanceof XmlAttribute targetAttr
+                && !Fxml2XmlUtil.isNonPropertyAttribute(targetAttr.getName())) {
+            // The value content only, excluding the surrounding quotes.
+            TextRange inner = new TextRange(
+                    attrVal.getTextRange().getStartOffset() + 1,
+                    attrVal.getTextRange().getEndOffset() - 1);
+            annotateBindingSourceType(
+                    segments, expr.kind(),
+                    Fxml2AttributeValueResolver.attributeTargetType(targetAttr, xmlFile),
+                    inner, holder);
         }
+    }
 
+    /**
+     * Reports a binding source type that cannot be assigned to the type the expression supplies
+     * its value to, which is the property for an expression that spans the whole attribute value
+     * and the item type for an expression that is one item of a value sequence.
+     *
+     * <p>Only a single-segment evaluate path participates: a longer path loses its type arguments
+     * segment by segment, and the other binding kinds have assignment rules of their own, so
+     * checking them here would report types the markup language accepts.
+     *
+     * @param segments   the resolved path segments, which all have to be resolved
+     * @param targetType the type the expression supplies, or {@code null} when it is unknown
+     * @param range      the document range to report on
+     */
+    private static void annotateBindingSourceType(
+            @NotNull java.util.List<Fxml2BindingPathResolver.Segment> segments,
+            @NotNull Kind kind,
+            @Nullable PsiType targetType,
+            @NotNull TextRange range,
+            @NotNull AnnotationHolder holder) {
+
+        if (kind != Kind.EVALUATE || segments.size() != 1 || targetType == null) return;
+        PsiElement decl = segments.getFirst().declaration();
+        if (decl == null || !decl.isValid()) return;
+
+        // resolveDeclarationPsiType unwraps ObservableValue<T> to T and returns the parameter
+        // type of a setter-resolved property rather than void.
+        PsiType sourceType;
+        try {
+            sourceType = Fxml2AttributeValueResolver.resolveDeclarationPsiType(decl);
+        } catch (PsiInvalidElementAccessException ignored) {
+            return;
+        }
+        if (sourceType == null) return;
+        if (Fxml2AttributeValueResolver.acceptsSourceType(targetType, sourceType)) return;
+        if (Fxml2AttributeValueResolver.containsUnresolvedTypeParameter(targetType)) return;
+
+        holder.newAnnotation(HighlightSeverity.ERROR,
+                        "Incompatible types: '" + sourceType.getPresentableText()
+                        + "' cannot be assigned to '" + targetType.getPresentableText() + "'")
+                .range(range)
+                .create();
     }
 
     private static void annotateValueError(
