@@ -331,6 +331,33 @@ class Fxml2ValueSequenceTest extends Fxml2TestBase {
     }
 
     /**
+     * A parameter of a primitive type accepts an extension that produces the boxed type, so an
+     * item that supplies a constructor argument is not reported.
+     */
+    @Test
+    void markupExtensionItemOfTheBoxedParameterTypeProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane\ntest.NumberSupplier",
+                """
+                  <GridPane padding="10, 20, 10, {NumberSupplier key=inset}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /** An item that supplies a primitive value is accepted by a boxed item type. */
+    @Test
+    void primitiveItemOfABoxedItemTypeProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.shape.Polygon",
+                """
+                  <Polygon points="0, 0, $inset, 0, 40, 30"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
      * A value that is a single item is offered to the property before it is offered to a
      * constructor parameter, so it is checked against the property type.
      */
