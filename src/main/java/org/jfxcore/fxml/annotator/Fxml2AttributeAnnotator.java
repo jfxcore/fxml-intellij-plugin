@@ -563,8 +563,10 @@ public final class Fxml2AttributeAnnotator implements Annotator {
      * @param path        the path text, which contains no operator
      * @param attrTextBase offset of {@code path} within the attribute value text, i.e. counting the
      *                     opening quote
+     * @return the resolved segments, or {@code null} when the path is empty or the class it is
+     *         resolved against is unknown
      */
-    private static void annotatePathExpression(
+    private static java.util.@Nullable List<Fxml2BindingPathResolver.Segment> annotatePathExpression(
             @NotNull XmlAttributeValue attrVal,
             @NotNull String path,
             int attrTextBase,
@@ -576,18 +578,18 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         Fxml2BindingExpressionParser.ContextSelector selector =
                 Fxml2BindingExpressionParser.parseContextSelector(path);
         String remaining = selector != null ? selector.remainingPath() : path;
-        if (remaining.isBlank()) return;
+        if (remaining.isBlank()) return null;
 
         PsiClass startClass = contextTag != null
                 ? Fxml2BindingPathResolver.resolveStartClass(selector, contextTag, xmlFile)
                 : Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
-        if (startClass == null) return;
+        if (startClass == null) return null;
 
-        reportPathSegments(attrVal,
-                Fxml2BindingPathResolver.resolve(
-                        remaining, startClass, xmlFile.getResolveScope(), kind, xmlFile),
-                startClass,
+        var segments = Fxml2BindingPathResolver.resolve(
+                remaining, startClass, xmlFile.getResolveScope(), kind, xmlFile);
+        reportPathSegments(attrVal, segments, startClass,
                 attrTextBase + (selector != null ? selector.selectorLength() : 0), xmlFile, holder);
+        return segments;
     }
 
     /**
@@ -1418,28 +1420,15 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             return;
         }
 
-        Fxml2BindingExpressionParser.ContextSelector selector =
-                Fxml2BindingExpressionParser.parseContextSelector(expr.strippedPath());
-        String path = selector != null ? selector.remainingPath() : expr.strippedPath();
-        if (path.isBlank()) return;
-        if (Fxml2BindingPathResolver.functionCallParenIndex(path) > 0) return;
+        if (Fxml2BindingPathResolver.functionCallParenIndex(expr.strippedPath()) > 0) return;
 
         XmlTag contextTag = attrVal.getParent() instanceof XmlAttribute attr
                 && attr.getParent() instanceof XmlTag tag ? tag : null;
-        PsiClass startClass = contextTag != null
-                ? Fxml2BindingPathResolver.resolveStartClass(selector, contextTag, xmlFile)
-                : Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
-        if (startClass == null) return;
-
-        var segments = Fxml2BindingPathResolver.resolve(
-                path, startClass, xmlFile.getResolveScope(), kind, xmlFile);
-
-        // Each segment is positioned relative to the item, which starts after the opening quote.
-        int base = 1 + item.offset() + expr.strippedPathOffset()
-                + (selector != null ? selector.selectorLength() : 0);
-        if (reportPathSegments(attrVal, segments, startClass, base, xmlFile, holder)) {
-            annotateBindingSourceType(
-                    segments, kind, typedItem.requiredType(), itemRange, holder);
+        // The path is positioned relative to the item, which starts after the opening quote.
+        var segments = annotatePathExpression(attrVal, expr.strippedPath(),
+                1 + item.offset() + expr.strippedPathOffset(), kind, contextTag, xmlFile, holder);
+        if (segments != null && isFullyResolved(segments)) {
+            annotateBindingSourceType(segments, kind, typedItem.requiredType(), itemRange, holder);
         }
     }
 
