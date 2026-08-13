@@ -33,6 +33,7 @@ import org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
+import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
@@ -254,7 +255,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         PsiClass startClass = Fxml2BindingPathResolver.resolveStartClass(null, fxTag, xmlFile);
         if (startClass == null) return;
 
-        // Parse context selector if present (e.g. "self/caption", "parent/caption")
+        // Parse a context selector if present.
         Fxml2BindingExpressionParser.ContextSelector selector =
                 Fxml2BindingExpressionParser.parseContextSelector(path);
         String remainingPath = selector != null ? selector.remainingPath() : path;
@@ -539,29 +540,113 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         var nameSegs = Fxml2BindingPathResolver.resolveFunctionName(funcPath, startClass, scope, kind, xmlFile);
         reportPathSegments(attrVal, nameSegs, startClass, attrTextBase, xmlFile, holder);
 
-        // Arguments.
+        // Arguments, each of which is an expression in its own right.
         for (Fxml2BindingPathResolver.FunctionArgument arg : Fxml2BindingPathResolver.functionArguments(path)) {
-            switch (Fxml2BindingPathResolver.classifyArgument(arg.text())) {
-                case LITERAL -> { /* no resolution */ }
-                case NESTED_CALL -> annotateFunctionCall(attrVal, arg.text(), startClass, contextTag,
-                        xmlFile, holder, attrTextBase + arg.offset(), kind);
-                case PATH -> {
-                    Fxml2BindingExpressionParser.ContextSelector sel =
-                            Fxml2BindingExpressionParser.parseContextSelector(arg.text());
-                    PsiClass argStart = startClass;
-                    if (sel != null && contextTag != null) {
-                        argStart = Fxml2BindingPathResolver.resolveStartClass(sel, contextTag, xmlFile);
-                    }
-                    String remaining = sel != null ? sel.remainingPath() : arg.text();
-                    int selLen = sel != null ? sel.selectorLength() : 0;
-                    if (argStart != null && !remaining.isBlank()) {
-                        var segs = Fxml2BindingPathResolver.resolve(remaining, argStart, scope, kind, xmlFile);
-                        reportPathSegments(attrVal, segs, argStart,
-                                attrTextBase + arg.offset() + selLen, xmlFile, holder);
-                    }
-                }
+            Fxml2ExpressionParser.Expression argExpr;
+            try {
+                argExpr = Fxml2ExpressionParser.parse(arg.text());
+            } catch (Fxml2ExpressionParser.ParseException ignored) {
+                continue;
             }
+            annotateExpressionOperands(attrVal, argExpr, attrTextBase + arg.offset(),
+                    startClass, contextTag, xmlFile, kind, holder);
         }
+    }
+
+    /**
+     * Resolves one path of an expression against the evaluation context and reports the segments
+     * that do not resolve.  The path may begin with a context selector, which names the element it
+     * is resolved against.
+     *
+     * @param path        the path text, which contains no operator
+     * @param attrTextBase offset of {@code path} within the attribute value text, i.e. counting the
+     *                     opening quote
+     * @return the resolved segments, or {@code null} when the path is empty or the class it is
+     *         resolved against is unknown
+     */
+    private static java.util.@Nullable List<Fxml2BindingPathResolver.Segment> annotatePathExpression(
+            @NotNull XmlAttributeValue attrVal,
+            @NotNull String path,
+            int attrTextBase,
+            @NotNull Kind kind,
+            @Nullable XmlTag contextTag,
+            @NotNull XmlFile xmlFile,
+            @NotNull AnnotationHolder holder) {
+
+        Fxml2BindingExpressionParser.ContextSelector selector =
+                Fxml2BindingExpressionParser.parseContextSelector(path);
+        String remaining = selector != null ? selector.remainingPath() : path;
+        if (remaining.isBlank()) return null;
+
+        PsiClass startClass = contextTag != null
+                ? Fxml2BindingPathResolver.resolveStartClass(selector, contextTag, xmlFile)
+                : Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
+        if (startClass == null) return null;
+
+        var segments = Fxml2BindingPathResolver.resolve(
+                remaining, startClass, xmlFile.getResolveScope(), kind, xmlFile);
+        reportPathSegments(attrVal, segments, startClass,
+                attrTextBase + (selector != null ? selector.selectorLength() : 0), xmlFile, holder);
+        return segments;
+    }
+
+    /**
+     * Reports the operands of an expression that combines values with operators.  Each operand is
+     * validated in its own right, so that a path stands where the expression puts it rather than
+     * being read as one path spanning the operators.
+     *
+     * @param attrTextBase offset of the expression source within the attribute value text
+     */
+    private static void annotateExpressionOperands(
+            @NotNull XmlAttributeValue attrVal,
+            Fxml2ExpressionParser.@NotNull Expression expression,
+            int attrTextBase,
+            @NotNull PsiClass startClass,
+            @Nullable XmlTag contextTag,
+            @NotNull XmlFile xmlFile,
+            @NotNull Kind kind,
+            @NotNull AnnotationHolder holder) {
+
+        switch (expression) {
+            case Fxml2ExpressionParser.BinaryExpression binary -> {
+                annotateExpressionOperands(attrVal, binary.left(), attrTextBase, startClass,
+                        contextTag, xmlFile, kind, holder);
+                annotateExpressionOperands(attrVal, binary.right(), attrTextBase, startClass,
+                        contextTag, xmlFile, kind, holder);
+            }
+            case Fxml2ExpressionParser.UnaryExpression unary ->
+                    annotateExpressionOperands(attrVal, unary.operand(), attrTextBase, startClass,
+                            contextTag, xmlFile, kind, holder);
+            case Fxml2ExpressionParser.GroupedExpression grouped ->
+                    annotateExpressionOperands(attrVal, grouped.expression(), attrTextBase,
+                            startClass, contextTag, xmlFile, kind, holder);
+            case Fxml2ExpressionParser.LiteralExpression ignored -> { }
+            case Fxml2ExpressionParser.InvocationExpression invocation ->
+                    annotateFunctionCall(attrVal, invocation.text(), startClass, contextTag,
+                            xmlFile, holder, attrTextBase + invocation.span().start(), kind);
+            default -> annotatePathExpression(attrVal, expression.text(),
+                    attrTextBase + expression.span().start(), kind, contextTag, xmlFile, holder);
+        }
+    }
+
+    /**
+     * Returns {@code true} when the expression is a path that the path validation resolves as a
+     * whole, rather than one that combines values with operators.  A leading boolean operator is
+     * part of the notation and does not combine values.
+     */
+    private static boolean isPathExpression(Fxml2ExpressionParser.@NotNull Expression expression) {
+        return switch (expression) {
+            case Fxml2ExpressionParser.UnaryExpression unary ->
+                    (unary.operator() == Fxml2ExpressionParser.UnaryOperator.NOT
+                            || unary.operator() == Fxml2ExpressionParser.UnaryOperator.BOOLIFY)
+                    && isPathExpression(unary.operand());
+            case Fxml2ExpressionParser.PathExpression ignored -> true;
+            case Fxml2ExpressionParser.MemberExpression ignored -> true;
+            case Fxml2ExpressionParser.AttachedPropertyExpression ignored -> true;
+            case Fxml2ExpressionParser.ContextSelectorExpression ignored -> true;
+            case Fxml2ExpressionParser.InvocationExpression ignored -> true;
+            default -> false;
+        };
     }
 
     /**
@@ -1335,33 +1420,16 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 String message = error.message();
                 int errorOffset = error.errorOffset();
                 int errorLength = error.errorLength();
-                TextRange attrRange = attrVal.getTextRange();
-                int docBase = attrRange.getStartOffset() + 1; // +1 to skip opening quote
                 // When the error covers the entire value (offset=0, length=value.length()),
                 // expand to include the surrounding quotes so the whole attribute value is highlighted.
                 if (errorOffset == 0 && errorLength == rawValue.length()) {
                     holder.newAnnotation(HighlightSeverity.ERROR, message)
-                            .range(attrRange)
+                            .range(attrVal)
                             .create();
                     return;
                 }
-                int errStart = docBase + errorOffset;
-                int errEnd = errorLength > 0 ? errStart + errorLength : errStart;
-                int valEnd = attrVal.getTextRange().getEndOffset() - 1;
-                errStart = Math.min(errStart, valEnd);
-                // Guard: when errStart is at or past valEnd (e.g. "'}' expected" at errorOffset==value.length()),
-                // Math.clamp(errEnd, errStart+1, valEnd) would throw IllegalArgumentException because min>max.
-                // Fall back to highlighting the whole attribute value (including surrounding quotes).
-                if (errStart >= valEnd) {
-                    holder.newAnnotation(HighlightSeverity.ERROR, message)
-                            .range(attrRange)
-                            .create();
-                    return;
-                }
-                errEnd = Math.clamp(errEnd, errStart + 1, valEnd);
-                holder.newAnnotation(HighlightSeverity.ERROR, message)
-                        .range(new TextRange(errStart, errEnd))
-                        .create();
+                annotateValueError(attrVal, holder, message,
+                        new TextRange(errorOffset, errorOffset + errorLength));
                 return;
             }
             case Fxml2BindingExpressionParser.MissingBindingPath(String intrinsicName) -> {
@@ -1384,6 +1452,17 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             default -> { /* ParsedExpression: fall through to path validation */ }
         }
         Fxml2BindingExpressionParser.ParsedExpression expr = (Fxml2BindingExpressionParser.ParsedExpression) parsed;
+
+        Fxml2ExpressionParser.Expression expressionTree;
+        try {
+            expressionTree = expr.expression();
+        } catch (org.jfxcore.fxml.resolve.Fxml2ExpressionParser.ParseException error) {
+            int errorStart = expr.pathOffset() + error.span().start();
+            int errorEnd = expr.pathOffset() + error.span().end();
+            annotateValueError(attrVal, holder, error.getMessage(),
+                    new TextRange(errorStart, errorEnd));
+            return;
+        }
 
         // Boolean operator applicability: ! / !! must not be used with content binding kinds.
         // fx:Evaluate/Observe/Push/Synchronize ..source are not applicable here
@@ -1416,12 +1495,12 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         // which splits on both '.' and '::' and tracks which segments must not be unwrapped.
         // No pre-processing of :: is needed here.
 
-        // Parse context selector (self/, parent/, this.)
+        // Parse a context selector.
         Fxml2BindingExpressionParser.ContextSelector selector =
                 Fxml2BindingExpressionParser.parseContextSelector(strippedPath);
         String path = selector != null ? selector.remainingPath() : strippedPath;
 
-        // Get the context tag for self/parent resolution
+        // Get the context tag for selector resolution.
         XmlTag contextTag = null;
         if (attrVal.getParent() instanceof com.intellij.psi.xml.XmlAttribute attr
                 && attr.getParent() instanceof XmlTag t) {
@@ -1439,8 +1518,19 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             return;
         }
 
-        // If the path is empty after stripping the selector (e.g. bare "self/"), nothing to validate
+        // If the path is empty after stripping the selector, there is nothing to validate.
         if (path.isBlank()) return;
+
+        // An expression that combines values with operators is validated operand by operand: its
+        // text is not one path, so resolving it as one would report the operators as segments.
+        if (!isPathExpression(expressionTree)) {
+            annotateExpressionOperands(attrVal, expressionTree, 1 + expr.pathOffset(),
+                    startClass, contextTag, xmlFile, expr.kind(), holder);
+            if (expr.hasParam()) {
+                annotateSecondaryParams(attrVal, expr, startClass, xmlFile, holder);
+            }
+            return;
+        }
 
         // Function-call syntax: a '(' that is NOT immediately preceded by '.'
         // (which would indicate an attached-property group like "(VBox.margin)").
@@ -1533,5 +1623,27 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             }
         }
 
+    }
+
+    private static void annotateValueError(
+            @NotNull XmlAttributeValue attributeValue,
+            @NotNull AnnotationHolder holder,
+            @NotNull String message,
+            @NotNull TextRange relativeRange) {
+        TextRange valueRange = attributeValue.getTextRange();
+        int contentStart = valueRange.getStartOffset() + 1;
+        int contentEnd = valueRange.getEndOffset() - 1;
+        int start = Math.min(contentStart + relativeRange.getStartOffset(), contentEnd);
+        if (start >= contentEnd) {
+            holder.newAnnotation(HighlightSeverity.ERROR, message)
+                    .range(attributeValue)
+                    .create();
+            return;
+        }
+
+        int end = contentStart + relativeRange.getEndOffset();
+        holder.newAnnotation(HighlightSeverity.ERROR, message)
+                .range(new TextRange(start, Math.clamp(end, start + 1, contentEnd)))
+                .create();
     }
 }

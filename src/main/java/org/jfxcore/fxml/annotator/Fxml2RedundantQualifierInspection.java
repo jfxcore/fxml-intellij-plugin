@@ -241,7 +241,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
         String path = expr.path();
         int pathOffsetInValue = expr.pathOffset();
 
-        // Strip any context selector (self/, parent/, etc.)
+        // Strip any context selector.
         Fxml2BindingExpressionParser.ContextSelector sel =
                 Fxml2BindingExpressionParser.parseContextSelector(path);
         String effectivePath;
@@ -320,7 +320,7 @@ public final class Fxml2RedundantQualifierInspection extends XmlSuppressableInsp
 
     /**
      * Resolves the binding start class for the given attribute value, respecting context
-     * selectors ({@code self/}, {@code parent/}, etc.).  Returns {@code null} if it cannot
+     * selectors. Returns {@code null} if it cannot
      * be determined.
      */
     private static @Nullable PsiClass resolveBindingStartClass(

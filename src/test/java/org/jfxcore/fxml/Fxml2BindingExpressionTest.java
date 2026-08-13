@@ -226,7 +226,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 "javafx.scene.layout.Pane",
                 """
                   <Pane fx:id="outer" prefWidth="123">
-                    <Pane prefWidth="${parent/prefWidth}"/>
+                    <Pane prefWidth="${:parent.prefWidth}"/>
                   </Pane>
                 """
         ));
@@ -244,7 +244,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 "javafx.scene.layout.Pane",
                 """
                   <Pane prefWidth="100">
-                    <Pane prefWidth="${parent&lt;Pane&gt;/prefWidth}"/>
+                    <Pane prefWidth="${:parent&lt;Pane&gt;.prefWidth}"/>
                   </Pane>
                 """
         ));
@@ -262,7 +262,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 """
                   <Pane prefWidth="200">
                     <Pane prefWidth="100">
-                      <Pane prefWidth="${parent&lt;Pane&gt;[1]/prefWidth}"/>
+                      <Pane prefWidth="${:parent&lt;Pane&gt;(2).prefWidth}"/>
                     </Pane>
                   </Pane>
                 """
@@ -280,7 +280,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 "javafx.scene.layout.Pane",
                 """
                   <Pane>
-                    <Pane prefWidth="${parent&lt;Pane&gt;/<error descr="'noSuchProperty' in javafx.scene.layout.Pane cannot be resolved">noSuchProperty</error>}"/>
+                    <Pane prefWidth="${:parent&lt;Pane&gt;.<error descr="'noSuchProperty' in javafx.scene.layout.Pane cannot be resolved">noSuchProperty</error>}"/>
                   </Pane>
                 """
         ));
@@ -424,7 +424,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 <BorderPane xmlns="http://javafx.com/javafx"
                             xmlns:fx="http://jfxcore.org/fxml/2.0"
                             fx:subclass="test.StaleView2">
-                  <Ellipse radiusY="${this.height}"/>
+                  <Ellipse radiusY="${:root.height}"/>
                 </BorderPane>
                 """);
         getFixture().checkHighlighting(false, false, false);
@@ -448,7 +448,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 // parent[1] = the outer VBox (root), which has no "selectionModel"
                 """
                   <VBox>
-                    <VBox parameter="${parent[1]/selectionModel<caret>.selectedItem}"/>
+                    <VBox parameter="${:parent(1).selectionModel<caret>.selectedItem}"/>
                   </VBox>
                 """
         ));
@@ -494,7 +494,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 "javafx.scene.layout.VBox",
                 """
                   <VBox prefWidth="123">
-                    <VBox prefWidth="${parent&lt;VBox&gt;/prefWidth}"/>
+                    <VBox prefWidth="${:parent&lt;VBox&gt;.prefWidth}"/>
                   </VBox>
                 """
         ));
@@ -513,7 +513,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 """
                   <VBox prefWidth="123">
                     <VBox>
-                      <VBox prefWidth="${parent&lt;VBox&gt;[0]/prefWidth}"/>
+                      <VBox prefWidth="${:parent&lt;VBox&gt;(0).prefWidth}"/>
                     </VBox>
                   </VBox>
                 """
@@ -533,7 +533,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 "javafx.scene.layout.VBox",
                 """
                   <VBox prefWidth="123">
-                    <VBox prefWidth="$parent&lt;VBox&gt;/prefWidth"/>
+                    <VBox prefWidth="$:parent&lt;VBox&gt;.prefWidth"/>
                   </VBox>
                 """
         ));
@@ -552,7 +552,7 @@ class Fxml2BindingExpressionTest extends Fxml2TestBase {
                 // parent<VBox> = the outer VBox (root), which has no "selectionModel"
                 """
                   <VBox>
-                    <VBox parameter="${parent&lt;VBox&gt;/selectionModel<caret>.selectedItem}"/>
+                    <VBox parameter="${:parent&lt;VBox&gt;.selectionModel<caret>.selectedItem}"/>
                   </VBox>
                 """
         ));

@@ -560,8 +560,8 @@ public final class Fxml2TypeArgumentInferrer {
      * substitutor.  Unwraps {@code ObservableValue<T>} between segments but keeps
      * the final segment's type intact for unification.
      *
-     * <p>Supports the {@code self/}, {@code parent/}, and {@code this} context
-     * selectors that the binding parser already handles.  Returns {@code null} when
+     * <p>Supports the current context selectors that the binding parser handles.
+     * Returns {@code null} when
      * any segment fails to resolve or the result would be raw.
      */
     private static @Nullable PsiType resolveBindingSourceType(

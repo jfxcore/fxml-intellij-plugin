@@ -1579,8 +1579,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
 
     /**
-     * Completing inside an empty binding value should offer {@code self/}
-     * and {@code parent/} as context selector prefixes.
+     * Completing inside an empty binding value should offer all context selectors.
      */
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
@@ -1594,34 +1593,65 @@ class Fxml2CompletionTest extends Fxml2TestBase {
         LookupElement[] items = getFixture().completeBasic();
         assertNotNull(items, "Expected binding context selector completions");
         List<String> names = lookupStrings(items);
-        assertTrue(names.contains("self/"),
-                "Expected 'self/' in binding completions, got: " + names);
-        assertTrue(names.contains("parent/"),
-                "Expected 'parent/' in binding completions, got: " + names);
+        assertTrue(names.containsAll(List.of(":context", ":root", ":element", ":parent")),
+                "Expected context selectors in binding completions, got: " + names);
     }
 
     /**
-     * Completing {@code se<caret>} inside a binding expression should offer {@code self/}.
+     * Completing {@code :el<caret>} inside a binding expression should offer {@code :element}.
      */
     @Test
     @Timeout(value = 10, unit = TimeUnit.SECONDS)
-    void bindingContextSelectorSelfPrefixCompletion() {
+    void bindingContextSelectorElementPrefixCompletion() {
         getFixture().configureByText("BindingSelf.fxml", fxml(
                 "javafx.scene.control.Label",
                 """
-                  <Label text="${se<caret>}"/>
+                  <Label text="${:el<caret>}"/>
                 """
         ));
         LookupElement[] items = getFixture().completeBasic();
         if (items == null) {
             // auto-inserted
             String text = getFixture().getEditor().getDocument().getText();
-            assertTrue(text.contains("self/"), "Expected 'self/' to be auto-inserted, got: " + text);
+            assertTrue(text.contains(":element"),
+                    "Expected ':element' to be auto-inserted, got: " + text);
             return;
         }
         List<String> names = lookupStrings(items);
-        assertTrue(names.contains("self/"),
-                "Expected 'self/' in binding completions for 'se', got: " + names);
+        assertTrue(names.contains(":element"),
+                "Expected ':element' in binding completions for ':el', got: " + names);
+    }
+
+    /**
+     * A completed context selector is not itself a path separator. Property completion must wait
+     * until the user types a dot so accepting an item cannot concatenate it with the selector.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingContextSelectorRequiresPathSeparatorForPropertyCompletion() {
+        getFixture().configureByText("BindingSelectorWithoutSeparator.fxml", fxml(
+                "javafx.scene.layout.VBox\njavafx.scene.control.Label",
+                """
+                  <VBox><Label visible="${:parent<caret>}"/></VBox>
+                """
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        if (items != null) {
+            List<String> names = lookupStrings(items);
+            assertFalse(names.contains("prefHeight"),
+                    "Parent properties must not be offered before a path separator, got: " + names);
+        }
+
+        getFixture().configureByText("BindingSelectorWithSeparator.fxml", fxml(
+                "javafx.scene.layout.VBox\njavafx.scene.control.Label",
+                """
+                  <VBox><Label visible="${:parent.<caret>}"/></VBox>
+                """
+        ));
+        LookupElement[] separatedItems = getFixture().completeBasic();
+        assertNotNull(separatedItems, "Expected parent properties after a path separator");
+        assertTrue(lookupStrings(separatedItems).contains("prefHeight"),
+                "Expected parent properties after a path separator");
     }
 
     // -----------------------------------------------------------------------
@@ -1749,7 +1779,7 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 javafx.scene.control.Button
                 """,
                 """
-                  <Button fx:id="myButton3" disable="${self/<caret>}"/>
+                  <Button fx:id="myButton3" disable="${:element.<caret>}"/>
                 """
         ));
         LookupElement[] items = getFixture().completeBasic();
@@ -2594,6 +2624,99 @@ class Fxml2CompletionTest extends Fxml2TestBase {
         List<String> names = displayNames(items);
         assertTrue(names.contains("width"),
                 "Expected property 'width' in argument completions, got: " + names);
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingFunctionTypeWitnessCompletion() {
+        getFixture().configureByText("FnTypeWitness.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"${String.format&lt;Str<caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains("format&lt;String"));
+            return;
+        }
+        assertTrue(displayNames(items).contains("String"),
+                "Expected String in type-witness completions, got: " + displayNames(items));
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void nestedBindingFunctionTypeWitnessCompletion() {
+        getFixture().configureByText("FnNestedTypeWitness.fxml",
+                WIDTH_VIEW_HEADER
+                + "  <Button text=\"${String.format&lt;java.util.List&lt;Str<caret>}\"/>\n"
+                + "</VBox>\n");
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains("List&lt;String"));
+            return;
+        }
+        assertTrue(displayNames(items).contains("String"),
+                "Expected String in nested type-witness completions, got: " + displayNames(items));
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingTypeWitnessCompletionHonorsMethodBound() {
+        getFixture().addFileToProject("test/BoundedCompletionView.java",
+                """
+                package test;
+                public class BoundedCompletionView extends javafx.scene.layout.VBox {
+                    public <T extends Number> T numberValue() { return null; }
+                }
+                """);
+        getFixture().configureByText("FnBoundedTypeWitness.fxml",
+                """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <?import javafx.scene.layout.VBox?>
+                <VBox xmlns="http://javafx.com/javafx"
+                      xmlns:fx="http://jfxcore.org/fxml/2.0"
+                      fx:subclass="test.BoundedCompletionView"
+                      prefWidth="${numberValue&lt;In<caret>}"/>
+                """);
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains("numberValue&lt;Integer"));
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("Integer"), "Expected Integer for T extends Number, got: " + names);
+        assertFalse(names.contains("InputStream"),
+                "Expected non-Number classes to be filtered from T extends Number, got: " + names);
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void constructorTypeWitnessCompletionHonorsConstructorBound() {
+        getFixture().addFileToProject("test/WitnessBox.java",
+                """
+                package test;
+                public class WitnessBox<T> {
+                    public <W extends Number> WitnessBox(T value, W witness) {}
+                }
+                """);
+        getFixture().configureByText("FnConstructorWitness.fxml",
+                """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <?import javafx.scene.layout.VBox?>
+                <?import test.WitnessBox?>
+                <VBox xmlns="http://javafx.com/javafx"
+                      xmlns:fx="http://jfxcore.org/fxml/2.0"
+                      prefWidth="${WitnessBox&lt;String, In<caret>}"/>
+                """);
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains("String, Integer"));
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("Integer"),
+                "Expected Integer for constructor W extends Number, got: " + names);
+        assertFalse(names.contains("InputStream"),
+                "Expected incompatible constructor witnesses to be filtered, got: " + names);
     }
 
     /**

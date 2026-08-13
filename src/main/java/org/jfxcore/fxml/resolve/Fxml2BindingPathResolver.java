@@ -231,9 +231,8 @@ public final class Fxml2BindingPathResolver {
      * <ul>
      *   <li>No selector / {@code ROOT}: {@code fx:context} type if set, otherwise the
      *       code-behind class</li>
-     *   <li>{@code self} / {@code this}: the class of {@code contextTag} itself</li>
-     *   <li>{@code parent} / {@code parent[N]} / {@code parent<Type>} /
-     *       {@code parent<Type>[N]}:
+     *   <li>{@code :element}: the class of {@code contextTag} itself</li>
+     *   <li>{@code :parent}, {@code :parent(N)}, and {@code :parent<Type>(N)}:
      *       the class of the appropriate ancestor of {@code contextTag}</li>
      * </ul>
      *
@@ -246,9 +245,6 @@ public final class Fxml2BindingPathResolver {
             @Nullable ContextSelector selector,
             @NotNull XmlTag contextTag,
             @NotNull XmlFile xmlFile) {
-
-        // "this" token means ROOT context: same as no selector
-        if (selector != null && selector.isThis()) selector = null;
 
         if (selector == null) {
             // If fx:context is explicitly set, it overrides the code-behind as start class.
@@ -272,7 +268,19 @@ public final class Fxml2BindingPathResolver {
             return effectiveRootTagClass(xmlFile);
         }
 
-        if (selector.isSelf()) {
+        if (selector.isContext()) {
+            PsiClass contextClass = resolveContextClass(xmlFile);
+            if (contextClass != null) return contextClass;
+            PsiClass codeBehind = resolveCodeBehindClass(xmlFile);
+            return codeBehind != null ? codeBehind : effectiveRootTagClass(xmlFile);
+        }
+
+        if (selector.isRoot()) {
+            PsiClass codeBehind = resolveCodeBehindClass(xmlFile);
+            return codeBehind != null ? codeBehind : effectiveRootTagClass(xmlFile);
+        }
+
+        if (selector.isElement()) {
             return resolveTagClass(contextTag);
         }
 
@@ -294,14 +302,13 @@ public final class Fxml2BindingPathResolver {
             @NotNull XmlTag contextTag) {
         if (selector == null) return null;
 
-        // "this" -> navigate to the root tag (ROOT context = code-behind class = root element)
-        if (selector.isThis()) {
+        if (selector.isElement()) return contextTag;
+
+        if (selector.isRoot()) {
             XmlTag cur = contextTag;
             while (cur.getParentTag() != null) cur = cur.getParentTag();
             return cur;
         }
-
-        if (selector.isSelf()) return contextTag;
 
         if (selector.isParent()) {
             return findParentAncestorTag(selector, contextTag);
@@ -311,9 +318,8 @@ public final class Fxml2BindingPathResolver {
     }
 
     /**
-     * Finds the ancestor {@link XmlTag} selected by a {@code parent[...]} context selector.
-     * Applies both the type-name filter ({@code parent[Type]}) and index filter
-     * ({@code parent[N]}, {@code parent[Type:N]}).
+     * Finds the object selected by a {@code :parent} context selector.
+     * Applies both the optional type-name filter and depth.
      * Returns {@code null} when no matching ancestor exists.
      */
     private static @Nullable XmlTag findParentAncestorTag(
@@ -324,20 +330,27 @@ public final class Fxml2BindingPathResolver {
         List<XmlTag> ancestors = objectAncestors(contextTag);
 
         if (searchType != null) {
+            if (level != null && level == 0) {
+                PsiClass currentClass = resolveTagClass(contextTag);
+                return currentClass != null && typeNameMatches(currentClass, searchType)
+                        ? contextTag : null;
+            }
             int matchCount = 0;
-            int targetMatch = level != null ? level : 0;
+            int targetMatch = level != null ? level : 1;
             for (XmlTag ancestor : ancestors) {
                 PsiClass cls = resolveTagClass(ancestor);
                 if (cls != null && typeNameMatches(cls, searchType)) {
-                    if (matchCount == targetMatch) return ancestor;
                     matchCount++;
+                    if (matchCount == targetMatch) return ancestor;
                 }
             }
             return null;
         }
 
-        int idx = level != null ? level : 0;
-        return idx < ancestors.size() ? ancestors.get(idx) : null;
+        if (level != null && level == 0) return contextTag;
+        int depth = level != null ? level : 1;
+        int idx = depth - 1;
+        return idx >= 0 && idx < ancestors.size() ? ancestors.get(idx) : null;
     }
 
 
@@ -459,7 +472,7 @@ public final class Fxml2BindingPathResolver {
      *       segments are interpreted first as an <em>instance path</em> against the binding
      *       context, then (failing that) as a <em>class name</em> for a static method, and
      *       finally the whole path is tried as a constructor (class) reference.</li>
-     *   <li>Each argument that is itself a path expression (e.g. {@code width}, {@code self/width},
+     *   <li>Each argument that is itself a path expression (e.g. {@code width}, {@code :element.width},
      *       or a nested function call) is resolved against the binding context; string, number,
      *       boolean, {@code null}, and markup-extension literals carry no navigable reference.</li>
      * </ul>
@@ -467,8 +480,8 @@ public final class Fxml2BindingPathResolver {
      * <p>When {@code path} is not a function call, this delegates to
      * {@link #resolve(String, PsiClass, GlobalSearchScope, Kind, XmlFile)}.
      *
-     * @param contextTag the tag on which the binding appears, used to resolve {@code self/} and
-     *                   {@code parent/} selectors in argument paths; may be {@code null}
+     * @param contextTag the tag on which the binding appears, used to resolve context selectors;
+     *                   may be {@code null}
      */
     public static @NotNull List<Segment> resolveFunctionCall(
             @NotNull String path,
@@ -511,7 +524,7 @@ public final class Fxml2BindingPathResolver {
         LITERAL,
         /** A nested method or constructor invocation, e.g. {@code list.get(index)}. */
         NESTED_CALL,
-        /** A path expression resolved against the evaluation context, e.g. {@code self/width}. */
+        /** A path expression resolved against the evaluation context, e.g. {@code :element.width}. */
         PATH
     }
 
@@ -523,6 +536,17 @@ public final class Fxml2BindingPathResolver {
      * function call or has no arguments.
      */
     public static @NotNull List<FunctionArgument> functionArguments(@NotNull String path) {
+        try {
+            Fxml2ExpressionParser.Expression expression = Fxml2ExpressionParser.parse(path);
+            if (expression instanceof Fxml2ExpressionParser.InvocationExpression invocation) {
+                return invocation.arguments().stream()
+                        .map(argument -> new FunctionArgument(
+                                argument.text(), argument.span().start()))
+                        .toList();
+            }
+        } catch (Fxml2ExpressionParser.ParseException ignored) {
+            // Incomplete expressions use the tolerant scanner below for editor completion.
+        }
         int parenIdx = functionCallParenIndex(path);
         if (parenIdx < 0) return List.of();
         int closeIdx = matchingCloseParen(path, parenIdx);
@@ -646,11 +670,13 @@ public final class Fxml2BindingPathResolver {
         List<Segment> segs = new ArrayList<>();
         if (funcPath.isBlank()) return segs;
 
-        int lastDot = funcPath.lastIndexOf('.');
+        String lookupPath = withoutTypeArguments(funcPath);
+
+        int lastDot = lookupPath.lastIndexOf('.');
         if (lastDot > 0) {
-            String qualifier = funcPath.substring(0, lastDot);
-            String methodName = funcPath.substring(lastDot + 1);
-            int methodOffset = lastDot + 1;
+            String qualifier = lookupPath.substring(0, lastDot);
+            String methodName = lookupPath.substring(lastDot + 1);
+            int methodOffset = funcPath.lastIndexOf(methodName);
 
             // 1. Try the qualifier as an instance path against the binding context.
             List<Segment> qualSegs = resolve(qualifier, startClass, scope, kind, xmlFile);
@@ -677,9 +703,9 @@ public final class Fxml2BindingPathResolver {
             }
 
             // 3. Try the whole function path as a constructor (class) reference.
-            PsiClass ctorClass = resolveClass(funcPath, scope, startClass.getProject(), xmlFile);
+            PsiClass ctorClass = resolveClass(lookupPath, scope, startClass.getProject(), xmlFile);
             if (ctorClass != null) {
-                return classQualifierSegments(funcPath, ctorClass, startClass.getProject());
+                return classQualifierSegments(lookupPath, ctorClass, startClass.getProject());
             }
 
             // Unresolved: emit the qualifier (best effort) and an unresolved method segment.
@@ -689,24 +715,44 @@ public final class Fxml2BindingPathResolver {
         }
 
         // Bare name: method on the binding context, or a constructor (class) reference.
-        if (firstMethodByName(startClass, funcPath) != null) {
-            segs.add(methodSegment(funcPath, startClass, 0));
+        if (firstMethodByName(startClass, lookupPath) != null) {
+            segs.add(methodSegment(lookupPath, startClass, 0));
             return segs;
         }
-        PsiClass cls = resolveClass(funcPath, scope, startClass.getProject(), xmlFile);
+        PsiClass cls = resolveClass(lookupPath, scope, startClass.getProject(), xmlFile);
         if (cls != null) {
-            segs.add(new Segment(funcPath, cls, cls, true, false, 0));
+            segs.add(new Segment(lookupPath, cls, cls, true, false, 0));
             return segs;
         }
-        segs.add(new Segment(funcPath, null, null, false, false, 0));
+        segs.add(new Segment(lookupPath, null, null, false, false, 0));
         return segs;
+    }
+
+    private static @NotNull String withoutTypeArguments(@NotNull String path) {
+        StringBuilder result = new StringBuilder(path.length());
+        int depth = 0;
+        for (int offset = 0; offset < path.length();) {
+            Fxml2TypeArgumentParser.Delimiter delimiter =
+                    Fxml2TypeArgumentParser.delimiterAt(path, offset);
+            if (delimiter == Fxml2TypeArgumentParser.Delimiter.OPEN) {
+                depth++;
+                offset += delimiter.length(path, offset);
+            } else if (delimiter == Fxml2TypeArgumentParser.Delimiter.CLOSE && depth > 0) {
+                depth--;
+                offset += delimiter.length(path, offset);
+            } else {
+                if (depth == 0) result.append(path.charAt(offset));
+                offset++;
+            }
+        }
+        return result.toString();
     }
 
     /**
      * Appends the navigable segments of a single function-call argument (with {@code pathOffset}
      * relative to the full path) to {@code result}.  Literals contribute no segments; nested
      * calls recurse; path expressions resolve against the binding context (honoring any
-     * {@code self/}/{@code parent/} selector).
+     * context selector).
      */
     private static void appendArgumentSegments(
             @NotNull FunctionArgument arg,
@@ -723,7 +769,7 @@ public final class Fxml2BindingPathResolver {
             case NESTED_CALL -> result.addAll(shiftSegments(
                     resolveFunctionCall(text, startClass, scope, kind, xmlFile, contextTag), base));
             case PATH -> {
-                // Path expression, possibly prefixed with a context selector (self/, parent/, this.).
+                // Path expression, possibly prefixed with a context selector.
                 ContextSelector selector = Fxml2BindingExpressionParser.parseContextSelector(text);
                 PsiClass argStartClass = startClass;
                 if (selector != null && contextTag != null) {
@@ -1091,9 +1137,11 @@ public final class Fxml2BindingPathResolver {
             // --- Instance property resolution ---
             //
             // Reached only when no FQN class prefix matched above and no fx:id matched.
-            PsiElement typeDecl = Fxml2PropertyResolver.resolveInstanceProperty(current, lookupName);
-            if (typeDecl != null) {
-                resolveAndAddInstancePropertySegment(result, name, lookupName, typeDecl, current, kind,
+            PropertyResolution property = resolveInstanceProperty(
+                    current, startClass, lookupName, xmlFile);
+            if (property != null) {
+                resolveAndAddInstancePropertySegment(result, name, lookupName,
+                        property.declaration(), property.owner(), kind,
                         observableSelectee[i], nameOffsets[i]);
                 // When the current segment is the observable selectee (preceded by '::'),
                 // keep the raw observable type as the context for the next segment.
@@ -1103,36 +1151,12 @@ public final class Fxml2BindingPathResolver {
                 // (e.g. ObservableList).  When the current segment is not an observable selectee,
                 // always use the unwrapped value type regardless of what separator follows it.
                 if (observableSelectee[i]) {
-                    current = propertyTypeRaw(typeDecl, current);
+                    current = propertyTypeRaw(property.declaration(), property.owner());
                 } else {
                     current = result.getLast().resultType();
                 }
                 i++;
                 continue;
-            }
-
-            // Instance-property fallback: when the FXML compiler-generated base class is
-            // absent (stale build), the code-behind's supertype chain is broken and
-            // resolveInstanceProperty() won't reach the root element type.
-            // The compiler always generates "class FooBase extends <rootTagType>", so try
-            // the root-tag class as a synthetic supertype for the first segment only.
-            // This fallback only applies to the default context (no fx:context set).
-            if (xmlFile != null && current == startClass && resolveContextClass(xmlFile) == null) {
-                PsiClass rootTagClass = resolveRootTagClass(xmlFile);
-                if (rootTagClass != null) {
-                    PsiElement rootTypeDecl = Fxml2PropertyResolver.resolveInstanceProperty(rootTagClass, lookupName);
-                    if (rootTypeDecl != null) {
-                        resolveAndAddInstancePropertySegment(result, name, lookupName, rootTypeDecl, rootTagClass, kind,
-                                observableSelectee[i], nameOffsets[i]);
-                        if (observableSelectee[i]) {
-                            current = propertyTypeRaw(rootTypeDecl, rootTagClass);
-                        } else {
-                            current = result.getLast().resultType();
-                        }
-                        i++;
-                        continue;
-                    }
-                }
             }
 
             // --- Inherited static field resolution ---
@@ -1174,6 +1198,23 @@ public final class Fxml2BindingPathResolver {
             i++;
         }
         return result;
+    }
+
+    private record PropertyResolution(@NotNull PsiClass owner, @NotNull PsiElement declaration) {}
+
+    private static @Nullable PropertyResolution resolveInstanceProperty(
+            @NotNull PsiClass current,
+            @NotNull PsiClass startClass,
+            @NotNull String name,
+            @Nullable XmlFile xmlFile) {
+        PsiElement declaration = Fxml2PropertyResolver.resolveInstanceProperty(current, name);
+        if (declaration != null) return new PropertyResolution(current, declaration);
+
+        if (xmlFile == null || current != startClass || resolveContextClass(xmlFile) != null) return null;
+        PsiClass rootTagClass = resolveRootTagClass(xmlFile);
+        if (rootTagClass == null) return null;
+        declaration = Fxml2PropertyResolver.resolveInstanceProperty(rootTagClass, name);
+        return declaration != null ? new PropertyResolution(rootTagClass, declaration) : null;
     }
 
     /**

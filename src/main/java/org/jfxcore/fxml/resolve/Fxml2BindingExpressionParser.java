@@ -28,177 +28,42 @@ public final class Fxml2BindingExpressionParser {
     // Context selector
     // -----------------------------------------------------------------------
 
-    /**
-     * Parsed binding context selector: the {@code selector/} or {@code selector.../}
-     * prefix that appears before the actual property path.
-     *
-     * <p>Examples of valid selector forms:
-     * <pre>
-     *   self/width                -> selector="self", searchType=null, level=null
-     *   parent/prefWidth          -> selector="parent", searchType=null, level=null
-     *   parent[0]/prefWidth       -> selector="parent", searchType=null, level=0
-     *   parent&lt;Pane&gt;/prefWidth      -> selector="parent&lt;Pane&gt;", searchType="Pane", level=null
-     *   parent&lt;Pane&gt;[1]/width -> selector="parent&lt;Pane&gt;[1]", searchType="Pane", level=1
-     * </pre>
-     *
-     * @param selectorText raw text of the selector token (e.g. {@code "parent&lt;Pane&gt;[1]"})
-     * @param selectorName {@code "self"} or {@code "parent"}
-     * @param searchType   optional type name inside angle brackets (e.g. {@code "Pane"})
-     * @param level        optional numeric level (e.g. {@code 1}); for bare
-     *                     {@code parent/} this is {@code null} (defaults to 0 = immediate parent)
-     * @param selectorLength number of characters the selector occupies in the stripped path
-     *                       (length of {@code selectorText + "/"})
-     * @param remainingPath  the path after {@code selector/}
-     * @param remainingOffset offset of {@code remainingPath} within the stripped path
-     */
+    /** Parsed current-syntax context selector and the expression that follows it. */
     public record ContextSelector(
             @NotNull String selectorText,
-            @NotNull String selectorName,
+            @NotNull Fxml2ExpressionParser.ContextSelectorKind kind,
             @Nullable String searchType,
             @Nullable Integer level,
             int selectorLength,
             @NotNull String remainingPath,
             int remainingOffset) {
 
-        /** {@code true} if the selector is {@code self}. */
-        public boolean isSelf() { return "self".equals(selectorName); }
-        /** {@code true} if the selector is {@code parent} (with optional type/level). */
-        public boolean isParent() { return "parent".equals(selectorName); }
-        /** {@code true} if the selector token is {@code this} (ROOT context, token consumed). */
-        public boolean isThis() { return "this".equals(selectorText) && selectorName.isEmpty(); }
+        public boolean isParent() { return kind == Fxml2ExpressionParser.ContextSelectorKind.PARENT; }
+        public boolean isContext() { return kind == Fxml2ExpressionParser.ContextSelectorKind.CONTEXT; }
+        public boolean isRoot() { return kind == Fxml2ExpressionParser.ContextSelectorKind.ROOT; }
+        public boolean isElement() { return kind == Fxml2ExpressionParser.ContextSelectorKind.ELEMENT; }
     }
 
-    /**
-     * If the given stripped path starts with a context selector ({@code self/},
-     * {@code parent/}, {@code parent[N]/}, {@code parent<Type>/}, or
-     * {@code parent<Type>[N]/}), parses and returns the selector; otherwise returns
-     * {@code null}.
-     *
-     * <p>The angle brackets in the type context selector may appear as literal
-     * {@code <}/{@code >} characters (as returned by the XML parser after unescaping)
-     * or as XML entity references {@code &lt;}/{@code &gt;} (when
-     * {@code XmlAttributeValue.getValue()} does not unescape entities).
-     * Both forms are recognized.
-     *
-     * <p>This also handles the {@code this.} prefix which the compiler treats as
-     * equivalent to {@code self/} when the first path segment is {@code "this"}.
-     *
-     * @param strippedPath path with boolean operators already removed
-     */
+    /** Parses a leading current-syntax context selector, if present. */
     public static @Nullable ContextSelector parseContextSelector(@NotNull String strippedPath) {
-        // "this.foo": the FXML compiler simply skips the "this" token and resolves
-        // the rest against the ROOT context (code-behind class).  We represent this as
-        // a null selector (default ROOT) with the "this." prefix consumed so callers
-        // know the selector text to highlight.  We use selectorName="" to distinguish
-        // from a real self/parent selector while still recording the token.
-        if (strippedPath.equals("this") || strippedPath.startsWith("this.")) {
-            String remaining = strippedPath.length() > 5 ? strippedPath.substring(5) : "";
-            // selectorName="" signals: ROOT context, but highlight "this" as the token
-            return new ContextSelector("this", "", null, null, 5, remaining, 5);
-        }
-
-        // "self/" -> self context
-        if (strippedPath.startsWith("self/")) {
-            String remaining = strippedPath.substring(5);
-            return new ContextSelector("self", "self", null, null,
-                    5, remaining, 5);
-        }
-
-        // "parent" variants
-        if (!strippedPath.startsWith("parent")) return null;
-        String afterParent = strippedPath.substring(6); // after "parent"
-
-        // bare "parent/" -> immediate parent
-        if (afterParent.startsWith("/")) {
-            String remaining = afterParent.substring(1);
-            return new ContextSelector("parent", "parent", null, null,
-                    7, remaining, 7);
-        }
-
-        // "parent<Type>/" or "parent<Type>[N]/": type context selector using angle brackets.
-        //
-        // Both literal '<'/'>' (after XML-entity unescaping by XmlAttributeValue.getValue())
-        // and the raw XML entity form '&lt;'/'&gt;' (when getValue() does not unescape) are
-        // supported, so the plugin works regardless of which form the XML parser produces.
-        {
-            String openAngleMark  = afterParent.startsWith("<")    ? "<"    :
-                                    afterParent.startsWith("&lt;") ? "&lt;" : null;
-            if (openAngleMark != null) {
-                String closeAngleMark = openAngleMark.equals("<") ? ">" : "&gt;";
-                int openAngleLen  = openAngleMark.length();
-                int closeAngleIdx = afterParent.indexOf(closeAngleMark, openAngleLen);
-                if (closeAngleIdx < 0) return null;
-                int closeAngleEnd = closeAngleIdx + closeAngleMark.length();
-
-                String typeName = afterParent.substring(openAngleLen, closeAngleIdx).trim();
-                if (!Fxml2JavaNames.isIdentifier(typeName)) return null;
-
-                String afterClose = afterParent.substring(closeAngleEnd); // after ">" or "&gt;"
-                Integer level = null;
-                int bracketLen = 0; // length of the optional "[N]" suffix
-
-                if (afterClose.startsWith("[")) {
-                    int bracketClose = afterClose.indexOf(']');
-                    if (bracketClose < 0) return null;
-                    String numStr = afterClose.substring(1, bracketClose).trim();
-                    try { level = Integer.parseInt(numStr); } catch (NumberFormatException e) { return null; }
-                    bracketLen = bracketClose + 1; // length of "[N]"
-                    afterClose = afterClose.substring(bracketLen); // advance past "[N]"
+        if (strippedPath.startsWith(":")) {
+            Fxml2ExpressionParser.ContextSelectorExpression selector =
+                    Fxml2ExpressionParser.parseLeadingContextSelector(strippedPath);
+            if (selector != null) {
+                int selectorEnd = selector.span().end();
+                int remainingOffset = selectorEnd;
+                if (remainingOffset < strippedPath.length()
+                        && strippedPath.charAt(remainingOffset) == '.') {
+                    remainingOffset++;
                 }
-
-                if (!afterClose.startsWith("/")) return null;
-
-                // selectorLen = "parent"(6) + "<Type>"(closeAngleEnd) + "[N]"(bracketLen) + "/"(1)
-                int selectorLen = 6 + closeAngleEnd + bracketLen + 1;
-                String selectorText = strippedPath.substring(0, selectorLen - 1); // without "/"
-                String remaining = afterClose.substring(1); // after "/"
-                return new ContextSelector(selectorText, "parent", typeName, level,
-                        selectorLen, remaining, selectorLen);
+                return new ContextSelector(
+                        strippedPath.substring(0, selectorEnd), selector.kind(),
+                        selector.typeName(), selector.depth(), remainingOffset,
+                        strippedPath.substring(remainingOffset), remainingOffset);
             }
         }
 
-        // "parent[N]/" -> numeric index only (N must be a number).
-        //
-        // The square-bracket form accepts ONLY a numeric index; non-numeric content
-        // (e.g. "parent[Button]") is not a valid context selector and the compiler
-        // generates UNEXPECTED_TOKEN for such expressions.
-        if (!afterParent.startsWith("[")) return null;
-        int close = afterParent.indexOf(']');
-        if (close < 0) return null;
-        if (close + 1 >= afterParent.length() || afterParent.charAt(close + 1) != '/') return null;
-
-        String bracket = afterParent.substring(1, close); // content between [ and ]
-        if (bracket.isEmpty()) return null;
-        int level;
-        try {
-            level = Integer.parseInt(bracket.trim());
-        } catch (NumberFormatException e) {
-            return null; // Non-numeric content inside brackets is not a valid context selector
-        }
-
-        // selectorLen = "parent"(6) + "["(1) + content(close-1) + "]"(1) + "/"(1) = 6 + close + 2
-        int selectorLen = 6 + close + 2;
-        String selectorText = strippedPath.substring(0, selectorLen - 1); // without trailing "/"
-        String remaining = afterParent.substring(close + 2); // after "]/"
-        return new ContextSelector(selectorText, "parent", null, level,
-                selectorLen, remaining, selectorLen);
-    }
-
-    /**
-     * Returns {@code true} when the {@code '<'} (or {@code '&lt;'}) at position
-     * {@code anglePos} within {@code pathAfterOp} is the opening angle bracket of a
-     * {@code parent<Type>} context selector, rather than the start of a type witness.
-     *
-     * <p>The angle bracket is part of a context selector if and only if it occurs
-     * immediately after the keyword {@code "parent"} (i.e. at position 6): meaning the
-     * expression is {@code parent<...>...} rather than {@code someMethod<...>...}.
-     *
-     * @param pathAfterOp the path string with any leading boolean operator already stripped
-     * @param anglePos    position of the {@code '<'} or start of {@code '&lt;'} in {@code pathAfterOp}
-     */
-    private static boolean isParentContextSelectorAngle(@NotNull String pathAfterOp, int anglePos) {
-        // The '<' (or '&lt;') must be immediately after the six characters of "parent".
-        return anglePos == 6 && pathAfterOp.startsWith("parent");
+        return null;
     }
 
     /**
@@ -264,6 +129,11 @@ public final class Fxml2BindingExpressionParser {
         /** The offset of {@link #strippedPath()} within the raw value (quotes excluded, 0-based). */
         public int strippedPathOffset() {
             return pathOffset + operatorLength();
+        }
+
+        /** Parses the complete source expression using the current expression grammar. */
+        public @NotNull Fxml2ExpressionParser.Expression expression() {
+            return Fxml2ExpressionParser.parse(path);
         }
     }
 
@@ -499,18 +369,14 @@ public final class Fxml2BindingExpressionParser {
             if (path.isEmpty()) {
                 return new MissingBindingPath("fx:Evaluate");
             }
-            // A type-witness '<' or '&lt;' anywhere in the path is an error in compact
-            // $-notation: UNLESS it is the opening of a 'parent<Type>' context selector.
-            // E.g. $parent<Pane>/prefWidth is valid; $method<String> is not.
-            int opLen = path.startsWith("!!") ? 2 : path.startsWith("!") ? 1 : 0;
-            String pathAfterOp = path.substring(opLen); // stripped of any boolean operator
-            int angleBracket = Fxml2TypeArgumentParser.indexOfOpeningBracket(pathAfterOp, 0);
-            if (angleBracket >= 0 && !isParentContextSelectorAngle(pathAfterOp, angleBracket)) {
-                return new ParseError("'>' expected", 0, value.length());
-            }
-            // Comma in a $path means mixing binding with comma-separated coercion: compiler error.
             if (path.contains(",")) {
-                return new ParseError("A comma-separated argument list cannot contain binding expressions", 0, value.length());
+                try {
+                    Fxml2ExpressionParser.parse(path);
+                } catch (Fxml2ExpressionParser.ParseException ignored) {
+                    return new ParseError(
+                            "A comma-separated argument list cannot contain binding expressions",
+                            0, value.length());
+                }
             }
             return new ParsedExpression(path, value.indexOf(path), 1,
                     org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind.EVALUATE);

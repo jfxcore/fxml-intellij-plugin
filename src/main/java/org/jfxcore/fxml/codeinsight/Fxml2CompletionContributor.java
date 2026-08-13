@@ -59,6 +59,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
+import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
@@ -127,18 +128,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
         if (origPos != null) {
             XmlProcessingInstruction pi = ImportPiCompletionProvider.findEnclosingImportPi(origPos);
             if (pi != null) {
-                ASTNode dataNode = pi.getNode().findChildByType(XmlTokenType.XML_TAG_CHARACTERS);
-                String typed = "";
-                if (dataNode != null) {
-                    int dataStart = dataNode.getStartOffset();
-                    if (caretOffset >= dataStart) {
-                        int caretInData = caretOffset - dataStart;
-                        String dataText = dataNode.getText();
-                        if (caretInData <= dataText.length()) {
-                            typed = dataText.substring(0, caretInData).trim();
-                        }
-                    }
-                }
+                String typed = importPrefixAtCaret(pi, caretOffset);
                 // Suppress all other contributors (no-op consumer), then provide our FQN items.
                 result.runRemainingContributors(parameters, r -> { /* discard all default items */ });
                 FqnClassNameCompletionProvider.completeFqn(parameters, result, typed);
@@ -255,6 +245,18 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
         }
 
         super.fillCompletionVariants(parameters, result);
+    }
+
+    private static @NotNull String importPrefixAtCaret(
+            @NotNull XmlProcessingInstruction instruction, int caretOffset) {
+        ASTNode dataNode = instruction.getNode().findChildByType(XmlTokenType.XML_TAG_CHARACTERS);
+        if (dataNode == null) return "";
+
+        int dataStart = dataNode.getStartOffset();
+        int caretInData = caretOffset - dataStart;
+        String dataText = dataNode.getText();
+        if (caretInData < 0 || caretInData > dataText.length()) return "";
+        return dataText.substring(0, caretInData).trim();
     }
 
     /**
@@ -708,13 +710,8 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
      * inserts the {@code {ClassName } text (already placed by the lookup item) and
      * adds an {@code <?import fqn?>} PI for the class if not yet present.
      */
-    private static final class MarkupExtensionImportInsertHandler implements InsertHandler<LookupElement> {
-        private final PsiClass myClass;
-
-        MarkupExtensionImportInsertHandler(@NotNull PsiClass cls) {
-            this.myClass = cls;
-        }
-
+    private record MarkupExtensionImportInsertHandler(
+            @NotNull PsiClass myClass) implements InsertHandler<LookupElement> {
         @Override
         public void handleInsert(@NotNull InsertionContext context, @NotNull LookupElement item) {
             String fqn = myClass.getQualifiedName();
@@ -731,13 +728,8 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
      * imported.  The lookup element uses the simple name as its lookup string (so the prefix
      * matcher can match it), so the handler only needs to add the {@code <?import?>} PI.
      */
-    private static final class TypeArgImportInsertHandler implements InsertHandler<LookupElement> {
-        private final PsiClass myClass;
-
-        TypeArgImportInsertHandler(@NotNull PsiClass cls) {
-            this.myClass = cls;
-        }
-
+    private record TypeArgImportInsertHandler(
+            @NotNull PsiClass myClass) implements InsertHandler<LookupElement> {
         @Override
         public void handleInsert(@NotNull InsertionContext context, @NotNull LookupElement item) {
             String fqn = myClass.getQualifiedName();
@@ -1328,6 +1320,15 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 @NotNull XmlFile xmlFile,
                 @Nullable PsiType targetPropType,
                 @NotNull CompletionResultSet result) {
+            var typeArgumentCaret = Fxml2ExpressionParser.locateTypeArgumentCaret(pathExpr);
+            if (typeArgumentCaret.isPresent()) {
+                Fxml2ExpressionParser.TypeArgumentCaret caret = typeArgumentCaret.orElseThrow();
+                addBindingClassNameCompletions(
+                        caret.prefix(), xmlFile, result,
+                        typeArgumentConstraint(caret, tag, xmlFile));
+                return;
+            }
+
             Fxml2BindingPathResolver.CaretLocation loc = Fxml2BindingPathResolver.locateCaret(pathExpr);
             switch (loc.kind()) {
                 case FUNCTION_ARGUMENT -> {
@@ -1382,7 +1383,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
 
         /**
          * Completes a binding name path (no enclosing unclosed parenthesis), offering: a
-         * {@code self/}/{@code parent/} context selector when none is typed yet; instance property
+         * context selector when none is typed yet; instance property
          * names, {@code fx:id} elements, and class names at the first segment; and static fields and
          * static methods on a class qualifier.  Class names and static methods make function-binding
          * expressions completable (e.g. {@code Str} -> {@code String}, {@code String.fo} ->
@@ -1395,27 +1396,29 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 @Nullable PsiType targetPropType,
                 @NotNull CompletionResultSet result) {
 
-            // Parse context selector (self/, parent/, etc.) from the stripped path
+            // Parse a context selector from the stripped path.
             Fxml2BindingExpressionParser.ContextSelector selector =
                     Fxml2BindingExpressionParser.parseContextSelector(strippedPath);
 
-            // Offer context selectors when the user hasn't typed one yet and the partial
-            // text could match "self" or "parent".
+            // Offer context selectors when the partial text can match one.
             if (selector == null) {
                 CompletionResultSet selectorResult = result.withPrefixMatcher(
                         new PlainPrefixMatcher(strippedPath, true));
-                if ("self".startsWith(strippedPath)) {
-                    selectorResult.addElement(LookupElementBuilder.create("self/")
-                            .withPresentableText("self/")
-                            .withIcon(AllIcons.Nodes.Unknown)
-                            .withTypeText("context selector"));
+                for (String contextSelector : List.of(
+                        ":context", ":root", ":element", ":parent")) {
+                    if (contextSelector.startsWith(strippedPath)) {
+                        selectorResult.addElement(LookupElementBuilder.create(contextSelector)
+                                .withIcon(AllIcons.Nodes.Unknown)
+                                .withTypeText("context selector"));
+                    }
                 }
-                if ("parent".startsWith(strippedPath)) {
-                    selectorResult.addElement(LookupElementBuilder.create("parent/")
-                            .withPresentableText("parent/")
-                            .withIcon(AllIcons.Nodes.Unknown)
-                            .withTypeText("context selector"));
-                }
+            }
+
+            // A context selector selects the object that begins the path, but does not itself
+            // separate that object from a property name. Wait for the explicit dot before
+            // offering properties so accepting a completion cannot concatenate the two names.
+            if (selector != null && strippedPath.length() == selector.selectorText().length()) {
+                return;
             }
 
             // The actual property path is what follows the selector
@@ -1525,7 +1528,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 // No resolvable start class, but at the first-segment root-context level
                 // we can still offer fx:id-declared elements, since the FXML compiler will
                 // inject them into the base class once the project is built.
-                if (selector == null || selector.isThis()) {
+                if (selector == null) {
                     CompletionResultSet fxIdPrefixResult = result.withPrefixMatcher(
                             new PlainPrefixMatcher(partialName, true));
                     addFxIdCompletions(xmlFile, partialName, fxIdPrefixResult);
@@ -1587,7 +1590,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 // properties above) because the code-behind base class may not yet
                 // have been compiled (missing fx:id fields), and the user's intent
                 // is clear from the XML structure alone.
-                if (completedPrefix.isEmpty() && (selector == null || selector.isThis())) {
+                if (completedPrefix.isEmpty() && selector == null) {
                     addFxIdCompletions(xmlFile, partialName, prefixResult);
                 }
 
@@ -1606,7 +1609,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 // the root-tag class an effective supertype of the code-behind. Mirror this here so
                 // that root-element properties appear in completion even before the project is built.
                 // Only applied at the first segment level and when fx:context is not explicitly set.
-                if (completedPrefix.isEmpty() && (selector == null || selector.isThis())
+                if (completedPrefix.isEmpty() && selector == null
                         && Fxml2BindingPathResolver.resolveContextClass(xmlFile) == null) {
                     PsiClass rootTagClass = Fxml2BindingPathResolver.resolveRootTagClass(xmlFile);
                     if (rootTagClass != null && !rootTagClass.equals(currentClass)
@@ -1647,6 +1650,14 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 @NotNull String partial,
                 @NotNull XmlFile xmlFile,
                 @NotNull CompletionResultSet result) {
+            addBindingClassNameCompletions(partial, xmlFile, result, TypeArgumentConstraint.NONE);
+        }
+
+        private static void addBindingClassNameCompletions(
+                @NotNull String partial,
+                @NotNull XmlFile xmlFile,
+                @NotNull CompletionResultSet result,
+                @NotNull TypeArgumentConstraint constraint) {
             if (partial.isEmpty()) return;
             Project project = xmlFile.getProject();
             GlobalSearchScope allScope = GlobalSearchScope.allScope(project);
@@ -1663,6 +1674,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 PsiClass cls = Fxml2ImportResolver.resolve(simpleName, xmlFile);
                 if (cls == null) continue;
                 if (Fxml2AddImportFix.shouldSkipClass(cls, cls.getQualifiedName(), runtimeRoots, false)) continue;
+                if (constraint.rejects(cls)) continue;
                 int tier = Fxml2AddImportFix.candidateTier(cls);
                 classResult.addElement(PrioritizedLookupElement.withPriority(
                         LookupElementBuilder.create(cls, simpleName)
@@ -1679,6 +1691,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 for (PsiClass cls : cache.getClassesByName(name, allScope)) {
                     String fqn = cls.getQualifiedName();
                     if (Fxml2AddImportFix.shouldSkipClass(cls, fqn, runtimeRoots, false)) continue;
+                    if (constraint.rejects(cls)) continue;
                     boolean needsImport = Fxml2ImportResolver.resolve(name, xmlFile) == null;
                     int tier = Fxml2AddImportFix.candidateTier(cls);
                     classResult.addElement(PrioritizedLookupElement.withPriority(
@@ -1689,6 +1702,58 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                             -tier));
                     offered.add(name);
                 }
+            }
+        }
+
+        private static @NotNull TypeArgumentConstraint typeArgumentConstraint(
+                @NotNull Fxml2ExpressionParser.TypeArgumentCaret caret,
+                @NotNull XmlTag tag,
+                @NotNull XmlFile xmlFile) {
+            List<List<PsiType>> alternatives = new ArrayList<>();
+            PsiClass genericClass = Fxml2ImportResolver.resolve(caret.ownerName(), xmlFile);
+            if (genericClass != null) {
+                PsiTypeParameter[] classParameters = genericClass.getTypeParameters();
+                if (caret.argumentIndex() < classParameters.length) {
+                    alternatives.add(List.of(
+                            classParameters[caret.argumentIndex()].getExtendsListTypes()));
+                } else {
+                    int constructorIndex = caret.argumentIndex() - classParameters.length;
+                    for (PsiMethod constructor : genericClass.getConstructors()) {
+                        PsiTypeParameter[] constructorParameters = constructor.getTypeParameters();
+                        if (constructorIndex < constructorParameters.length) {
+                            alternatives.add(List.of(
+                                    constructorParameters[constructorIndex].getExtendsListTypes()));
+                        }
+                    }
+                }
+            }
+
+            if (caret.depth() == 1) {
+                PsiClass owner = Fxml2BindingPathResolver.resolveStartClass(null, tag, xmlFile);
+                if (owner != null) {
+                    for (PsiMethod method : owner.findMethodsByName(caret.ownerName(), true)) {
+                        PsiTypeParameter[] parameters = method.getTypeParameters();
+                        if (caret.argumentIndex() < parameters.length) {
+                            alternatives.add(List.of(
+                                    parameters[caret.argumentIndex()].getExtendsListTypes()));
+                        }
+                    }
+                }
+            }
+
+            return alternatives.isEmpty() ? TypeArgumentConstraint.NONE
+                    : new TypeArgumentConstraint(List.copyOf(alternatives));
+        }
+
+        private record TypeArgumentConstraint(@NotNull List<List<PsiType>> alternatives) {
+            private static final TypeArgumentConstraint NONE = new TypeArgumentConstraint(List.of());
+
+            boolean rejects(@NotNull PsiClass candidate) {
+                if (alternatives.isEmpty()) return false;
+                PsiType candidateType = JavaPsiFacade.getElementFactory(candidate.getProject())
+                        .createType(candidate);
+                return alternatives.stream().noneMatch(bounds -> bounds.stream()
+                        .allMatch(bound -> bound.isAssignableFrom(candidateType)));
             }
         }
 
