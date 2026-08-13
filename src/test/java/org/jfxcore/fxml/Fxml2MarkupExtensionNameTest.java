@@ -158,4 +158,39 @@ class Fxml2MarkupExtensionNameTest extends Fxml2TestBase {
         assertTrue(intentions.stream().anyMatch(a -> a.getText().contains("Add import for 'ScaledInset'")),
                 "expected an add-import fix, got: " + intentions.stream().map(IntentionAction::getText).toList());
     }
+
+    // -----------------------------------------------------------------------
+    // The name of an extension that is one item of a value sequence
+    // -----------------------------------------------------------------------
+
+    /** An extension in an item of a value sequence offers to add the import as well. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void anUnimportedExtensionInAnItemOffersToAddTheImport() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane",
+                """
+                  <GridPane padding="10, 10, 10, {Scaled<caret>Inset value=6; factor=2}"/>
+                """
+        ));
+        List<IntentionAction> intentions = getFixture().getAvailableIntentions();
+        assertTrue(intentions.stream().anyMatch(a -> a.getText().contains("Add import for 'ScaledInset'")),
+                "expected an add-import fix, got: " + intentions.stream().map(IntentionAction::getText).toList());
+    }
+
+    /** Applying the fix on an item adds the import. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void addingTheImportFromAnItemResolvesTheExtensionName() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.GridPane",
+                """
+                  <GridPane padding="10, 10, 10, {Scaled<caret>Inset value=6; factor=2}"/>
+                """
+        ));
+        IntentionAction fix = getFixture().findSingleIntention("Add import for 'ScaledInset'");
+        getFixture().launchAction(fix);
+        assertTrue(documentText().contains("<?import ext.ScaledInset?>"),
+                "expected the import to be added, document: " + documentText());
+    }
 }
