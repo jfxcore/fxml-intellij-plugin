@@ -264,6 +264,30 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
     }
 
     /**
+     * A parameterized prefix-notation extension consumes the remaining comma-separated values,
+     * even when the attribute itself targets a list.  All three format arguments therefore belong
+     * to {@code StaticResource}; they are not additional items of {@code MessageList.values}.
+     */
+    @Test
+    void staticResource_formatArguments_areGreedyInsideListProperty() {
+        getFixture().addClass("""
+                package test;
+                import java.util.List;
+                import javafx.scene.layout.Pane;
+                public class MessageList extends Pane {
+                    public List<Object> getValues() { return null; }
+                }
+                """);
+        getFixture().configureByText("TestView.fxml", fxml(
+                "test.MessageList",
+                """
+                  <MessageList values="%greeting; formatArguments=Jane, Doe, @fallback.txt"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
      * {@code <StaticResource key="greeting" formatArguments="Jane, Doe, 1234.5"/>} as a
      * direct tag: the {@code formatArguments} attribute has type {@code Object[]}, and a
      * comma-separated list is valid for it: no "invalid value" error.
