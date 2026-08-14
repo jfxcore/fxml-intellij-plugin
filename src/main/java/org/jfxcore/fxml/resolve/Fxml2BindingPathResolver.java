@@ -495,6 +495,17 @@ public final class Fxml2BindingPathResolver {
             return resolve(path, startClass, scope, kind, xmlFile);
         }
 
+        try {
+            Fxml2ExpressionParser.Expression expression = Fxml2ExpressionParser.parse(path);
+            if (expression instanceof Fxml2ExpressionParser.InvocationExpression invocation) {
+                List<Segment> selectedCall = resolveSelectedInvocation(
+                        invocation, startClass, scope, kind, xmlFile, contextTag);
+                if (selectedCall != null) return selectedCall;
+            }
+        } catch (Fxml2ExpressionParser.ParseException ignored) {
+            // Incomplete expressions continue through the tolerant source scanner below.
+        }
+
         // Function-name path (everything before the '(').
         String funcPath = path.substring(0, parenIdx);
         List<Segment> result = new ArrayList<>(
@@ -506,6 +517,53 @@ public final class Fxml2BindingPathResolver {
         }
 
         return result;
+    }
+
+    /**
+     * Resolves an invocation whose named target is selected from a completed invocation. The
+     * selected method is looked up on the receiver invocation's result type.
+     */
+    private static @Nullable List<Segment> resolveSelectedInvocation(
+            Fxml2ExpressionParser.@NotNull InvocationExpression invocation,
+            @NotNull PsiClass startClass,
+            @NotNull GlobalSearchScope scope,
+            @Nullable Kind kind,
+            @NotNull XmlFile xmlFile,
+            @Nullable XmlTag contextTag) {
+
+        if (!(invocation.target() instanceof Fxml2ExpressionParser.MemberExpression member)) {
+            return null;
+        }
+
+        Fxml2ExpressionParser.Expression receiver = ungroup(member.receiver());
+        if (!(receiver instanceof Fxml2ExpressionParser.InvocationExpression receiverInvocation)) {
+            return null;
+        }
+
+        List<Segment> receiverSegments = resolveFunctionCall(
+                receiverInvocation.text(), startClass, scope, kind, xmlFile, contextTag);
+        if (receiverSegments.isEmpty() || receiverSegments.getLast().resultType() == null) {
+            return null;
+        }
+
+        List<Segment> result = new ArrayList<>(shiftSegments(
+                receiverSegments, receiverInvocation.span().start()));
+        result.add(methodSegment(member.member().name(), receiverSegments.getLast().resultType(),
+                member.member().span().start()));
+        for (Fxml2ExpressionParser.Expression argument : invocation.arguments()) {
+            appendArgumentSegments(
+                    new FunctionArgument(argument.text(), argument.span().start()),
+                    startClass, scope, kind, xmlFile, contextTag, result);
+        }
+        return result;
+    }
+
+    private static Fxml2ExpressionParser.@NotNull Expression ungroup(
+            Fxml2ExpressionParser.@NotNull Expression expression) {
+        while (expression instanceof Fxml2ExpressionParser.GroupedExpression grouped) {
+            expression = grouped.expression();
+        }
+        return expression;
     }
 
     /**

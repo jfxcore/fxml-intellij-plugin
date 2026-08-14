@@ -140,6 +140,18 @@ class Fxml2CompiledExpressionTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    /** A selected member resolves against the result type of a generic static invocation. */
+    @Test
+    void memberAfterGenericStaticInvocationProducesNoError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\njava.util.Map",
+                """
+                  <Label text="$Map.of&lt;String,String&gt;('key','value').toString()"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     /** The type argument of the tag reaches the members of the generic class. */
     @Test
     void typeArgumentOfTheTagReachesItsMembers() {

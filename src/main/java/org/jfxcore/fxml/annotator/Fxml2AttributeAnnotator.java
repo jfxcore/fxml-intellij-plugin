@@ -538,7 +538,6 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
         if (parenIdx <= 0) return;
 
-        // The invoked name and every value the invocation is passed are operands of their own.
         Fxml2ExpressionParser.Expression callExpr;
         try {
             callExpr = Fxml2ExpressionParser.parse(path);
@@ -551,8 +550,28 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                     startClass, attrTextBase, xmlFile, holder);
             return;
         }
-        annotateExpressionOperands(attrVal, callExpr, attrTextBase,
-                startClass, contextTag, xmlFile, kind, holder);
+        if (isCallSelectedFromInvocation(callExpr)) {
+            reportPathSegments(attrVal,
+                    Fxml2BindingPathResolver.resolveFunctionCall(path, startClass,
+                            xmlFile.getResolveScope(), kind, xmlFile, contextTag),
+                    startClass, attrTextBase, xmlFile, holder);
+        } else {
+            annotateExpressionOperands(attrVal, callExpr, attrTextBase,
+                    startClass, contextTag, xmlFile, kind, holder);
+        }
+    }
+
+    private static boolean isCallSelectedFromInvocation(
+            Fxml2ExpressionParser.@NotNull Expression expression) {
+        if (!(expression instanceof Fxml2ExpressionParser.InvocationExpression invocation)
+                || !(invocation.target() instanceof Fxml2ExpressionParser.MemberExpression member)) {
+            return false;
+        }
+        Fxml2ExpressionParser.Expression receiver = member.receiver();
+        while (receiver instanceof Fxml2ExpressionParser.GroupedExpression grouped) {
+            receiver = grouped.expression();
+        }
+        return receiver instanceof Fxml2ExpressionParser.InvocationExpression;
     }
 
     /**
