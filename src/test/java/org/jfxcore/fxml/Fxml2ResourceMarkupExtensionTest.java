@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static com.intellij.codeInsight.navigation.impl.GtdKt.gotoDeclaration;
 import static org.junit.jupiter.api.Assertions.*;
@@ -43,6 +44,29 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
                     public List<Object> getValues() { return null; }
                 }
                 """);
+    }
+
+    private XmlAttributeValue findAttributeValueStartingWith(String prefix) {
+        return PsiTreeUtil.findChildrenOfType(
+                        getFixture().getFile(), XmlAttributeValue.class).stream()
+                .filter(attributeValue -> attributeValue.getValue().startsWith(prefix))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static List<PropertyReferenceBase> propertyReferences(
+            XmlAttributeValue attributeValue) {
+        return Arrays.stream(attributeValue.getReferences())
+                .filter(PropertyReferenceBase.class::isInstance)
+                .map(PropertyReferenceBase.class::cast)
+                .toList();
+    }
+
+    private static List<String> referenceTexts(
+            XmlAttributeValue attributeValue, List<PropertyReferenceBase> references) {
+        return references.stream()
+                .map(reference -> reference.getRangeInElement().substring(attributeValue.getText()))
+                .toList();
     }
 
     @BeforeEach
@@ -312,19 +336,63 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
         ));
 
         ReadAction.run(() -> {
-            XmlAttributeValue attributeValue = PsiTreeUtil.findChildrenOfType(
-                            getFixture().getFile(), XmlAttributeValue.class).stream()
-                    .filter(element -> element.getValue().startsWith("%formattedMessage"))
-                    .findFirst()
-                    .orElse(null);
+            XmlAttributeValue attributeValue =
+                    findAttributeValueStartingWith("%formattedMessage");
             assertNotNull(attributeValue);
-            var propertyReferences = Arrays.stream(attributeValue.getReferences())
-                    .filter(PropertyReferenceBase.class::isInstance)
-                    .toList();
-            assertFalse(propertyReferences.isEmpty());
-            assertTrue(propertyReferences.stream().allMatch(reference -> reference.resolve() != null),
+            var references = propertyReferences(attributeValue);
+            assertFalse(references.isEmpty());
+            assertTrue(references.stream().allMatch(reference -> reference.resolve() != null),
                     "Every property-key reference must resolve only the positional key: "
-                            + propertyReferences);
+                            + references);
+        });
+    }
+
+    @Test
+    void staticResource_commaCompletesPrefixExpressionAndResumesValueMode() {
+        addMyListMock();
+        getFixture().addFileToProject("messages.properties", """
+                primaryMessage=Primary
+                secondaryMessage=Secondary
+                """);
+        getFixture().configureByText("TestView.fxml", fxml(
+                "test.MyList",
+                """
+                  <MyList values="%primaryMessage, %secondaryMessage"/>
+                """
+        ));
+
+        ReadAction.run(() -> {
+            XmlAttributeValue attributeValue = findAttributeValueStartingWith("%primaryMessage");
+            assertNotNull(attributeValue);
+            var references = propertyReferences(attributeValue);
+            assertEquals(List.of("primaryMessage", "secondaryMessage"),
+                    referenceTexts(attributeValue, references));
+            assertTrue(references.stream().allMatch(reference -> reference.resolve() != null));
+        });
+    }
+
+    @Test
+    void staticResource_closingBraceCompletesExpressionAndResumesValueMode() {
+        addMyListMock();
+        getFixture().addFileToProject("messages.properties", """
+                primaryMessage=Primary {0} {1}
+                secondaryMessage=Secondary
+                """);
+        getFixture().configureByText("TestView.fxml", fxml(
+                "test.MyList\norg.jfxcore.markup.resource.StaticResource",
+                """
+                  <MyList values="{StaticResource primaryMessage; formatArguments=firstName, lastName}, %secondaryMessage"/>
+                """
+        ));
+
+        ReadAction.run(() -> {
+            XmlAttributeValue attributeValue =
+                    findAttributeValueStartingWith("{StaticResource primaryMessage");
+            assertNotNull(attributeValue);
+            var references = propertyReferences(attributeValue);
+            assertEquals(List.of("primaryMessage", "secondaryMessage"),
+                    referenceTexts(attributeValue, references));
+            assertTrue(references.stream().allMatch(reference -> reference.resolve() != null));
         });
     }
 

@@ -449,13 +449,42 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             if (prefixMappings.isEmpty()) return PsiReference.EMPTY_ARRAY;
 
             List<PsiReference> refs = new ArrayList<>();
-            for (var item : Fxml2AttributeValueItems.resolveItems(attrVal, xmlFile)) {
+            List<Fxml2ValueSequenceParser.ValueItem> items =
+                    Fxml2AttributeValueItems.resolveItems(attrVal, xmlFile);
+            addPercentPrefixInterpretationRef(refs, attrVal, items, prefixMappings);
+            for (var item : items) {
                 if (item.isMarkupExtension()) {
                     collectPrefixShorthandRefs(
                             refs, attrVal, item.text(), item.offset(), prefixMappings, xmlFile);
                 }
             }
             return refs.toArray(PsiReference.EMPTY_ARRAY);
+        }
+
+        /**
+         * Claims the complete text governed by an active leading {@code %} prefix after the
+         * attribute grammar has identified its value items. Narrow references for the prefix,
+         * resource key, parameters, and later items remain preferred at their locations.
+         */
+        private static void addPercentPrefixInterpretationRef(
+                @NotNull List<PsiReference> refs,
+                @NotNull XmlAttributeValue attrVal,
+                @NotNull List<Fxml2ValueSequenceParser.ValueItem> items,
+                @NotNull Map<Character, String> prefixMappings) {
+
+            String attributeValue = attrVal.getValue();
+            if (attributeValue.length() <= 1 || attributeValue.charAt(0) != '%'
+                    || !prefixMappings.containsKey('%') || items.isEmpty()) {
+                return;
+            }
+
+            Fxml2ValueSequenceParser.ValueItem firstItem = items.getFirst();
+            if (firstItem.offset() != 0 || !firstItem.isMarkupExtension()
+                    || firstItem.text().charAt(0) != '%') {
+                return;
+            }
+
+            refs.add(softRef(attrVal, new TextRange(2, attributeValue.length() + 1), null));
         }
 
         /**
@@ -506,15 +535,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 XmlTag contextTag = getContextTag(attrVal);
                 collectMarkupExtParamRefs(refs, attrVal, pse.paramsPart(),
                         itemOffset + pse.paramsOffset(), extClass, contextTag, xmlFile);
-            }
-
-            // A parameterized resource invocation is one markup-extension expression. Cover its
-            // full content with a soft reference so lower-priority providers cannot reinterpret
-            // the parameter section as part of the resource key. Narrow resolved references above
-            // remain preferred for navigation and hover highlighting.
-            if (itemOffset == 0 && pse.paramsPart() != null) {
-                refs.add(softRef(attrVal,
-                        new TextRange(base + 1, base + rawValue.length()), null));
             }
 
             // For resource-key extensions mapped to a prefix (e.g. %key), add a PropertyReference
