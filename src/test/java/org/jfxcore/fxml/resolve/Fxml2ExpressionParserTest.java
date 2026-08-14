@@ -143,6 +143,24 @@ class Fxml2ExpressionParserTest {
     }
 
     @Test
+    void onlyNamedPathTargetsCanBeInvoked() {
+        assertInvocationRejectedAt("foo()()", 5);
+        assertInvocationRejectedAt("(factory())()", 11);
+        assertInvocationRejectedAt(":context()", 8);
+        assertInvocationRejectedAt(":element()", 8);
+        assertInvocationRejectedAt(":root()", 5);
+        assertInvocationRejectedAt("1()", 1);
+
+        assertInstanceOf(InvocationExpression.class, Fxml2ExpressionParser.parse("foo().bar()"));
+        assertInstanceOf(MemberExpression.class, Fxml2ExpressionParser.parse("(factory()).value"));
+        assertInstanceOf(InvocationExpression.class, Fxml2ExpressionParser.parse("::method()"));
+        assertInstanceOf(InvocationExpression.class,
+                Fxml2ExpressionParser.parse(":context.Type()"));
+        assertInstanceOf(InvocationExpression.class,
+                Fxml2ExpressionParser.parse("pane.(Owner.value).method()"));
+    }
+
+    @Test
     void genericPostfixSpeculationUsesTheCompleteTypeListAndFollower() {
         InvocationExpression twoArguments = assertInstanceOf(InvocationExpression.class,
                 Fxml2ExpressionParser.parse("m(a < b, c > d)"));
@@ -237,6 +255,14 @@ class Fxml2ExpressionParserTest {
                 Fxml2ExpressionParser.parse(text));
         assertEquals(operator, result.operator());
         return result;
+    }
+
+    private static void assertInvocationRejectedAt(String text, int openingParenthesis) {
+        Fxml2ExpressionParser.ParseException exception = assertThrows(
+                Fxml2ExpressionParser.ParseException.class,
+                () -> Fxml2ExpressionParser.parse(text));
+        assertEquals(new Fxml2ExpressionParser.Span(openingParenthesis, openingParenthesis + 1),
+                exception.span());
     }
 
     private static void assertSelector(String text, ContextSelectorKind kind,
