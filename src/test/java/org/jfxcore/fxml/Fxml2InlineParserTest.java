@@ -213,6 +213,28 @@ class Fxml2InlineParserTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    @Test
+    void compactEvaluateRejectsCallingAReturnedValue() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="$factory()<error descr="Unexpected token">(</error>)"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    @Test
+    void longEvaluateRejectsCallingAContextSelector() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="{fx:Evaluate :context<error descr="Unexpected token">(</error>)}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     // -----------------------------------------------------------------------
     // Angle-bracket type context selector (new syntax: parent<Type> and parent<Type>[N])
     // -----------------------------------------------------------------------

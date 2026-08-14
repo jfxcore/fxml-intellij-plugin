@@ -257,6 +257,20 @@ public final class Fxml2ExpressionParser {
     }
 
     private static final class Parser {
+        private enum PostfixTarget {
+            NAMED_PATH(true, true),
+            PATH(false, true),
+            VALUE(false, false);
+
+            private final boolean callable;
+            private final boolean attachedPropertySelectable;
+
+            PostfixTarget(boolean callable, boolean attachedPropertySelectable) {
+                this.callable = callable;
+                this.attachedPropertySelectable = attachedPropertySelectable;
+            }
+        }
+
         private final String source;
         private int position;
 
@@ -301,20 +315,18 @@ public final class Fxml2ExpressionParser {
 
         private Expression parsePostfix() {
             Expression result = parsePrimary();
-            boolean pathChain = result instanceof PathExpression
-                    || result instanceof ContextSelectorExpression
-                    || result instanceof AttachedPropertyExpression;
+            PostfixTarget target = postfixTarget(result);
             while (true) {
                 skipWhitespace();
                 if (peek("(")) {
-                    if (result instanceof AttachedPropertyExpression) {
+                    if (!target.callable) {
                         throw error("Unexpected token", position, position + 1);
                     }
                     int start = result.span().start();
                     List<Expression> arguments = parseArguments();
                     result = new InvocationExpression(result, arguments,
                             new Span(start, position), source);
-                    pathChain = false;
+                    target = PostfixTarget.VALUE;
                     continue;
                 }
 
@@ -329,16 +341,29 @@ public final class Fxml2ExpressionParser {
 
                 skipWhitespace();
                 if (peek("(")) {
-                    if (!pathChain) {
+                    if (!target.attachedPropertySelectable) {
                         throw error("Identifier expected", position, position);
                     }
                     result = parseAttachedProperty(result, selection);
+                    target = PostfixTarget.PATH;
                     continue;
                 }
                 PathExpression member = parseNamedPath();
                 result = new MemberExpression(result, member, selection,
                         new Span(result.span().start(), member.span().end()), source);
+                target = PostfixTarget.NAMED_PATH;
             }
+        }
+
+        private PostfixTarget postfixTarget(@NotNull Expression expression) {
+            if (expression instanceof PathExpression || expression instanceof MemberExpression) {
+                return PostfixTarget.NAMED_PATH;
+            }
+            if (expression instanceof ContextSelectorExpression
+                    || expression instanceof AttachedPropertyExpression) {
+                return PostfixTarget.PATH;
+            }
+            return PostfixTarget.VALUE;
         }
 
         private Expression parsePrimary() {

@@ -717,7 +717,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
 
     /**
      * Insert handler for markup extension completions inside attribute values:
-     * inserts the {@code {ClassName } text (already placed by the lookup item) and
+     * inserts the class name (already placed by the lookup item) and
      * adds an {@code <?import fqn?>} PI for the class if not yet present.
      */
     private record MarkupExtensionImportInsertHandler(
@@ -1519,9 +1519,16 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                     }
 
                     // Not a package either: try walking as a property chain on the code-behind class.
-                    if (startClass != null) {
+                    PsiClass resolutionStart = startClass != null
+                            ? startClass
+                            : Fxml2BindingPathResolver.resolveRootTagClass(xmlFile);
+                    if (resolutionStart != null) {
                         List<Fxml2BindingPathResolver.Segment> segments =
-                                Fxml2BindingPathResolver.resolve(completedPrefix, startClass, scope, null, xmlFile);
+                                Fxml2BindingPathResolver.functionCallParenIndex(completedPrefix) >= 0
+                                        ? Fxml2BindingPathResolver.resolveFunctionCall(
+                                                completedPrefix, resolutionStart, scope, null, xmlFile, tag)
+                                        : Fxml2BindingPathResolver.resolve(
+                                                completedPrefix, resolutionStart, scope, null, xmlFile);
                         if (segments.isEmpty()) return;
                         Fxml2BindingPathResolver.Segment lastSeg = segments.getLast();
                         // When '::' was the last separator, keep the raw property type (e.g.
@@ -1530,8 +1537,8 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                         if (lastSepIsObservableSel && lastSeg.declaration() != null) {
                             PsiClass contextForRaw = segments.size() >= 2
                                     ? segments.get(segments.size() - 2).resultType()
-                                    : startClass;
-                            if (contextForRaw == null) contextForRaw = startClass;
+                                    : resolutionStart;
+                            if (contextForRaw == null) contextForRaw = resolutionStart;
                             currentClass = Fxml2BindingPathResolver.propertyTypeRaw(
                                     lastSeg.declaration(), contextForRaw);
                         } else {
@@ -1599,6 +1606,22 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                                 .withTypeText(getPropertyTypeText(currentClass, propName));
                         prefixResult.addElement(elem);
                     }
+                }
+
+                Set<String> instanceMethodNames = new HashSet<>();
+                for (PsiMethod method : currentClass.getAllMethods()) {
+                    if (!method.hasModifierProperty(PsiModifier.PUBLIC)
+                            || method.hasModifierProperty(PsiModifier.STATIC)) {
+                        continue;
+                    }
+                    String methodName = method.getName();
+                    if (!methodName.startsWith(partialName)
+                            || !instanceMethodNames.add(methodName)) {
+                        continue;
+                    }
+                    prefixResult.addElement(LookupElementBuilder.create(methodName)
+                            .withIcon(AllIcons.Nodes.Method)
+                            .withTypeText(currentClass.getName()));
                 }
 
                 // At the first segment level of the root / code-behind context, also
@@ -1832,10 +1855,9 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
          * <p>Wildcard imports ({@code foo.*}) are skipped because resolving them would
          * require scanning the full package, which is too expensive during completion.
          *
-         * <p>Each item is inserted as {@code "{ClassName "} (with a trailing space so
-         * the user can continue typing constructor parameters), except when
-         * {@code partial} already starts with {@code "fx:"}: in that case no class
-         * names are expected to match and the method returns immediately.
+         * <p>Each item replaces only the class-name prefix. Whitespace and parameters after the
+         * caret remain unchanged. When {@code partial} starts with {@code "fx:"}, no class names
+         * are expected to match and the method returns immediately.
          */
         private static void addMarkupExtensionClassCompletions(
                 @NotNull String partial,
@@ -1868,7 +1890,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 if (cls == null) continue;
                 if (markupExtClass != null && !cls.isInheritor(markupExtClass, true)) continue;
                 result.addElement(LookupElementBuilder
-                        .create("{" + simpleName + " ")
+                        .create("{" + simpleName)
                         .withPresentableText(simpleName)
                         .withIcon(AllIcons.Nodes.Class)
                         .withTypeText("MarkupExtension"));
@@ -1887,7 +1909,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                         if (!cls.isInheritor(markupExtClass, true)) continue;
                         String fqn = cls.getQualifiedName();
                         result.addElement(LookupElementBuilder
-                                .create("{" + simpleName + " ")
+                                .create("{" + simpleName)
                                 .withPresentableText(simpleName)
                                 .withIcon(AllIcons.Nodes.Class)
                                 .withTypeText("MarkupExtension")
@@ -1911,7 +1933,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                             if (fqn != null && fqn.startsWith("org.jfxcore.markup.resource.")) continue;
                             if (Fxml2AddImportFix.shouldSkipClass(cls, fqn, runtimeRoots, false)) continue;
                             result.addElement(LookupElementBuilder
-                                    .create("{" + name + " ")
+                                    .create("{" + name)
                                     .withPresentableText(name)
                                     .withIcon(AllIcons.Nodes.Class)
                                     .withTypeText("MarkupExtension")

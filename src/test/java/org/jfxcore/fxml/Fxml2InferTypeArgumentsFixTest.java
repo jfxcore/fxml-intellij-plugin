@@ -223,6 +223,51 @@ class Fxml2InferTypeArgumentsFixTest extends Fxml2TestBase {
     }
 
     /**
+     * Source 2a (member type): the binding source's element type is a member class of a
+     * generic owner ({@code Source2InventoryViewModel<String>.InventoryItem}).  A member
+     * type argument is rendered by its simple name, with its owner-qualified name added as
+     * an import; the owner's type arguments are not part of the rendered value, which is
+     * the form the markup language accepts for member types.
+     */
+    @Test
+    void source2_inferredMemberTypeOfGenericOwnerRendersSimpleName() {
+        getFixture().addClass("""
+                package test;
+                import javafx.beans.property.ListProperty;
+                import javafx.beans.property.SimpleListProperty;
+                import javafx.collections.FXCollections;
+                public class Source2InventoryViewModel<T> {
+                    public class InventoryItem {}
+                    private final ListProperty<InventoryItem> items =
+                            new SimpleListProperty<>(FXCollections.observableArrayList());
+                    public ListProperty<InventoryItem> getItems() { return items; }
+                }
+                """);
+        getFixture().addClass("""
+                package test;
+                public class Source2InventoryView extends TestViewBase {
+                    public final Source2InventoryViewModel<String> vm =
+                            new Source2InventoryViewModel<>();
+                }
+                """);
+        getFixture().configureByText("TestView.fxml", fxml(
+                """
+                javafx.scene.control.ListView
+                """,
+                """
+                  <ListView<caret> items="${vm.items}"/>
+                """,
+                "test.Source2InventoryView"
+        ));
+        applyInferFix();
+        String result = getFixture().getEditor().getDocument().getText();
+        assertTrue(result.contains("fx:typeArguments=\"InventoryItem\""),
+                "Expected fx:typeArguments=\"InventoryItem\", got: " + result);
+        assertTrue(result.contains("<?import test.Source2InventoryViewModel.InventoryItem?>"),
+                "Expected an import of the owner-qualified member type, got: " + result);
+    }
+
+    /**
      * Source 2b: a {@code ComboBox}'s {@code value} attribute is bound to an
      * {@code ObjectProperty<Person>}.  Unwrapping the {@code ObservableValue}
      * yields {@code Person} for the unifier; expect {@code fx:typeArguments="Source2Person"}.

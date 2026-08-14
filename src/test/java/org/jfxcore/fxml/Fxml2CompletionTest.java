@@ -2,6 +2,7 @@ package org.jfxcore.fxml;
 
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementPresentation;
+import com.intellij.testFramework.EdtTestUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
@@ -31,11 +32,13 @@ class Fxml2CompletionTest extends Fxml2TestBase {
 
     /** Presentable (display) text: the short segment shown to the user in the popup. */
     private static List<String> displayNames(LookupElement[] items) {
-        return Arrays.stream(items).map(e -> {
-            LookupElementPresentation p = new LookupElementPresentation();
-            e.renderElement(p);
-            return p.getItemText();
-        }).toList();
+        return Arrays.stream(items).map(Fxml2CompletionTest::displayName).toList();
+    }
+
+    private static String displayName(LookupElement item) {
+        LookupElementPresentation presentation = new LookupElementPresentation();
+        item.renderElement(presentation);
+        return presentation.getItemText();
     }
 
     // -----------------------------------------------------------------------
@@ -2014,6 +2017,54 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 "'fx:Evaluate' must not appear for prefix 'My', got: " + names);
     }
 
+    /** Selecting a markup extension class preserves the whitespace already after its name. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void markupExtensionClassCompletionDoesNotInsertTrailingSpace() {
+        getFixture().addFileToProject("ext/MyMarkupExtension.java",
+                """
+                package ext;
+                import org.jfxcore.markup.MarkupExtension;
+                public class MyMarkupExtension implements MarkupExtension<Double> {
+                    @Override public Double get() { return 0.0; }
+                }
+                """);
+        getFixture().addFileToProject("ext/MatchingMarkupExtension.java",
+                """
+                package ext;
+                import org.jfxcore.markup.MarkupExtension;
+                public class MatchingMarkupExtension implements MarkupExtension<Double> {
+                    @Override public Double get() { return 0.0; }
+                }
+                """);
+        getFixture().configureByText("MarkupExtensionSpacing.fxml", fxml(
+                "javafx.scene.layout.VBox\next.MyMarkupExtension\next.MatchingMarkupExtension",
+                """
+                  <VBox padding="10, {M<caret> value=6}"/>
+                """
+        ));
+
+        LookupElement[] items = getFixture().completeBasic();
+        assertNotNull(items, "Expected multiple markup extension completions");
+        LookupElement markupExtension = Arrays.stream(items)
+                .filter(item -> "MyMarkupExtension".equals(displayName(item)))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "Expected MyMarkupExtension completion, got: " + lookupStrings(items)));
+        assertFalse(markupExtension.getLookupString().endsWith(" "),
+                "Markup extension lookup strings must not contain trailing whitespace");
+        EdtTestUtil.runInEdtAndWait(() -> {
+            getFixture().getLookup().setCurrentItem(markupExtension);
+            getFixture().finishLookup(com.intellij.codeInsight.lookup.Lookup.NORMAL_SELECT_CHAR);
+        });
+
+        String text = getFixture().getEditor().getDocument().getText();
+        assertTrue(text.contains("{MyMarkupExtension value=6}"),
+                "Completion must not add whitespace after the class name, got: " + text);
+        assertFalse(text.contains("{MyMarkupExtension  value=6}"),
+                "Completion inserted an extra trailing space, got: " + text);
+    }
+
     /**
      * Built-in markup extensions from {@code org.jfxcore.markup.resource} should appear in
      * the completion list even when they are NOT yet imported, because the plugin scans the
@@ -2576,6 +2627,25 @@ class Fxml2CompletionTest extends Fxml2TestBase {
         List<String> names = displayNames(items);
         assertTrue(names.contains("format"),
                 "Expected static method 'format' in completions for '${String.fo}', got: " + names);
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingFunctionResultMethodCompletion() {
+        getFixture().configureByText("FnResultMethod.fxml", fxml(
+                "javafx.scene.control.Label\njava.util.Map",
+                """
+                  <Label text="$Map.of&lt;String,String&gt;('key','value').toStrin<caret>"/>
+                """
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains(".toString"),
+                    "Expected 'toString' to be auto-inserted");
+            return;
+        }
+        assertTrue(displayNames(items).contains("toString"),
+                "Expected result method 'toString', got: " + displayNames(items));
     }
 
     /**
