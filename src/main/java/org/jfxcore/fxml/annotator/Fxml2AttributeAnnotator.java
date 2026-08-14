@@ -33,6 +33,7 @@ import org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
+import org.jfxcore.fxml.resolve.Fxml2ExpressionOperands;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
@@ -533,24 +534,22 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             @NotNull Kind kind) {
         int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
         if (parenIdx <= 0) return;
-        GlobalSearchScope scope = xmlFile.getResolveScope();
 
-        // Function-name path (instance path, static class path, or constructor).
-        String funcPath = path.substring(0, parenIdx);
-        var nameSegs = Fxml2BindingPathResolver.resolveFunctionName(funcPath, startClass, scope, kind, xmlFile);
-        reportPathSegments(attrVal, nameSegs, startClass, attrTextBase, xmlFile, holder);
-
-        // Arguments, each of which is an expression in its own right.
-        for (Fxml2BindingPathResolver.FunctionArgument arg : Fxml2BindingPathResolver.functionArguments(path)) {
-            Fxml2ExpressionParser.Expression argExpr;
-            try {
-                argExpr = Fxml2ExpressionParser.parse(arg.text());
-            } catch (Fxml2ExpressionParser.ParseException ignored) {
-                continue;
-            }
-            annotateExpressionOperands(attrVal, argExpr, attrTextBase + arg.offset(),
-                    startClass, contextTag, xmlFile, kind, holder);
+        // The invoked name and every value the invocation is passed are operands of their own.
+        Fxml2ExpressionParser.Expression callExpr;
+        try {
+            callExpr = Fxml2ExpressionParser.parse(path);
+        } catch (Fxml2ExpressionParser.ParseException ignored) {
+            // The name still resolves when an argument does not parse.
+            String funcPath = path.substring(0, parenIdx);
+            reportPathSegments(attrVal,
+                    Fxml2BindingPathResolver.resolveFunctionName(
+                            funcPath, startClass, xmlFile.getResolveScope(), kind, xmlFile),
+                    startClass, attrTextBase, xmlFile, holder);
+            return;
         }
+        annotateExpressionOperands(attrVal, callExpr, attrTextBase,
+                startClass, contextTag, xmlFile, kind, holder);
     }
 
     /**
@@ -561,10 +560,8 @@ public final class Fxml2AttributeAnnotator implements Annotator {
      * @param path        the path text, which contains no operator
      * @param attrTextBase offset of {@code path} within the attribute value text, i.e. counting the
      *                     opening quote
-     * @return the resolved segments, or {@code null} when the path is empty or the class it is
-     *         resolved against is unknown
      */
-    private static java.util.@Nullable List<Fxml2BindingPathResolver.Segment> annotatePathExpression(
+    private static void annotatePathExpression(
             @NotNull XmlAttributeValue attrVal,
             @NotNull String path,
             int attrTextBase,
@@ -576,18 +573,18 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         Fxml2BindingExpressionParser.ContextSelector selector =
                 Fxml2BindingExpressionParser.parseContextSelector(path);
         String remaining = selector != null ? selector.remainingPath() : path;
-        if (remaining.isBlank()) return null;
+        if (remaining.isBlank()) return;
 
         PsiClass startClass = contextTag != null
                 ? Fxml2BindingPathResolver.resolveStartClass(selector, contextTag, xmlFile)
                 : Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
-        if (startClass == null) return null;
+        if (startClass == null) return;
 
-        var segments = Fxml2BindingPathResolver.resolve(
-                remaining, startClass, xmlFile.getResolveScope(), kind, xmlFile);
-        reportPathSegments(attrVal, segments, startClass,
+        reportPathSegments(attrVal,
+                Fxml2BindingPathResolver.resolve(
+                        remaining, startClass, xmlFile.getResolveScope(), kind, xmlFile),
+                startClass,
                 attrTextBase + (selector != null ? selector.selectorLength() : 0), xmlFile, holder);
-        return segments;
     }
 
     /**
@@ -607,46 +604,17 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             @NotNull Kind kind,
             @NotNull AnnotationHolder holder) {
 
-        switch (expression) {
-            case Fxml2ExpressionParser.BinaryExpression binary -> {
-                annotateExpressionOperands(attrVal, binary.left(), attrTextBase, startClass,
-                        contextTag, xmlFile, kind, holder);
-                annotateExpressionOperands(attrVal, binary.right(), attrTextBase, startClass,
-                        contextTag, xmlFile, kind, holder);
+        for (Fxml2ExpressionOperands.Operand operand
+                : Fxml2ExpressionOperands.operands(expression, attrTextBase)) {
+            switch (operand.kind()) {
+                case FUNCTION_NAME -> reportPathSegments(attrVal,
+                        Fxml2BindingPathResolver.resolveFunctionName(
+                                operand.text(), startClass, xmlFile.getResolveScope(), kind, xmlFile),
+                        startClass, operand.offset(), xmlFile, holder);
+                case PATH -> annotatePathExpression(attrVal, operand.text(), operand.offset(),
+                        kind, contextTag, xmlFile, holder);
             }
-            case Fxml2ExpressionParser.UnaryExpression unary ->
-                    annotateExpressionOperands(attrVal, unary.operand(), attrTextBase, startClass,
-                            contextTag, xmlFile, kind, holder);
-            case Fxml2ExpressionParser.GroupedExpression grouped ->
-                    annotateExpressionOperands(attrVal, grouped.expression(), attrTextBase,
-                            startClass, contextTag, xmlFile, kind, holder);
-            case Fxml2ExpressionParser.LiteralExpression ignored -> { }
-            case Fxml2ExpressionParser.InvocationExpression invocation ->
-                    annotateFunctionCall(attrVal, invocation.text(), startClass, contextTag,
-                            xmlFile, holder, attrTextBase + invocation.span().start(), kind);
-            default -> annotatePathExpression(attrVal, expression.text(),
-                    attrTextBase + expression.span().start(), kind, contextTag, xmlFile, holder);
         }
-    }
-
-    /**
-     * Returns {@code true} when the expression is a path that the path validation resolves as a
-     * whole, rather than one that combines values with operators.  A leading boolean operator is
-     * part of the notation and does not combine values.
-     */
-    private static boolean isPathExpression(Fxml2ExpressionParser.@NotNull Expression expression) {
-        return switch (expression) {
-            case Fxml2ExpressionParser.UnaryExpression unary ->
-                    (unary.operator() == Fxml2ExpressionParser.UnaryOperator.NOT
-                            || unary.operator() == Fxml2ExpressionParser.UnaryOperator.BOOLIFY)
-                    && isPathExpression(unary.operand());
-            case Fxml2ExpressionParser.PathExpression ignored -> true;
-            case Fxml2ExpressionParser.MemberExpression ignored -> true;
-            case Fxml2ExpressionParser.AttachedPropertyExpression ignored -> true;
-            case Fxml2ExpressionParser.ContextSelectorExpression ignored -> true;
-            case Fxml2ExpressionParser.InvocationExpression ignored -> true;
-            default -> false;
-        };
     }
 
     /**
@@ -1523,7 +1491,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
 
         // An expression that combines values with operators is validated operand by operand: its
         // text is not one path, so resolving it as one would report the operators as segments.
-        if (!isPathExpression(expressionTree)) {
+        if (!Fxml2ExpressionOperands.isPathExpression(expressionTree)) {
             annotateExpressionOperands(attrVal, expressionTree, 1 + expr.pathOffset(),
                     startClass, contextTag, xmlFile, expr.kind(), holder);
             if (expr.hasParam()) {

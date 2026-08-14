@@ -764,27 +764,69 @@ public final class Fxml2BindingPathResolver {
             @NotNull List<Segment> result) {
         String text = arg.text();
         int base = arg.offset();
+
+        // An argument that combines values with operators is not one path: each of its operands
+        // names a value in its own right, so the argument is resolved operand by operand.
+        Fxml2ExpressionParser.Expression argExpr;
+        try {
+            argExpr = Fxml2ExpressionParser.parse(text);
+        } catch (Fxml2ExpressionParser.ParseException ignored) {
+            argExpr = null;
+        }
+        if (argExpr != null && !Fxml2ExpressionOperands.isPathExpression(argExpr)) {
+            for (Fxml2ExpressionOperands.Operand operand
+                    : Fxml2ExpressionOperands.operands(argExpr, base)) {
+                appendOperandSegments(operand, startClass, scope, kind, xmlFile, contextTag, result);
+            }
+            return;
+        }
+
         switch (classifyArgument(text)) {
             case LITERAL -> { /* no navigable reference */ }
             case NESTED_CALL -> result.addAll(shiftSegments(
                     resolveFunctionCall(text, startClass, scope, kind, xmlFile, contextTag), base));
-            case PATH -> {
-                // Path expression, possibly prefixed with a context selector.
-                ContextSelector selector = Fxml2BindingExpressionParser.parseContextSelector(text);
-                PsiClass argStartClass = startClass;
-                if (selector != null && contextTag != null) {
-                    argStartClass = resolveStartClass(selector, contextTag, xmlFile);
-                }
-                if (argStartClass == null) return;
-
-                String remainingPath = selector != null ? selector.remainingPath() : text;
-                if (remainingPath.isBlank()) return;
-                int selLen = selector != null ? selector.selectorLength() : 0;
-
-                result.addAll(shiftSegments(
-                        resolve(remainingPath, argStartClass, scope, kind, xmlFile), base + selLen));
-            }
+            case PATH -> appendOperandSegments(
+                    new Fxml2ExpressionOperands.Operand(
+                            Fxml2ExpressionOperands.OperandKind.PATH, text, base),
+                    startClass, scope, kind, xmlFile, contextTag, result);
         }
+    }
+
+    /**
+     * Appends the segments of one operand of an expression.  A path operand may begin with a
+     * context selector, which names the element it is resolved against; a function-name operand
+     * names the method or constructor that the invocation invokes.
+     */
+    private static void appendOperandSegments(
+            Fxml2ExpressionOperands.@NotNull Operand operand,
+            @NotNull PsiClass startClass,
+            @NotNull GlobalSearchScope scope,
+            @Nullable Kind kind,
+            @NotNull XmlFile xmlFile,
+            @Nullable XmlTag contextTag,
+            @NotNull List<Segment> result) {
+
+        String text = operand.text();
+        int base = operand.offset();
+        if (operand.kind() == Fxml2ExpressionOperands.OperandKind.FUNCTION_NAME) {
+            result.addAll(shiftSegments(
+                    resolveFunctionName(text, startClass, scope, kind, xmlFile), base));
+            return;
+        }
+
+        ContextSelector selector = Fxml2BindingExpressionParser.parseContextSelector(text);
+        PsiClass argStartClass = startClass;
+        if (selector != null && contextTag != null) {
+            argStartClass = resolveStartClass(selector, contextTag, xmlFile);
+        }
+        if (argStartClass == null) return;
+
+        String remainingPath = selector != null ? selector.remainingPath() : text;
+        if (remainingPath.isBlank()) return;
+        int selLen = selector != null ? selector.selectorLength() : 0;
+
+        result.addAll(shiftSegments(
+                resolve(remainingPath, argStartClass, scope, kind, xmlFile), base + selLen));
     }
 
     /** Builds a {@link Segment} for a resolved (or unresolved) method name on {@code declClass}. */
