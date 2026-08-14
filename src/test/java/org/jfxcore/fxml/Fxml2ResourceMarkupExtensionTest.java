@@ -1,14 +1,21 @@
 package org.jfxcore.fxml;
 
+import com.intellij.lang.properties.references.PropertyReferenceBase;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiReference;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.xml.XmlAttributeValue;
 import org.jfxcore.fxml.annotator.Fxml2AttributeValueInspection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
+import java.util.Arrays;
+
+import static com.intellij.codeInsight.navigation.impl.GtdKt.gotoDeclaration;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -24,7 +31,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ul>
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SuppressWarnings("UnstableApiUsage")
 class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
+
+    private void addMyListMock() {
+        getFixture().addClass("""
+                package test;
+                import java.util.List;
+                import javafx.scene.layout.Pane;
+                public class MyList extends Pane {
+                    public List<Object> getValues() { return null; }
+                }
+                """);
+    }
 
     @BeforeEach
     void enableInspections() {
@@ -266,25 +285,73 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
     /**
      * A parameterized prefix-notation extension consumes the remaining comma-separated values,
      * even when the attribute itself targets a list.  All three format arguments therefore belong
-     * to {@code StaticResource}; they are not additional items of {@code MessageList.values}.
+     * to {@code StaticResource}; they are not additional items of {@code MyList.values}.
      */
     @Test
     void staticResource_formatArguments_areGreedyInsideListProperty() {
-        getFixture().addClass("""
-                package test;
-                import java.util.List;
-                import javafx.scene.layout.Pane;
-                public class MessageList extends Pane {
-                    public List<Object> getValues() { return null; }
-                }
-                """);
+        addMyListMock();
         getFixture().configureByText("TestView.fxml", fxml(
-                "test.MessageList",
+                "test.MyList",
                 """
-                  <MessageList values="%greeting; formatArguments=Jane, Doe, @fallback.txt"/>
+                  <MyList values="%formattedMessage; formatArguments=firstName, lastName, @fallback-message.txt"/>
                 """
         ));
         getFixture().checkHighlighting(false, false, false);
+    }
+
+    @Test
+    void staticResource_formatArguments_resourceKeyResolvesInsideListProperty() {
+        addMyListMock();
+        getFixture().addFileToProject("messages.properties",
+                "formattedMessage=Hello {0} {1}. Fallback resource: {2}");
+        getFixture().configureByText("TestView.fxml", fxml(
+                "test.MyList",
+                """
+                  <MyList values="%formattedMessage; formatArguments=firstName, lastName, @fallback-message.txt"/>
+                """
+        ));
+
+        ReadAction.run(() -> {
+            XmlAttributeValue attributeValue = PsiTreeUtil.findChildrenOfType(
+                            getFixture().getFile(), XmlAttributeValue.class).stream()
+                    .filter(element -> element.getValue().startsWith("%formattedMessage"))
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(attributeValue);
+            var propertyReferences = Arrays.stream(attributeValue.getReferences())
+                    .filter(PropertyReferenceBase.class::isInstance)
+                    .toList();
+            assertFalse(propertyReferences.isEmpty());
+            assertTrue(propertyReferences.stream().allMatch(reference -> reference.resolve() != null),
+                    "Every property-key reference must resolve only the positional key: "
+                            + propertyReferences);
+        });
+    }
+
+    @Test
+    void staticResource_formatArguments_ctrlHoverCoversParameterName() {
+        addMyListMock();
+        getFixture().configureByText("TestView.fxml", fxml(
+                "test.MyList",
+                """
+                  <MyList values="%formattedMessage; formatArg<caret>uments=firstName, lastName, @fallback-message.txt"/>
+                """
+        ));
+
+        TextRange hoverRange = ReadAction.compute(() -> {
+            var navigationData = gotoDeclaration(
+                    getFixture().getFile(), getFixture().getCaretOffset());
+            if (navigationData == null) {
+                return null;
+            }
+            var ctrlMouseData = navigationData.ctrlMouseData();
+            if (ctrlMouseData == null || ctrlMouseData.getRanges().isEmpty()) {
+                return null;
+            }
+            return ctrlMouseData.getRanges().getFirst();
+        });
+        assertNotNull(hoverRange);
+        assertEquals("formatArguments", hoverRange.substring(getFixture().getFile().getText()));
     }
 
     /**

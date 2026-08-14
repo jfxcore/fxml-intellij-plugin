@@ -508,6 +508,15 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                         itemOffset + pse.paramsOffset(), extClass, contextTag, xmlFile);
             }
 
+            // A parameterized resource invocation is one markup-extension expression. Cover its
+            // full content with a soft reference so lower-priority providers cannot reinterpret
+            // the parameter section as part of the resource key. Narrow resolved references above
+            // remain preferred for navigation and hover highlighting.
+            if (itemOffset == 0 && pse.paramsPart() != null) {
+                refs.add(softRef(attrVal,
+                        new TextRange(base + 1, base + rawValue.length()), null));
+            }
+
             // For resource-key extensions mapped to a prefix (e.g. %key), add a PropertyReference
             // so that Ctrl+click navigates to the resource bundle and the property is not reported
             // as unused in .properties files. The mapped extension is identified by the convention
