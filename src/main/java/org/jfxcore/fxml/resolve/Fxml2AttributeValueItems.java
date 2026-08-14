@@ -121,24 +121,10 @@ public final class Fxml2AttributeValueItems {
         List<ValueItem> typed = Fxml2ValueSequenceParser.split(valueBeforeCaret, prefixMappings);
         String text = typed.isEmpty() ? "" : typed.getLast().text();
 
-        // The caret is in the item that follows the ones already completed. An empty item at the
-        // caret is not reported by the parser, so the index is derived from the separators typed.
+        // Empty items are retained, so the last parsed item is also the item at a caret that
+        // follows a separator.
         int index = typed.isEmpty() ? 0 : typed.size() - 1;
-        if (endsWithSeparator(valueBeforeCaret)) {
-            index = typed.size();
-            text = "";
-        }
         return new CaretItem(text, itemTypeAt(target, index));
-    }
-
-    /** Returns {@code true} when the text ends with an item separator, so a new item begins. */
-    private static boolean endsWithSeparator(@NotNull String text) {
-        for (int i = text.length() - 1; i >= 0; i--) {
-            char c = text.charAt(i);
-            if (Character.isWhitespace(c)) continue;
-            return c == ',';
-        }
-        return false;
     }
 
     /** The type required for the item at {@code index} of {@code target}. */

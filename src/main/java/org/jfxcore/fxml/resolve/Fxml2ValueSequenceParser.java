@@ -21,7 +21,8 @@ import java.util.Map;
  * }</pre>
  *
  * <p>Commas that occur inside a nested construct do not separate items.  The parser therefore
- * tracks brace, parenthesis and bracket nesting as well as single-quoted string literals, so
+ * tracks brace, parenthesis, bracket and type-argument nesting as well as single-quoted string
+ * literals, so
  * that {@code "{StaticResource greeting; formatArguments=Jane, Doe}, 2"} is two items and
  * {@code "$format('a, b'), 2"} is two items as well.
  *
@@ -62,8 +63,8 @@ public final class Fxml2ValueSequenceParser {
     }
 
     /**
-     * Splits {@code value} into its top-level items.  Blank items are skipped, so a trailing
-     * comma does not produce an empty item.
+     * Splits {@code value} into its top-level items. Empty members are preserved because they
+     * participate in target selection and conversion like every other member.
      *
      * @param value          the raw attribute value (without the surrounding quotes)
      * @param prefixMappings prefix-char to extension FQN map for the current FXML file, used to
@@ -78,6 +79,7 @@ public final class Fxml2ValueSequenceParser {
         if (value == null || value.isBlank()) return items;
 
         int depth = 0;
+        int typeArgumentDepth = 0;
         int start = 0;
         int i = 0;
         boolean inStringLiteral = false;
@@ -101,17 +103,26 @@ public final class Fxml2ValueSequenceParser {
                 case '\'' -> inStringLiteral = true;
                 case '{', '(', '[' -> depth++;
                 case '}', ')', ']' -> { if (depth > 0) depth--; }
+                case '<' -> {
+                    if (typeArgumentDepth > 0
+                            || depth == 0 && isPrefixNotation(value, start, prefixMappings)
+                            && hasTypeArgumentClose(value, i)) {
+                        typeArgumentDepth++;
+                    }
+                }
+                case '>' -> {
+                    if (typeArgumentDepth > 0) typeArgumentDepth--;
+                }
                 case ';' -> {
                     // A parameter section of a prefix-notation markup extension is greedy: it has
                     // no closing delimiter, so every following comma belongs to the extension.
-                    if (depth == 0 && isPrefixNotation(value, start, prefixMappings)) {
+                    if (depth == 0 && typeArgumentDepth == 0
+                            && isPrefixNotation(value, start, prefixMappings)) {
                         greedyItem = true;
                     }
                 }
-                case ',', '\n', '\r' -> {
-                    // A line break separates items just like a comma, so that a long sequence can
-                    // be spread over several lines.
-                    if (depth == 0 && !greedyItem) {
+                case ',' -> {
+                    if (depth == 0 && typeArgumentDepth == 0 && !greedyItem) {
                         addItem(items, value, start, i, prefixMappings);
                         start = i + 1;
                     }
@@ -123,6 +134,48 @@ public final class Fxml2ValueSequenceParser {
 
         addItem(items, value, start, value.length(), prefixMappings);
         return items;
+    }
+
+    /**
+     * Determines whether {@code '<'} starts a syntactically complete type-argument list. A lone
+     * relational operator must not hide a following outer comma.
+     */
+    private static boolean hasTypeArgumentClose(@NotNull String value, int openingOffset) {
+        int depth = 0;
+        boolean expectsType = true;
+
+        for (int i = openingOffset; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '<') {
+                depth++;
+                expectsType = true;
+            } else if (c == '>') {
+                if (expectsType) return false;
+                depth--;
+                if (depth == 0) return canFollowParameterizedPath(value, i + 1);
+            } else if (c == ',') {
+                if (expectsType) return false;
+                expectsType = true;
+            } else if (Character.isJavaIdentifierPart(c) || c == '.' || Character.isWhitespace(c)) {
+                if (Character.isJavaIdentifierPart(c)) {
+                    expectsType = false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean canFollowParameterizedPath(@NotNull String value, int offset) {
+        while (offset < value.length() && Character.isWhitespace(value.charAt(offset))) offset++;
+        if (offset >= value.length()) return true;
+        return switch (value.charAt(offset)) {
+            case '(', '.', ':', '+', '-', '*', '/', '!', '=', '&', '|', '<', '>', ',',
+                    ')', '}', ']', ';' -> true;
+            default -> false;
+        };
     }
 
     /**
@@ -152,8 +205,6 @@ public final class Fxml2ValueSequenceParser {
             @NotNull Map<Character, String> prefixMappings) {
 
         Fxml2TextSpan span = Fxml2TextSpan.trimmed(value, start, end);
-        if (span.isEmpty()) return;
-
         int begin = span.start();
         String text = span.textOf(value);
         ItemKind kind = Fxml2BindingExpressionParser.looksLikeBindingExpression(text, prefixMappings)

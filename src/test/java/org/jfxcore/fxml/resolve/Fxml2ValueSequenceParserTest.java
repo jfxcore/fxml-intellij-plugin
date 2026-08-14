@@ -43,9 +43,9 @@ class Fxml2ValueSequenceParserTest {
     }
 
     @Test
-    void trailingAndEmptyItemsAreSkipped() {
-        assertEquals(List.of("1", "2"), texts("1, 2,"));
-        assertEquals(List.of("1", "2"), texts("1, , 2"));
+    void trailingAndEmptyItemsArePreserved() {
+        assertEquals(List.of("1", "2", ""), texts("1, 2,"));
+        assertEquals(List.of("1", "", "2"), texts("1, , 2"));
     }
 
     @Test
@@ -80,6 +80,12 @@ class Fxml2ValueSequenceParserTest {
     }
 
     @Test
+    void commasInsideTypeArgumentsDoNotSplitItems() {
+        assertEquals(List.of("$Type<T, U>(value)", "2"),
+                texts("$Type<T, U>(value), 2"));
+    }
+
+    @Test
     void commasInsideStringLiteralsDoNotSplitItems() {
         assertEquals(List.of("$format('a, b')", "2"), texts("$format('a, b'), 2"));
     }
@@ -96,8 +102,13 @@ class Fxml2ValueSequenceParserTest {
     }
 
     @Test
-    void lineBreaksSeparateItemsLikeCommas() {
-        assertEquals(List.of("1", "2", "3"), texts("1,\n2\n3"));
+    void lineBreakWithoutCommaRemainsPartOfLiteralItem() {
+        assertEquals(List.of("1\n2"), texts("1\n2"));
+    }
+
+    @Test
+    void lineBreakAfterCommaIsSeparatorLayout() {
+        assertEquals(List.of("1", "2", "3"), texts("1,\n2,\r\n3"));
     }
 
     @Test
