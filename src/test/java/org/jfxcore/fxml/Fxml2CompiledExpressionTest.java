@@ -164,6 +164,18 @@ class Fxml2CompiledExpressionTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    /** An incomplete selected member is diagnosed without blaming its resolved receiver call. */
+    @Test
+    void incompleteMemberAfterGenericStaticInvocationReportsTheMember() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\njava.util.Map",
+                """
+                  <Label text="$Map.of&lt;String,String&gt;('key','value').<error descr="'toStrin' in java.util.Map cannot be resolved">toStrin</error>"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     /** The type argument of the tag reaches the members of the generic class. */
     @Test
     void typeArgumentOfTheTagReachesItsMembers() {

@@ -550,7 +550,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                     startClass, attrTextBase, xmlFile, holder);
             return;
         }
-        if (isCallSelectedFromInvocation(callExpr)) {
+        if (isSelectedFromInvocation(callExpr)) {
             reportPathSegments(attrVal,
                     Fxml2BindingPathResolver.resolveFunctionCall(path, startClass,
                             xmlFile.getResolveScope(), kind, xmlFile, contextTag),
@@ -561,10 +561,15 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         }
     }
 
-    private static boolean isCallSelectedFromInvocation(
+    private static boolean isSelectedFromInvocation(
             Fxml2ExpressionParser.@NotNull Expression expression) {
-        if (!(expression instanceof Fxml2ExpressionParser.InvocationExpression invocation)
-                || !(invocation.target() instanceof Fxml2ExpressionParser.MemberExpression member)) {
+        Fxml2ExpressionParser.MemberExpression member;
+        if (expression instanceof Fxml2ExpressionParser.InvocationExpression invocation
+                && invocation.target() instanceof Fxml2ExpressionParser.MemberExpression targetMember) {
+            member = targetMember;
+        } else if (expression instanceof Fxml2ExpressionParser.MemberExpression selectedMember) {
+            member = selectedMember;
+        } else {
             return false;
         }
         Fxml2ExpressionParser.Expression receiver = member.receiver();

@@ -501,6 +501,10 @@ public final class Fxml2BindingPathResolver {
                 List<Segment> selectedCall = resolveSelectedInvocation(
                         invocation, startClass, scope, kind, xmlFile, contextTag);
                 if (selectedCall != null) return selectedCall;
+            } else if (expression instanceof Fxml2ExpressionParser.MemberExpression member) {
+                List<Segment> selectedMember = resolveSelectedMember(
+                        member, startClass, scope, kind, xmlFile, contextTag);
+                if (selectedMember != null) return selectedMember;
             }
         } catch (Fxml2ExpressionParser.ParseException ignored) {
             // Incomplete expressions continue through the tolerant source scanner below.
@@ -535,20 +539,12 @@ public final class Fxml2BindingPathResolver {
             return null;
         }
 
-        Fxml2ExpressionParser.Expression receiver = ungroup(member.receiver());
-        if (!(receiver instanceof Fxml2ExpressionParser.InvocationExpression receiverInvocation)) {
-            return null;
-        }
+        InvocationReceiver receiver = resolveInvocationReceiver(
+                member.receiver(), startClass, scope, kind, xmlFile, contextTag);
+        if (receiver == null) return null;
 
-        List<Segment> receiverSegments = resolveFunctionCall(
-                receiverInvocation.text(), startClass, scope, kind, xmlFile, contextTag);
-        if (receiverSegments.isEmpty() || receiverSegments.getLast().resultType() == null) {
-            return null;
-        }
-
-        List<Segment> result = new ArrayList<>(shiftSegments(
-                receiverSegments, receiverInvocation.span().start()));
-        result.add(methodSegment(member.member().name(), receiverSegments.getLast().resultType(),
+        List<Segment> result = new ArrayList<>(receiver.segments());
+        result.add(methodSegment(member.member().name(), receiver.resultType(),
                 member.member().span().start()));
         for (Fxml2ExpressionParser.Expression argument : invocation.arguments()) {
             appendArgumentSegments(
@@ -556,6 +552,49 @@ public final class Fxml2BindingPathResolver {
                     startClass, scope, kind, xmlFile, contextTag, result);
         }
         return result;
+    }
+
+    private static @Nullable List<Segment> resolveSelectedMember(
+            Fxml2ExpressionParser.@NotNull MemberExpression member,
+            @NotNull PsiClass startClass,
+            @NotNull GlobalSearchScope scope,
+            @Nullable Kind kind,
+            @NotNull XmlFile xmlFile,
+            @Nullable XmlTag contextTag) {
+
+        InvocationReceiver receiver = resolveInvocationReceiver(
+                member.receiver(), startClass, scope, kind, xmlFile, contextTag);
+        if (receiver == null) return null;
+
+        List<Segment> result = new ArrayList<>(receiver.segments());
+        result.addAll(shiftSegments(
+                resolve(member.member().name(), receiver.resultType(), scope, kind, xmlFile),
+                member.member().span().start()));
+        return result;
+    }
+
+    private record InvocationReceiver(@NotNull List<Segment> segments,
+                                      @NotNull PsiClass resultType) {
+    }
+
+    private static @Nullable InvocationReceiver resolveInvocationReceiver(
+            Fxml2ExpressionParser.@NotNull Expression expression,
+            @NotNull PsiClass startClass,
+            @NotNull GlobalSearchScope scope,
+            @Nullable Kind kind,
+            @NotNull XmlFile xmlFile,
+            @Nullable XmlTag contextTag) {
+
+        Fxml2ExpressionParser.Expression receiver = ungroup(expression);
+        if (!(receiver instanceof Fxml2ExpressionParser.InvocationExpression invocation)) {
+            return null;
+        }
+        List<Segment> segments = resolveFunctionCall(
+                invocation.text(), startClass, scope, kind, xmlFile, contextTag);
+        if (segments.isEmpty() || segments.getLast().resultType() == null) return null;
+        return new InvocationReceiver(
+                shiftSegments(segments, invocation.span().start()),
+                segments.getLast().resultType());
     }
 
     private static Fxml2ExpressionParser.@NotNull Expression ungroup(

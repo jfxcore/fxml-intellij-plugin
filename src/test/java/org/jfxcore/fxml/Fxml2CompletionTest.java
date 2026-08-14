@@ -2578,6 +2578,25 @@ class Fxml2CompletionTest extends Fxml2TestBase {
                 "Expected static method 'format' in completions for '${String.fo}', got: " + names);
     }
 
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingFunctionResultMethodCompletion() {
+        getFixture().configureByText("FnResultMethod.fxml", fxml(
+                "javafx.scene.control.Label\njava.util.Map",
+                """
+                  <Label text="$Map.of&lt;String,String&gt;('key','value').toStrin<caret>"/>
+                """
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            assertTrue(getFixture().getEditor().getDocument().getText().contains(".toString"),
+                    "Expected 'toString' to be auto-inserted");
+            return;
+        }
+        assertTrue(displayNames(items).contains("toString"),
+                "Expected result method 'toString', got: " + displayNames(items));
+    }
+
     /**
      * Inside a function-binding expression, a partial class name at the first path segment must be
      * completable so a static call or constructor can be written: {@code ${Str<caret>}} offers
