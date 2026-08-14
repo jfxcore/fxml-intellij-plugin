@@ -246,25 +246,6 @@ class Fxml2MiscFeatureTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
-    // Comma-separated coercion cannot contain binding expressions
-    // -----------------------------------------------------------------------
-
-    /**
-     * Doc ({@code type-coercion.md}): A comma-separated constructor coercion list may
-     * only contain literal values, not binding expressions.
-     */
-    @Test
-    void commaSeparatedCoercionWithBindingExpressionProducesError() {
-        getFixture().configureByText("TestView.fxml", fxml(
-                "javafx.scene.layout.GridPane\njavafx.geometry.Insets",
-                """
-                  <GridPane padding=<error descr="A comma-separated argument list cannot contain binding expressions">"$foo,2,3,4"</error>/>
-                """
-        ));
-        getFixture().checkHighlighting(false, false, false);
-    }
-
-    // -----------------------------------------------------------------------
     // xml:space attribute
     // -----------------------------------------------------------------------
 

@@ -50,7 +50,17 @@ public final class Fxml2BindingNotationReference extends PsiReferenceBase<XmlAtt
         /** Reverse content binding: {@code >{..x}} / {@code {fx:Push ..x}} */
         PUSH_CONTENT,
         /** Bidirectional content binding: {@code #{..x}} / {@code {fx:Synchronize ..x}} */
-        SYNCHRONIZE_CONTENT
+        SYNCHRONIZE_CONTENT;
+
+        /** The intrinsic this notation is a shorthand for, e.g. {@code fx:Evaluate}. */
+        public @NotNull String intrinsicName() {
+            return switch (this) {
+                case EVALUATE, EVALUATE_CONTENT -> "fx:Evaluate";
+                case OBSERVE, OBSERVE_CONTENT -> "fx:Observe";
+                case PUSH, PUSH_CONTENT -> "fx:Push";
+                case SYNCHRONIZE, SYNCHRONIZE_CONTENT -> "fx:Synchronize";
+            };
+        }
     }
 
     public Fxml2BindingNotationReference(

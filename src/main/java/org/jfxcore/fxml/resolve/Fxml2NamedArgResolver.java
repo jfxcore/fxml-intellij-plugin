@@ -50,11 +50,21 @@ public final class Fxml2NamedArgResolver {
      * (i.e. every parameter of that constructor carries {@code @NamedArg}).
      */
     public static boolean hasNamedArgConstructor(@NotNull PsiClass ownerClass) {
+        return !namedArgConstructors(ownerClass).isEmpty();
+    }
+
+    /**
+     * Returns all public NamedArgs constructors of {@code ownerClass}, i.e. those whose every
+     * parameter carries {@code @NamedArg}.  These are the constructors that are eligible for
+     * implicit construction from an attribute value.
+     */
+    public static @NotNull List<PsiMethod> namedArgConstructors(@NotNull PsiClass ownerClass) {
+        List<PsiMethod> constructors = new ArrayList<>();
         for (PsiMethod constructor : ownerClass.getConstructors()) {
             if (!constructor.hasModifierProperty(PsiModifier.PUBLIC)) continue;
-            if (isFullyAnnotatedNamedArgs(constructor)) return true;
+            if (isFullyAnnotatedNamedArgs(constructor)) constructors.add(constructor);
         }
-        return false;
+        return constructors;
     }
 
     /**

@@ -116,16 +116,24 @@ public final class Fxml2XmlUtil {
     }
 
     /**
+     * The property a dot-separated property chain ends in.
+     *
+     * @param ownerClass   the class that declares the last property of the chain
+     * @param propertyName the name of the last property
+     */
+    public record ChainedProperty(@NotNull PsiClass ownerClass, @NotNull String propertyName) {}
+
+    /**
      * Walks a dot-separated property chain on {@code ownerClass} using
      * {@link Fxml2AttributeValueResolver#propertyType} (which correctly unwraps
-     * {@code ObservableValue<T>}) and returns {@code [finalOwnerClass, lastPropertyName]},
-     * or {@code null} if any segment fails to resolve.
+     * {@code ObservableValue<T>}) and returns the property the chain ends in, or {@code null} if
+     * any segment fails to resolve.
      *
-     * <p>For a plain (non-dotted) name the array is {@code [ownerClass, name]}.
+     * <p>For a plain (non-dotted) name the result is {@code ownerClass} and that name.
      * For {@code "selectionModel.selectionMode"} on {@code SomeListView} it returns
-     * {@code [MultipleSelectionModel, "selectionMode"]}.
+     * {@code MultipleSelectionModel} and {@code "selectionMode"}.
      */
-    public static Object @Nullable [] resolveChainedPropertyOwner(
+    public static @Nullable ChainedProperty resolveChainedProperty(
             @NotNull PsiClass ownerClass, @NotNull String dottedName) {
         String[] parts = dottedName.split("\\.", -1);
         PsiClass current = ownerClass;
@@ -135,6 +143,6 @@ public final class Fxml2XmlUtil {
             current = PsiUtil.resolveClassInType(type);
             if (current == null) return null;
         }
-        return new Object[]{ current, parts[parts.length - 1] };
+        return new ChainedProperty(current, parts[parts.length - 1]);
     }
 }

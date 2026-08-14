@@ -6,6 +6,7 @@ import com.intellij.codeInspection.LocalQuickFixProvider;
 import com.intellij.lang.properties.references.PropertyReference;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.project.Project;
+import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.XmlPatterns;
 import com.intellij.psi.JavaPsiFacade;
@@ -36,6 +37,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.codeinsight.Fxml2AddImportFix;
 import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.descriptors.Fxml2StaticPropertyAttributeDescriptor;
+import org.jfxcore.fxml.resolve.Fxml2AttributeValueItems;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser.ContextSelector;
@@ -43,10 +45,12 @@ import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionOperands;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionContentParser;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
 import org.jfxcore.fxml.resolve.Fxml2TagResolver;
 import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
+import org.jfxcore.fxml.resolve.Fxml2ValueSequenceParser;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
 import java.util.ArrayList;
@@ -76,6 +80,16 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
     /** FQN of the built-in {@code DynamicResource} markup extension (no prefix shorthand). */
     private static final String DYNAMIC_RESOURCE_FQN = "org.jfxcore.markup.resource.DynamicResource";
+
+    /** Matches an attribute value that contains one of the binding expression notations. */
+    private static final PatternCondition<String> BINDING_NOTATION =
+            new PatternCondition<>("containsBindingNotation") {
+                @Override
+                public boolean accepts(@NotNull String value, ProcessingContext context) {
+                    return value.contains("$") || value.contains("{fx:")
+                            || value.contains("#{") || value.contains(">{");
+                }
+            };
 
     @Override
     public void registerReferenceProviders(@NotNull PsiReferenceRegistrar registrar) {
@@ -109,38 +123,23 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 PsiReferenceRegistrar.HIGHER_PRIORITY);
 
         // Binding expressions: $path, ${path}, #{path}, >{path}, {fx:...}
+        // A binding expression may appear in any item of a value sequence, not only at the start
+        // of the value, so every value containing one of the notations is offered to the provider,
+        // which decides per item.  One registration covers all four notations, so that a value
+        // using several of them is not offered twice.
         registrar.registerReferenceProvider(
                 XmlPatterns.xmlAttributeValue()
-                        .withValue(string().startsWith("$")),
-                new BindingReferenceProvider(),
-                PsiReferenceRegistrar.HIGHER_PRIORITY);
-
-        registrar.registerReferenceProvider(
-                XmlPatterns.xmlAttributeValue()
-                        .withValue(string().startsWith("{fx:")),
-                new BindingReferenceProvider(),
-                PsiReferenceRegistrar.HIGHER_PRIORITY);
-
-        registrar.registerReferenceProvider(
-                XmlPatterns.xmlAttributeValue()
-                        .withValue(string().startsWith("#{")),
-                new BindingReferenceProvider(),
-                PsiReferenceRegistrar.HIGHER_PRIORITY);
-
-        registrar.registerReferenceProvider(
-                XmlPatterns.xmlAttributeValue()
-                        .withValue(string().startsWith(">{")),
+                        .withValue(string().with(BINDING_NOTATION)),
                 new BindingReferenceProvider(),
                 PsiReferenceRegistrar.HIGHER_PRIORITY);
 
         // Custom markup extension class name in {ClassName} or {ClassName param=val} syntax.
-        // Excludes {fx:...} (handled above). Backslash-escaped values (e.g. \{ClassName}) start
-        // with '\' rather than '{' and are therefore already excluded by the startsWith("{") guard.
+        // A brace form may appear in any item of a value sequence, not only at the start of the
+        // value, so every value containing a brace is offered to the provider, which decides per
+        // item. Intrinsics ({fx:...}, handled above) and escaped values are skipped there.
         registrar.registerReferenceProvider(
                 XmlPatterns.xmlAttributeValue()
-                        .withValue(string().startsWith("{")
-                                .andNot(string().startsWith("{fx:"))
-                                .andNot(string().startsWith("\\"))),
+                        .withValue(string().contains("{")),
                 new MarkupExtensionReferenceProvider(),
                 PsiReferenceRegistrar.HIGHER_PRIORITY);
 
@@ -308,17 +307,42 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             if (!(attrVal.getContainingFile() instanceof XmlFile xmlFile)) return PsiReference.EMPTY_ARRAY;
             if (!Fxml2FileType.isFxml2(xmlFile)) return PsiReference.EMPTY_ARRAY;
 
-            String rawValue = attrVal.getValue();
-            if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
+            List<PsiReference> refs = new ArrayList<>();
+            for (var item : Fxml2AttributeValueItems.resolveItems(attrVal, xmlFile)) {
+                if (item.isMarkupExtension()) {
+                    collectMarkupExtensionRefs(refs, attrVal, item.text(), item.offset(), xmlFile);
+                }
+            }
+            return refs.toArray(PsiReference.EMPTY_ARRAY);
+        }
+
+        /**
+         * Adds the references of one markup extension in brace notation.
+         *
+         * @param rawValue   the extension text, which is one item of the attribute value
+         * @param itemOffset offset of {@code rawValue} within the attribute value
+         */
+        private static void collectMarkupExtensionRefs(
+                @NotNull List<PsiReference> refs,
+                @NotNull XmlAttributeValue attrVal,
+                @NotNull String rawValue,
+                int itemOffset,
+                @NotNull XmlFile xmlFile) {
+
+            // Intrinsics are resolved by BindingReferenceProvider.
+            if (rawValue.startsWith("{fx:")) return;
 
             Object parsed = Fxml2BindingExpressionParser.parse(rawValue);
             if (!(parsed instanceof Fxml2BindingExpressionParser.MarkupExtensionExpression(
                     String extensionName, int nameOffset, boolean ignored))) {
-                return PsiReference.EMPTY_ARRAY;
+                return;
             }
+            // Offsets are relative to the item; the attribute value text additionally has the
+            // opening quote in front of it.
+            int base = 1 + itemOffset;
 
-            // Range within XmlAttributeValue text (which includes surrounding quotes): +1 for opening quote.
-            TextRange classNameRange = new TextRange(1 + nameOffset, 1 + nameOffset + extensionName.length());
+            TextRange classNameRange =
+                    new TextRange(base + nameOffset, base + nameOffset + extensionName.length());
 
             PsiClass extClass = Fxml2ImportResolver.resolve(extensionName, xmlFile);
             if (extClass == null) {
@@ -332,8 +356,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             if (extClass == null) {
                 extClass = resolveBuiltInExtensionBySimpleName(extensionName, xmlFile.getProject());
             }
-
-            List<PsiReference> refs = new ArrayList<>();
 
             // Extension class name: soft so IntelliJ doesn't add a second "Cannot resolve" indicator.
             // NOTE: no Fxml2ExpressionReference blocker here: LiteralValueReferenceProvider already
@@ -351,7 +373,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
             // Type argument reference(s): {ClassName<TypeArg>} or {ClassName&lt;TypeArg&gt;}
             int afterName = nameOffset + extensionName.length();
-            collectMarkupExtTypeArgRefs(refs, attrVal, rawValue, afterName, xmlFile);
+            collectMarkupExtTypeArgRefs(refs, attrVal, rawValue, afterName, itemOffset, xmlFile);
 
             // Params section: everything after the class name and optional type args.
             // Uses the same whitespace-finding logic as annotateMarkupExtension in
@@ -364,8 +386,8 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                     int paramsPartInRaw = rawValue.indexOf(paramsPart, 1 + firstSpace);
                     if (paramsPartInRaw >= 0) {
                         XmlTag contextTag = getContextTag(attrVal);
-                        collectMarkupExtParamRefs(refs, attrVal, paramsPart, paramsPartInRaw,
-                                extClass, contextTag, xmlFile);
+                        collectMarkupExtParamRefs(refs, attrVal, paramsPart,
+                                itemOffset + paramsPartInRaw, extClass, contextTag, xmlFile);
 
                         // For resource key extensions (DynamicResource, StaticResource long form),
                         // add a PropertyReference for the positional default argument (the resource key).
@@ -375,7 +397,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                             String resourceKey = extractPositionalDefaultArg(paramsPart);
                             if (resourceKey != null) {
                                 // paramsPart is trimmed, so the key starts at offset 0 within it.
-                                int keyStart = 1 + paramsPartInRaw; // +1 for opening quote in attrVal text
+                                int keyStart = base + paramsPartInRaw;
                                 refs.add(new PropertyReference(
                                         resourceKey, attrVal, null, /* soft= */ false,
                                         new TextRange(keyStart, keyStart + resourceKey.length())));
@@ -384,8 +406,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                     }
                 }
             }
-
-            return refs.toArray(PsiReference.EMPTY_ARRAY);
         }
     }
 
@@ -424,17 +444,70 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             if (!(attrVal.getContainingFile() instanceof XmlFile xmlFile)) return PsiReference.EMPTY_ARRAY;
             if (!Fxml2FileType.isFxml2(xmlFile)) return PsiReference.EMPTY_ARRAY;
 
-            String rawValue = attrVal.getValue();
-            if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
-
             java.util.Map<Character, String> prefixMappings =
                     Fxml2ImportResolver.parsePrefixMappings(xmlFile);
             if (prefixMappings.isEmpty()) return PsiReference.EMPTY_ARRAY;
 
+            List<PsiReference> refs = new ArrayList<>();
+            List<Fxml2ValueSequenceParser.ValueItem> items =
+                    Fxml2AttributeValueItems.resolveItems(attrVal, xmlFile);
+            addPercentPrefixInterpretationRef(refs, attrVal, items, prefixMappings);
+            for (var item : items) {
+                if (item.isMarkupExtension()) {
+                    collectPrefixShorthandRefs(
+                            refs, attrVal, item.text(), item.offset(), prefixMappings, xmlFile);
+                }
+            }
+            return refs.toArray(PsiReference.EMPTY_ARRAY);
+        }
+
+        /**
+         * Claims the complete text governed by an active leading {@code %} prefix after the
+         * attribute grammar has identified its value items. Narrow references for the prefix,
+         * resource key, parameters, and later items remain preferred at their locations.
+         */
+        private static void addPercentPrefixInterpretationRef(
+                @NotNull List<PsiReference> refs,
+                @NotNull XmlAttributeValue attrVal,
+                @NotNull List<Fxml2ValueSequenceParser.ValueItem> items,
+                @NotNull Map<Character, String> prefixMappings) {
+
+            String attributeValue = attrVal.getValue();
+            if (attributeValue.length() <= 1 || attributeValue.charAt(0) != '%'
+                    || !prefixMappings.containsKey('%') || items.isEmpty()) {
+                return;
+            }
+
+            Fxml2ValueSequenceParser.ValueItem firstItem = items.getFirst();
+            if (firstItem.offset() != 0 || !firstItem.isMarkupExtension()
+                    || firstItem.text().charAt(0) != '%') {
+                return;
+            }
+
+            refs.add(softRef(attrVal, new TextRange(2, attributeValue.length() + 1), null));
+        }
+
+        /**
+         * Adds the references of one prefix-shorthand invocation.
+         *
+         * @param rawValue   the invocation text, which is one item of the attribute value
+         * @param itemOffset offset of {@code rawValue} within the attribute value
+         */
+        private static void collectPrefixShorthandRefs(
+                @NotNull List<PsiReference> refs,
+                @NotNull XmlAttributeValue attrVal,
+                @NotNull String rawValue,
+                int itemOffset,
+                @NotNull java.util.Map<Character, String> prefixMappings,
+                @NotNull XmlFile xmlFile) {
+
             Object parsed = Fxml2BindingExpressionParser.parse(rawValue, prefixMappings);
             if (!(parsed instanceof Fxml2BindingExpressionParser.PrefixShorthandExpression pse)) {
-                return PsiReference.EMPTY_ARRAY;
+                return;
             }
+            // Offsets are relative to the item; the attribute value text additionally has the
+            // opening quote in front of it.
+            int base = 1 + itemOffset;
 
             // Resolve the mapped extension class.
             // The prefix declaration may use a simple name (e.g. <?prefix % = MyExt?>) resolved
@@ -446,13 +519,10 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                         .findClass(pse.mappedClass(), GlobalSearchScope.allScope(xmlFile.getProject()));
             }
 
-            List<PsiReference> refs = new ArrayList<>();
-
-            // Reference for the prefix character itself (offset 0 in raw value, offset 1 in
-            // attrVal text because of the opening quote).
+            // Reference for the prefix character itself, which is the first character of the item.
             // The prefix character is a symbolic alias for the class; it does not contain the
             // class name as text and must therefore be excluded from rename refactoring.
-            TextRange prefixRange = new TextRange(1, 2); // covers only the single prefix char
+            TextRange prefixRange = new TextRange(base, base + 1);
             if (extClass != null) {
                 refs.add(new ClassSegmentReference(attrVal, prefixRange, extClass, /* hard= */ false,
                         /* participatesInRename= */ false));
@@ -463,8 +533,8 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             // Parameter references from the ; param=value section.
             if (pse.paramsPart() != null && extClass != null) {
                 XmlTag contextTag = getContextTag(attrVal);
-                collectMarkupExtParamRefs(refs, attrVal, pse.paramsPart(), pse.paramsOffset(),
-                        extClass, contextTag, xmlFile);
+                collectMarkupExtParamRefs(refs, attrVal, pse.paramsPart(),
+                        itemOffset + pse.paramsOffset(), extClass, contextTag, xmlFile);
             }
 
             // For resource-key extensions mapped to a prefix (e.g. %key), add a PropertyReference
@@ -476,7 +546,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             // compile-time class is absent from the fixture or cannot be indexed.
             if (!pse.defaultArg().isEmpty()
                     && isPrefixMappedToResourceKeyExtension(pse.mappedClass(), extClass)) {
-                int keyStart = 1 + pse.defaultArgOffset(); // +1 for opening quote in attrVal text
+                int keyStart = base + pse.defaultArgOffset();
                 refs.add(new PropertyReference(
                         pse.defaultArg(), attrVal, null, /* soft= */ false,
                         new TextRange(keyStart, keyStart + pse.defaultArg().length())));
@@ -487,7 +557,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             if (CLASSPATH_RESOURCE_FQN.equals(pse.mappedClass())
                     && !pse.defaultArg().isEmpty()) {
                 String path = pse.defaultArg();
-                int pathStart = 1 + pse.defaultArgOffset(); // +1 for opening quote in attrVal text
+                int pathStart = base + pse.defaultArgOffset();
                 // Strip enclosing single quotes for quoted paths (@'path with spaces/img.png').
                 if (path.length() >= 2
                         && path.charAt(0) == '\''
@@ -502,8 +572,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 }
                 java.util.Collections.addAll(refs, refSet.getAllReferences());
             }
-
-            return refs.toArray(PsiReference.EMPTY_ARRAY);
         }
     }
 
@@ -614,6 +682,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             @NotNull XmlAttributeValue attrVal,
             @NotNull String rawValue,
             int afterName,
+            int itemOffset,
             @NotNull XmlFile xmlFile) {
 
         if (afterName >= rawValue.length()) return;
@@ -635,15 +704,16 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         // Without them, the cursor landing exactly on the bracket triggers a non-deterministic
         // word-at-caret fallback that may highlight either the class name or the type arg.
         int closeBracketLen = rawValue.charAt(closeOffset) == '&' ? 4 : 1; // "&gt;" vs '>'
-        refs.add(softRef(attrVal, new TextRange(1 + afterName, 1 + afterName + openBracketLen), null));
-        refs.add(softRef(attrVal, new TextRange(1 + closeOffset, 1 + closeOffset + closeBracketLen), null));
+        int base = 1 + itemOffset;
+        refs.add(softRef(attrVal, new TextRange(base + afterName, base + afterName + openBracketLen), null));
+        refs.add(softRef(attrVal, new TextRange(base + closeOffset, base + closeOffset + closeBracketLen), null));
 
         String typeArgContent = rawValue.substring(contentStart, closeOffset);
 
         // Emit class refs for every type name, including those nested in type arguments
         // of a type argument (e.g. both "Map" and "String" in "Map<String, V>").
         for (Fxml2TypeArgumentParser.TypeName typeName
-                : Fxml2TypeArgumentParser.allTypeNames(typeArgContent, contentStart)) {
+                : Fxml2TypeArgumentParser.allTypeNames(typeArgContent, itemOffset + contentStart)) {
             refs.addAll(List.of(buildFqnSegmentRefs(
                     attrVal, typeName.name(), 1 + typeName.offset(), xmlFile, false)));
         }
@@ -651,166 +721,83 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
 
     /**
-     * Scans the params section of a markup extension and adds:
+     * Scans the content of a markup extension, i.e. the text after its class name, and adds:
      * <ul>
-     *   <li>A {@link Fxml2BindingSegmentReference} for each {@code key} in a
-     *       {@code key=value} pair, resolving to the matching {@code @NamedArg}
-     *       parameter or setter on {@code extClass}.</li>
-     *   <li>Binding notation + segment references for any {@code ${path}} or
-     *       {@code $path} expression (same paths as {@link BindingReferenceProvider}).</li>
+     *   <li>A {@link Fxml2BindingSegmentReference} for the name of each named parameter,
+     *       resolving to the matching {@code @NamedArg} parameter or setter on
+     *       {@code extClass}.</li>
+     *   <li>The references of every value in the content, which is a markup extension in its own
+     *       right when it uses one of the expression notations or a declared prefix.</li>
      * </ul>
      *
-     * @param paramsPart      the params substring (e.g. {@code "resourceKey; formatArguments=foo, ${vm.text}"})
-     * @param paramsPartInRaw offset of {@code paramsPart[0]} within {@code rawValue} (0-indexed)
+     * <p>Parameters are separated by {@code ';'} or by a line break, whereas a comma separates the
+     * values of one parameter, so an assignment that follows a comma is a value rather than a
+     * parameter and gets no name reference.
+     *
+     * @param content      the content of the extension
+     *                     (e.g. {@code "resourceKey; formatArguments=foo, ${vm.text}"})
+     * @param contentInRaw offset of {@code content} within {@code rawValue} (0-indexed)
      */
     private static void collectMarkupExtParamRefs(
             @NotNull List<PsiReference> refs,
             @NotNull XmlAttributeValue attrVal,
-            @NotNull String paramsPart,
-            int paramsPartInRaw,
+            @NotNull String content,
+            int contentInRaw,
             @NotNull PsiClass extClass,
             @Nullable XmlTag contextTag,
             @NotNull XmlFile xmlFile) {
 
-        int cursor = 0;
-        int len = paramsPart.length();
-        while (cursor < len) {
-            char c = paramsPart.charAt(cursor);
-
-            // Skip whitespace/separators
-            if (Character.isWhitespace(c) || c == ',' || c == ';') {
-                cursor++;
-                continue;
-            }
-
-            // Binding expression: '$' prefix.
-            // Must be checked before the Java-identifier branch because '$' is a valid
-            // Java identifier start character, but here it always signals a binding.
-            if (c == '$') {
-                int exprEnd = findMarkupExtBindingEnd(paramsPart, cursor);
-                if (exprEnd > cursor) {
-                    addMarkupExtBindingRefs(refs, attrVal,
-                            paramsPart.substring(cursor, exprEnd),
-                            paramsPartInRaw + cursor, contextTag, xmlFile);
-                    cursor = exprEnd;
-                } else {
-                    cursor++;
-                }
-                continue;
-            }
-
-            // Java identifier: either a parameter key (key=value) or a positional value
-            if (Character.isJavaIdentifierStart(c)) {
-                int identStart = cursor;
-                while (cursor < len && Character.isJavaIdentifierPart(paramsPart.charAt(cursor))) {
-                    cursor++;
-                }
-                String ident = paramsPart.substring(identStart, cursor);
-
-                // Skip whitespace
-                int wsEnd = cursor;
-                while (wsEnd < len && Character.isWhitespace(paramsPart.charAt(wsEnd))) wsEnd++;
-
-                if (wsEnd < len && paramsPart.charAt(wsEnd) == '=') {
-                    // key=value pair: emit a reference for the key name
-                    PsiElement decl = resolveMarkupExtParam(ident, extClass);
+        for (var section : Fxml2MarkupExtensionContentParser.parse(content)) {
+            switch (section) {
+                case Fxml2MarkupExtensionContentParser.NamedParameter param -> {
+                    PsiElement decl = resolveMarkupExtParam(param.name(), extClass);
+                    int nameStart = 1 + contentInRaw + param.offset();
                     refs.add(new Fxml2BindingSegmentReference(attrVal,
-                            new TextRange(1 + paramsPartInRaw + identStart,
-                                    1 + paramsPartInRaw + cursor),
-                            decl));
-                    cursor = wsEnd + 1; // skip '='
-                    // Advance past the value, collecting binding refs when needed
-                    cursor = skipMarkupExtValue(refs, attrVal, paramsPart, cursor, len,
-                            paramsPartInRaw, contextTag, xmlFile);
-                } else {
-                    // Positional default-property value: no reference emitted, advance past it
-                    cursor = wsEnd;
+                            new TextRange(nameStart, nameStart + param.name().length()), decl));
+                    collectMarkupExtValueRefs(refs, attrVal, param.value(),
+                            contentInRaw + param.valueOffset(), contextTag, xmlFile);
                 }
-                continue;
+                case Fxml2MarkupExtensionContentParser.PositionalValue value ->
+                        collectMarkupExtValueRefs(refs, attrVal, value.text(),
+                                contentInRaw + value.offset(), contextTag, xmlFile);
             }
-
-            cursor++;
         }
     }
 
     /**
-     * Advances past a markup-extension parameter value starting at {@code start}.
-     * If the value is a binding expression ({@code ${path}} or {@code $path}), binding
-     * references are added via {@link #addMarkupExtBindingRefs}.
+     * Adds the references of the values a section of markup extension content assigns.  The
+     * section is a value list, so each of its items is resolved on its own, and an item that is a
+     * binding expression or a markup extension contributes the references of that form.
      *
-     * @return the cursor position after the value
+     * @param valueInRaw offset of {@code value} within {@code rawValue} (0-indexed)
      */
-    private static int skipMarkupExtValue(
+    private static void collectMarkupExtValueRefs(
             @NotNull List<PsiReference> refs,
             @NotNull XmlAttributeValue attrVal,
-            @NotNull String paramsPart,
-            int start,
-            int limit,
-            int paramsPartInRaw,
+            @NotNull String value,
+            int valueInRaw,
             @Nullable XmlTag contextTag,
             @NotNull XmlFile xmlFile) {
 
-        if (start >= limit) return start;
-        char c = paramsPart.charAt(start);
+        java.util.Map<Character, String> prefixMappings =
+                Fxml2ImportResolver.parsePrefixMappings(xmlFile);
 
-        // Binding expression value
-        if (c == '$') {
-            int exprEnd = findMarkupExtBindingEnd(paramsPart, start);
-            if (exprEnd > start) {
-                addMarkupExtBindingRefs(refs, attrVal,
-                        paramsPart.substring(start, exprEnd),
-                        paramsPartInRaw + start, contextTag, xmlFile);
-                return exprEnd;
+        for (var item : Fxml2ValueSequenceParser.split(value, prefixMappings)) {
+            if (!item.isMarkupExtension()) continue;
+            int itemInRaw = valueInRaw + item.offset();
+            char first = item.text().charAt(0);
+
+            if (first == '{') {
+                MarkupExtensionReferenceProvider.collectMarkupExtensionRefs(
+                        refs, attrVal, item.text(), itemInRaw, xmlFile);
+            } else if (prefixMappings.containsKey(first)) {
+                PrefixShorthandReferenceProvider.collectPrefixShorthandRefs(
+                        refs, attrVal, item.text(), itemInRaw, prefixMappings, xmlFile);
+            } else {
+                addMarkupExtBindingRefs(
+                        refs, attrVal, item.text(), itemInRaw, contextTag, xmlFile);
             }
         }
-
-        // Quoted string
-        if (c == '"' || c == '\'') {
-            int cursor = start + 1;
-            while (cursor < limit && paramsPart.charAt(cursor) != c) cursor++;
-            return cursor < limit ? cursor + 1 : limit;
-        }
-
-        // Plain literal: scan to next whitespace/comma/semicolon
-        int cursor = start;
-        while (cursor < limit
-                && !Character.isWhitespace(paramsPart.charAt(cursor))
-                && paramsPart.charAt(cursor) != ','
-                && paramsPart.charAt(cursor) != ';') {
-            cursor++;
-        }
-        return cursor;
-    }
-
-    /**
-     * Returns the end offset (exclusive) of a binding expression starting at {@code start}:
-     * <ul>
-     *   <li>{@code ${...}}: finds the matching {@code }</li>
-     *   <li>{@code $path}: scans to the next whitespace, comma, or semicolon</li>
-     * </ul>
-     * Returns {@code start} if no binding expression is detected or the expression is malformed.
-     */
-    private static int findMarkupExtBindingEnd(@NotNull String s, int start) {
-        if (start >= s.length() || s.charAt(start) != '$') return start;
-        int next = start + 1;
-        if (next < s.length() && s.charAt(next) == '{') {
-            // ${...}: find the matching }
-            int depth = 0;
-            for (int i = next; i < s.length(); i++) {
-                if (s.charAt(i) == '{') depth++;
-                else if (s.charAt(i) == '}') { if (--depth == 0) return i + 1; }
-            }
-            return start; // unmatched brace
-        }
-        // $path: scan to next separator
-        int end = next;
-        while (end < s.length()
-                && !Character.isWhitespace(s.charAt(end))
-                && s.charAt(end) != ','
-                && s.charAt(end) != ';') {
-            end++;
-        }
-        return Math.max(end, start);
     }
 
     /**
@@ -1007,14 +994,42 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 return PsiReference.EMPTY_ARRAY;
             }
 
-            String rawValue = attrVal.getValue();
-            if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
+            List<Fxml2ValueSequenceParser.ValueItem> items =
+                    Fxml2AttributeValueItems.resolveItems(attrVal, xmlFile);
+            List<PsiReference> refs = new ArrayList<>(8);
+            for (Fxml2ValueSequenceParser.ValueItem item : items) {
+                // The blocker reference covers the whole value, so it only applies to a value that
+                // is one item: across a sequence it would cover the ranges of the other items.
+                collectBindingRefs(refs, attrVal, item.text(), item.offset(), xmlFile,
+                        /* wholeValueBlocker= */ items.size() == 1);
+            }
+            return refs.toArray(PsiReference.EMPTY_ARRAY);
+        }
+
+        /**
+         * Adds the references of one binding expression, which is one item of the attribute value.
+         *
+         * @param rawValue           the expression text
+         * @param itemOffset         offset of {@code rawValue} within the attribute value
+         * @param wholeValueBlocker  whether to emit the soft reference that covers the whole value
+         */
+        private static void collectBindingRefs(
+                @NotNull List<PsiReference> refs,
+                @NotNull XmlAttributeValue attrVal,
+                @NotNull String rawValue,
+                int itemOffset,
+                @NotNull XmlFile xmlFile,
+                boolean wholeValueBlocker) {
 
             // Use the lenient parse so a binding expression whose closing brace has not been typed
             // yet still resolves its already-complete leading segments for Ctrl+click navigation.
             Fxml2BindingExpressionParser.ParsedExpression expr =
                     Fxml2BindingExpressionParser.parseExpressionLenient(rawValue);
-            if (expr == null) return PsiReference.EMPTY_ARRAY;
+            if (expr == null) return;
+
+            // Offsets are relative to the item; the attribute value text additionally has the
+            // opening quote in front of it.
+            int itemBase = 1 + itemOffset;
 
             // Get the context tag (parent XmlTag of the attribute)
             XmlTag contextTag = getContextTag(attrVal);
@@ -1026,8 +1041,8 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             // Parse context selector from stripped path
             ContextSelector selector = Fxml2BindingExpressionParser.parseContextSelector(strippedPath);
             String pathForResolution = selector != null ? selector.remainingPath() : strippedPath;
-            // Offset within rawValue (1-based because quotes), for the path after the selector.
-            int pathBase = 1 + expr.strippedPathOffset()
+            // Offset within the attribute value, for the path after the selector.
+            int pathBase = itemBase + expr.strippedPathOffset()
                     + (selector != null ? selector.selectorLength() : 0);
 
             // Determine start class based on context selector
@@ -1045,11 +1060,10 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             // online expression-docs page regardless of whether the path resolves to a Java declaration.
             // It is emitted here, before the startClass guard, so Ctrl+click on the prefix works even
             // when no code-behind class is present in the file.
-            List<PsiReference> refs = new ArrayList<>(8);
-            refs.add(new Fxml2ExpressionReference(attrVal));
+            if (wholeValueBlocker) refs.add(new Fxml2ExpressionReference(attrVal));
             refs.add(new Fxml2BindingNotationReference(
                     attrVal,
-                    new TextRange(1, 1 + expr.prefixLength())));
+                    new TextRange(itemBase, itemBase + expr.prefixLength())));
 
             if (startClass == null) {
                 // Even without a resolvable code-behind class, try to resolve the first
@@ -1061,7 +1075,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                             resolveFxIdOnlySegments(pathForResolution, xmlFile, expr.kind(), pathBase);
                     emitPathSegmentRefs(refs, attrVal, fxIdSegments, pathBase, pathForResolution);
                 }
-                return refs.toArray(PsiReference.EMPTY_ARRAY);
+                return;
             }
 
             GlobalSearchScope scope = xmlFile.getResolveScope();
@@ -1085,7 +1099,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             // Falls back to BooleanExpression.not() when the markup library is absent.
             int opLen = expr.operatorLength();
             if (opLen > 0 && !isFunctionCall) {
-                int opStart = 1 + expr.pathOffset();
+                int opStart = itemBase + expr.pathOffset();
                 int opEnd = opStart + opLen;
                 PsiClass resultType = segments.isEmpty() ? null : segments.getLast().resultType();
                 PsiMethod method = resolveBooleanOperatorMethod(
@@ -1102,8 +1116,8 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 }
             }
 
-            // Offset of the expression source within the attribute value text (1-based, after quote).
-            int strippedBase = 1 + expr.strippedPathOffset();
+            // Offset of the expression source within the attribute value text.
+            int strippedBase = itemBase + expr.strippedPathOffset();
             Fxml2ExpressionParser.Expression expressionTree = parseExpressionTree(strippedPath);
 
             // Class references for the types the expression names: the type argument an invocation
@@ -1153,7 +1167,8 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 if (valid && docsUrl != null && nameOffset >= 0) {
                     refs.add(new Fxml2BindingParamNameReference(
                             attrVal,
-                            new TextRange(1 + nameOffset, 1 + nameOffset + paramName.length()),
+                            new TextRange(itemBase + nameOffset,
+                                    itemBase + nameOffset + paramName.length()),
                             docsUrl));
                 }
 
@@ -1170,17 +1185,17 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                                     paramPath, startClass, scope,
                                     Fxml2BindingNotationReference.Kind.OBSERVE, xmlFile);
                     if (isFullyResolved(propertySegs)) {
-                        emitPathSegmentRefs(refs, attrVal, propertySegs, 1 + paramPathOffset, paramPath);
+                        emitPathSegmentRefs(refs, attrVal, propertySegs,
+                                itemBase + paramPathOffset, paramPath);
                     } else {
                         List<Fxml2BindingPathResolver.Segment> methodSegs =
                                 Fxml2BindingPathResolver.resolveFunctionName(
                                         paramPath, startClass, scope, expr.kind(), xmlFile);
-                        emitScatteredSegmentRefs(refs, attrVal, methodSegs, 1 + paramPathOffset);
+                        emitScatteredSegmentRefs(refs, attrVal, methodSegs,
+                                itemBase + paramPathOffset);
                     }
                 }
             }
-
-            return refs.toArray(PsiReference.EMPTY_ARRAY);
         }
 
         /**
@@ -1576,9 +1591,12 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             String rawValue = attrVal.getValue();
             if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
 
-            // Skip binding expressions and prefix-shorthand values: handled by dedicated providers.
-            java.util.Map<Character, String> prefixMappings = Fxml2ImportResolver.parsePrefixMappings(xmlFile);
-            if (Fxml2BindingExpressionParser.looksLikeBindingExpression(rawValue, prefixMappings)) return PsiReference.EMPTY_ARRAY;
+            // Skip values with a markup extension item, including a value that is one: they are
+            // handled per item by the dedicated providers, whereas this reference spans the whole
+            // value.
+            if (Fxml2AttributeValueItems.hasMarkupExtensionItem(attrVal, xmlFile)) {
+                return PsiReference.EMPTY_ARRAY;
+            }
 
             if (!(attrVal.getParent() instanceof XmlAttribute attr)) return PsiReference.EMPTY_ARRAY;
             String attrName = attr.getName();
@@ -1639,16 +1657,19 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 PsiClass declaringClass = sd.getDeclaringClass();
                 if (declaringClass == null) return null;
                 String propName = attrName.substring(attrName.lastIndexOf('.') + 1);
-                return Fxml2AttributeValueResolver.resolveStatic(declaringClass, propName, rawValue);
+                return Fxml2AttributeValueResolver.resolveStatic(
+                        declaringClass, propName, rawValue,
+                        tag.getContainingFile() instanceof XmlFile xmlFile ? xmlFile : null);
             }
             // Chained instance property
             if (!(tag.getDescriptor() instanceof Fxml2ClassTagDescriptor cd)) return null;
             PsiClass ownerClass = cd.getPsiClass();
             if (ownerClass == null) return null;
-            Object[] chain = Fxml2XmlUtil.resolveChainedPropertyOwner(ownerClass, attrName);
+            Fxml2XmlUtil.ChainedProperty chain =
+                    Fxml2XmlUtil.resolveChainedProperty(ownerClass, attrName);
             if (chain == null) return null;
-            PsiClass finalClass = (PsiClass) chain[0];
-            String lastProp = (String) chain[1];
+            PsiClass finalClass = chain.ownerClass();
+            String lastProp = chain.propertyName();
             return Fxml2AttributeValueResolver.resolve(finalClass, lastProp, rawValue, scope);
         }
 
@@ -1801,8 +1822,9 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
             String rawValue = attrVal.getValue();
             if (rawValue.isBlank()) return PsiReference.EMPTY_ARRAY;
-            java.util.Map<Character, String> prefixMappings = Fxml2ImportResolver.parsePrefixMappings(xmlFile);
-            if (Fxml2BindingExpressionParser.looksLikeBindingExpression(rawValue, prefixMappings)) return PsiReference.EMPTY_ARRAY;
+            if (Fxml2AttributeValueItems.hasMarkupExtensionItem(attrVal, xmlFile)) {
+                return PsiReference.EMPTY_ARRAY;
+            }
 
             // Only act when the property type is String.
             GlobalSearchScope scope = xmlFile.getResolveScope();

@@ -1649,7 +1649,7 @@ public final class Fxml2BindingPathResolver {
         if (cls == null) return null;
 
         // Check if this type IS ObservableValue or a subtype
-        PsiSubstitutor sub = Fxml2AttributeValueResolver.buildObservableSubstitutor(
+        PsiSubstitutor sub = Fxml2TypeHierarchy.substitutorFor(
                 cls, observable, resolved.getSubstitutor());
         if (sub == null) return null;
 

@@ -395,6 +395,51 @@ class Fxml2MarkupExtensionTest extends Fxml2TestBase {
     }
 
     /**
+     * 5.4: Parameters are separated by {@code ';'}, so several parameters can be configured in
+     * one invocation.
+     */
+    @Test
+    void semicolonSeparatedParams_noError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.MyExtension",
+                """
+                  <Label text="{MyExtension param1=42; param3=5}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A comma separates the values of one parameter, so an assignment that follows a comma stands
+     * where a value is expected and its name needs a {@code ';'} in front of it.
+     */
+    @Test
+    void commaSeparatedParams_error() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.MyExtension",
+                """
+                  <Label text="{MyExtension param1=42, %s=5}"/>
+                """.formatted(error("Expected ';' before parameter 'param3'", "param3"))
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
+     * A value that follows a comma is a value of the parameter before it, so it is not reported
+     * as a parameter of its own.
+     */
+    @Test
+    void commaSeparatedValues_noError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.MyExtension",
+                """
+                  <Label text="{MyExtension param1=42, 43}"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
+    /**
      * 5.4: An unknown parameter name reports "Unknown markup extension parameter 'X'".
      */
     @Test
