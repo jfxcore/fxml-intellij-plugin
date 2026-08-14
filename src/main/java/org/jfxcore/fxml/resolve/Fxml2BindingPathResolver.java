@@ -803,7 +803,7 @@ public final class Fxml2BindingPathResolver {
                 offset++;
             }
         }
-        return result.toString();
+        return result.toString().strip();
     }
 
     /**
