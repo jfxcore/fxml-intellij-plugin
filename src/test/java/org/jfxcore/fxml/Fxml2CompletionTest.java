@@ -1593,6 +1593,147 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // Binding path completion inside a compound expression
+    // -----------------------------------------------------------------------
+
+    private void addCompoundExpressionCodeBehind() {
+        getFixture().addFileToProject("test/ExprViewModel.java",
+                """
+                package test;
+                public class ExprViewModel {
+                    public String getNameTooltip() { return ""; }
+                    public String getNameToolbar() { return ""; }
+                }
+                """);
+        getFixture().addFileToProject("test/CodeBehindExpr.java",
+                """
+                package test;
+                import javafx.beans.property.BooleanProperty;
+                import javafx.beans.property.SimpleBooleanProperty;
+                public class CodeBehindExpr extends javafx.scene.layout.BorderPane {
+                    private final BooleanProperty foo = new SimpleBooleanProperty();
+                    public BooleanProperty fooProperty() { return foo; }
+                    public boolean isFoo() { return foo.get(); }
+                    public void setFoo(boolean value) { foo.set(value); }
+                    public double getShapeWidth() { return 0; }
+                    public ExprViewModel getViewModel() { return new ExprViewModel(); }
+                }
+                """);
+    }
+
+    /** Completes the given body against the compound-expression code-behind. */
+    private List<String> compoundExpressionCompletions(String fileName, String body) {
+        addCompoundExpressionCodeBehind();
+        getFixture().configureByText(fileName, fxml(
+                "javafx.scene.control.Label",
+                body,
+                "test.CodeBehindExpr"
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        assertNotNull(items, "Expected completion items for: " + body);
+        return displayNames(items);
+    }
+
+    /**
+     * An operand that stands after a binary operator and behind the truthiness operator is
+     * completed in its own right, so the property names of the evaluation context are offered.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionForOperandAfterBinaryOperator() {
+        List<String> names = compoundExpressionCompletions("BindingCompoundOperand.fxml",
+                """
+                  <Label text="Wide enough" visible="${shapeWidth > 40 && !!fo<caret>}"/>
+                """);
+        assertTrue(names.contains("foo"),
+                "Expected 'foo' after '&& !!fo', got: " + names);
+    }
+
+    /** The operand of a leading truthiness operator is completed in its own right. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionForOperandOfLeadingBooleanOperator() {
+        List<String> names = compoundExpressionCompletions("BindingUnaryOperand.fxml",
+                """
+                  <Label visible="${!!fo<caret>}"/>
+                """);
+        assertTrue(names.contains("foo"),
+                "Expected 'foo' after '!!', got: " + names);
+    }
+
+    /** A path segment behind an arithmetic operator is completed against its receiver type. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionForMemberOperandAfterArithmeticOperator() {
+        List<String> names = compoundExpressionCompletions("BindingArithmeticOperand.fxml",
+                """
+                  <Label text="${shapeWidth + viewModel.nameTool<caret>}"/>
+                """);
+        assertTrue(names.contains("nameTooltip"),
+                "Expected 'nameTooltip' after '+ viewModel.nameTool', got: " + names);
+    }
+
+    /** An operand that opens a grouping is completed in its own right. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionForOperandInsideGrouping() {
+        List<String> names = compoundExpressionCompletions("BindingGroupedOperand.fxml",
+                """
+                  <Label text="${(shape<caret>}"/>
+                """);
+        assertTrue(names.contains("shapeWidth"),
+                "Expected 'shapeWidth' inside a grouping, got: " + names);
+    }
+
+    /** A context selector that stands after an operator keeps selecting the evaluation context. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionForContextSelectorOperandAfterOperator() {
+        List<String> names = compoundExpressionCompletions("BindingSelectorOperand.fxml",
+                """
+                  <Label visible="${foo && :root.shape<caret>}"/>
+                """);
+        assertTrue(names.contains("shapeWidth"),
+                "Expected 'shapeWidth' after '&& :root.', got: " + names);
+    }
+
+    /** An operand of a compound argument of an invocation is completed in its own right. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionForOperandInsideInvocationArgument() {
+        List<String> names = compoundExpressionCompletions("BindingArgumentOperand.fxml",
+                """
+                  <Label text="${String.format('Width: %.0f', 2 * shape<caret>}"/>
+                """);
+        assertTrue(names.contains("shapeWidth"),
+                "Expected 'shapeWidth' in a compound invocation argument, got: " + names);
+    }
+
+    /** A compound expression of a bidirectional binding is completed like any other. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionForOperandOfBidirectionalNotation() {
+        List<String> names = compoundExpressionCompletions("BindingBidirectionalOperand.fxml",
+                """
+                  <Label visible="#{!!fo<caret>}"/>
+                """);
+        assertTrue(names.contains("foo"),
+                "Expected 'foo' in a bidirectional binding, got: " + names);
+    }
+
+    /** An expression item of a value list is completed in its own right. */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionForOperandInValueListItem() {
+        List<String> names = compoundExpressionCompletions("BindingListItemOperand.fxml",
+                """
+                  <Label styleClass="a, ${shapeWidth > 40 && !!fo<caret>}"/>
+                """);
+        assertTrue(names.contains("foo"),
+                "Expected 'foo' in a value list item, got: " + names);
+    }
+
+    // -----------------------------------------------------------------------
     // fx: intrinsic attribute name completion
     // -----------------------------------------------------------------------
 

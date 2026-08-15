@@ -173,6 +173,144 @@ public final class Fxml2ExpressionOperands {
         }
     }
 
+    /**
+     * Returns the offset at which the operand standing at the end of {@code text} begins.
+     *
+     * <p>Editor text that ends at the caret is generally incomplete and does not parse, while the
+     * operand the caret is editing still resolves in its own right: an operand is delimited by the
+     * operators that combine it with the rest of the expression, so everything up to and including
+     * the last operator belongs to preceding operands.  A leading context selector belongs to the
+     * operand it selects the evaluation context for and is therefore kept, as are the argument and
+     * type-argument groups a path is written with, e.g. {@code String.format('a', b).length}.
+     *
+     * <p>Returns {@code text.length()} when the text ends with an operator, i.e. when the operand
+     * being edited is still empty.
+     */
+    public static int trailingOperandStart(@NotNull String text) {
+        int start = text.length();
+        while (true) {
+            while (start > 0 && isOperandPart(text.charAt(start - 1))) {
+                start--;
+            }
+            if (start > 1 && text.charAt(start - 1) == ':' && text.charAt(start - 2) == ':') {
+                // The observable-selection operator selects a member and continues the operand.
+                start -= 2;
+                continue;
+            }
+            int group = groupStart(text, start);
+            if (group < 0) break;
+            start = group;
+        }
+        return extendOverContextSelector(text, start);
+    }
+
+    /**
+     * Returns {@code true} when {@code text} ends inside a string literal, i.e. when a quote it
+     * opens is not closed within {@code text}.  The text at the end of such a literal names no
+     * value of the expression.
+     */
+    public static boolean endsInsideStringLiteral(@NotNull String text) {
+        char quote = 0;
+        boolean escaped = false;
+        for (int index = 0; index < text.length(); index++) {
+            char c = text.charAt(index);
+            if (quote == 0) {
+                if (c == '\'' || c == '"') quote = c;
+            } else if (escaped) {
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == quote) {
+                quote = 0;
+            }
+        }
+        return quote != 0;
+    }
+
+    /** Returns {@code true} for the characters a path operand is written with. */
+    private static boolean isOperandPart(char c) {
+        return Character.isJavaIdentifierPart(c) || c == '.';
+    }
+
+    /**
+     * Returns the offset of the group that ends directly before {@code start} and belongs to the
+     * operand written there - an argument list or a type-argument list - or {@code -1} when no
+     * such group precedes {@code start}.
+     */
+    private static int groupStart(@NotNull String text, int start) {
+        if (start == 0) return -1;
+        if (text.charAt(start - 1) == ')') {
+            return argumentListStart(text, start - 1);
+        }
+        return typeArgumentGroupStart(text, start);
+    }
+
+    /**
+     * Returns the offset of the type-argument list whose closing delimiter ends at {@code start},
+     * or {@code -1} when no such list ends there.  Both the plain and the entity-encoded delimiter
+     * forms are recognized, since an attribute value may be written either way.
+     */
+    private static int typeArgumentGroupStart(@NotNull String text, int start) {
+        record Delimiter(int offset, Fxml2TypeArgumentParser.Delimiter kind) {}
+        List<Delimiter> delimiters = new ArrayList<>();
+        for (int offset = 0; offset < start;) {
+            Fxml2TypeArgumentParser.Delimiter kind = Fxml2TypeArgumentParser.delimiterAt(text, offset);
+            if (kind == Fxml2TypeArgumentParser.Delimiter.NONE) {
+                offset++;
+                continue;
+            }
+            int length = kind.length(text, offset);
+            if (offset + length > start) break;
+            delimiters.add(new Delimiter(offset, kind));
+            offset += length;
+        }
+        if (delimiters.isEmpty()) return -1;
+        Delimiter last = delimiters.getLast();
+        if (last.kind() != Fxml2TypeArgumentParser.Delimiter.CLOSE
+                || last.offset() + last.kind().length(text, last.offset()) != start) {
+            return -1;
+        }
+        int depth = 0;
+        for (int index = delimiters.size() - 1; index >= 0; index--) {
+            Delimiter delimiter = delimiters.get(index);
+            if (delimiter.kind() == Fxml2TypeArgumentParser.Delimiter.CLOSE) {
+                depth++;
+            } else if (--depth == 0) {
+                return delimiter.offset();
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Extends {@code start} over a context selector preceding it, i.e. over the {@code ':'} of
+     * {@code :root} or {@code :parent<VBox>(1)}, and returns {@code start} unchanged when no
+     * selector precedes it.  The {@code '::'} selection operator is not a selector.
+     */
+    private static int extendOverContextSelector(@NotNull String text, int start) {
+        boolean selector = start > 0 && text.charAt(start - 1) == ':'
+                && (start < 2 || text.charAt(start - 2) != ':');
+        return selector ? start - 1 : start;
+    }
+
+    /**
+     * Returns the offset of the {@code '('} opening the parenthesized group that is closed at
+     * {@code closeIndex}, or {@code -1} when the group is not opened within {@code text}.
+     */
+    private static int argumentListStart(@NotNull String text, int closeIndex) {
+        int depth = 0;
+        for (int index = closeIndex; index >= 0; index--) {
+            char c = text.charAt(index);
+            if (c == ')') {
+                depth++;
+            } else if (c == '(') {
+                depth--;
+                if (depth == 0) return index;
+            }
+        }
+        return -1;
+    }
+
     private static void addTypeArguments(
             Fxml2ExpressionParser.@NotNull Expression expression,
             int base,

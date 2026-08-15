@@ -60,6 +60,7 @@ import org.jfxcore.fxml.resolve.Fxml2AttributeValueItems;
 import org.jfxcore.fxml.resolve.Fxml2AttributeValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
+import org.jfxcore.fxml.resolve.Fxml2ExpressionOperands;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
@@ -1353,20 +1354,49 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
             switch (loc.kind()) {
                 case FUNCTION_ARGUMENT -> {
                     String activeArg = pathExpr.substring(loc.contentStart());
+                    if (Fxml2ExpressionOperands.endsInsideStringLiteral(activeArg)) return;
+                    // An argument that combines operands with operators is completed at the
+                    // operand the caret is editing.
+                    String operand = activeArg.substring(
+                            Fxml2ExpressionOperands.trailingOperandStart(activeArg));
                     // Literal arguments (strings, numbers, booleans, null, {markup}) carry no path.
-                    if (!activeArg.isBlank()
-                            && Fxml2BindingPathResolver.classifyArgument(activeArg)
+                    if (!operand.isBlank()
+                            && Fxml2BindingPathResolver.classifyArgument(operand)
                                     == Fxml2BindingPathResolver.ArgumentKind.LITERAL) {
                         return;
                     }
                     // The argument type is not statically known here, so no target-type filtering.
-                    completeBindingPath(activeArg, tag, xmlFile, null, result);
+                    completeBindingPath(operand, tag, xmlFile, null, result);
                 }
-                case ATTACHED_PROPERTY ->
-                        completeAttachedProperty(pathExpr.substring(loc.contentStart()), xmlFile, result);
+                case ATTACHED_PROPERTY -> {
+                    // An unclosed '(' that no attached property is written in opens a grouping,
+                    // whose content is a sub-expression completed in its own right.
+                    String groupContent = pathExpr.substring(loc.contentStart());
+                    if (!completeAttachedProperty(groupContent, xmlFile, result)) {
+                        completeOperandPath(groupContent, tag, xmlFile, null, result);
+                    }
+                }
                 case PATH ->
-                        completeNamePath(pathExpr, tag, xmlFile, targetPropType, result);
+                        completeOperandPath(pathExpr, tag, xmlFile, targetPropType, result);
             }
+        }
+
+        /**
+         * Completes the operand standing at the end of {@code pathExpr}.  An expression that
+         * combines operands with operators is not one path, so the text preceding the operand the
+         * caret is editing is dropped; the target property type applies to the expression as a
+         * whole and is therefore not used to filter an operand of a compound expression.
+         */
+        private static void completeOperandPath(
+                @NotNull String pathExpr,
+                @NotNull XmlTag tag,
+                @NotNull XmlFile xmlFile,
+                @Nullable PsiType targetPropType,
+                @NotNull CompletionResultSet result) {
+            if (Fxml2ExpressionOperands.endsInsideStringLiteral(pathExpr)) return;
+            int operandStart = Fxml2ExpressionOperands.trailingOperandStart(pathExpr);
+            completeNamePath(pathExpr.substring(operandStart), tag, xmlFile,
+                    operandStart == 0 ? targetPropType : null, result);
         }
 
         /**
@@ -1374,13 +1404,15 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
          * {@code (ClassName.partial<caret>)}, e.g. {@code (VBox.mar} -> {@code margin}.
          *
          * @param attachedContent the text after the opening {@code '('}, e.g. {@code "VBox.mar"}
+         * @return {@code true} when the content names a class an attached property is declared on,
+         *         i.e. when the group is an attached-property group rather than a grouping
          */
-        private static void completeAttachedProperty(
+        private static boolean completeAttachedProperty(
                 @NotNull String attachedContent,
                 @NotNull XmlFile xmlFile,
                 @NotNull CompletionResultSet result) {
             int innerDot = attachedContent.lastIndexOf('.');
-            if (innerDot < 0) return;
+            if (innerDot < 0) return false;
             String className = attachedContent.substring(0, innerDot).trim();
             String propPartial = attachedContent.substring(innerDot + 1);
             GlobalSearchScope attachedScope = xmlFile.getResolveScope();
@@ -1389,7 +1421,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                 attachedClass = JavaPsiFacade.getInstance(xmlFile.getProject())
                         .findClass(className, attachedScope);
             }
-            if (attachedClass == null) return;
+            if (attachedClass == null) return false;
             CompletionResultSet attachedResult = result.withPrefixMatcher(
                     new PlainPrefixMatcher(propPartial, true));
             for (String propName : Fxml2PropertyResolver.getAllStaticPropertyNames(attachedClass)) {
@@ -1399,6 +1431,7 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                             .withTypeText(attachedClass.getName()));
                 }
             }
+            return true;
         }
 
         /**
