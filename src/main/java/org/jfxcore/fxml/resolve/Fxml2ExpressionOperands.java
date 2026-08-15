@@ -113,6 +113,8 @@ public final class Fxml2ExpressionOperands {
             case Fxml2ExpressionParser.AttachedPropertyExpression ignored -> true;
             case Fxml2ExpressionParser.ContextSelectorExpression ignored -> true;
             case Fxml2ExpressionParser.InvocationExpression ignored -> true;
+            case Fxml2ExpressionParser.GroupedExpression grouped ->
+                    isPathExpression(grouped.expression());
             default -> false;
         };
     }

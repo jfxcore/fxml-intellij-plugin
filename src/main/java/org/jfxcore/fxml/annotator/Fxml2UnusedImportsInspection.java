@@ -371,23 +371,31 @@ public final class Fxml2UnusedImportsInspection extends XmlSuppressableInspectio
      * qualifier (e.g. {@code String} in {@code String.format}). Each path-valued or nested
      * function-call argument is scanned recursively. Non-function paths are handled by
      * {@link #collectClassNamesFromPath}.
+     *
+     * <p>An expression that opens with a grouping parenthesis (e.g. {@code (Map.of('k','v')).size})
+     * has no function name of its own; its class references live in the grouped expression, which
+     * the recursive scan below reaches.
      */
     private static void collectClassNamesFromExpressionPath(String path, Set<String> names, XmlFile xmlFile) {
         int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
-        if (parenIdx <= 0) {
+        if (parenIdx < 0) {
             collectClassNamesFromPath(path, names, xmlFile);
             return;
         }
 
+        // An empty function name means the parenthesis groups an expression rather than opening
+        // an argument list, so there is no name to attribute a class reference to.
         String funcPath = path.substring(0, parenIdx).trim();
-        if (funcPath.indexOf('.') < 0) {
-            // Bare name: constructor class reference (e.g. Color(...)).
-            if (isResolvableClass(funcPath, xmlFile)) {
-                names.add(simpleNameOf(funcPath));
+        if (!funcPath.isEmpty()) {
+            if (funcPath.indexOf('.') < 0) {
+                // Bare name: constructor class reference (e.g. Color(...)).
+                if (isResolvableClass(funcPath, xmlFile)) {
+                    names.add(simpleNameOf(funcPath));
+                }
+            } else {
+                // Dotted name: static-method class qualifier (e.g. String.format).
+                collectClassNamesFromPath(funcPath, names, xmlFile);
             }
-        } else {
-            // Dotted name: static-method class qualifier (e.g. String.format).
-            collectClassNamesFromPath(funcPath, names, xmlFile);
         }
 
         for (Fxml2BindingPathResolver.FunctionArgument arg : Fxml2BindingPathResolver.functionArguments(path)) {
