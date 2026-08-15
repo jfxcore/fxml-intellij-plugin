@@ -296,7 +296,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         // Function-call syntax: a '(' that is not immediately preceded by '.'
         // (a '.' before '(' marks an attached-property group, not a function call).
         int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(remainingPath);
-        if (parenIdx > 0) {
+        if (parenIdx >= 0) {
             // fx:Push (reverse binding) is not applicable to function expressions; the compiler
             // fails on this alone, so report only that and skip detailed function validation.
             if (kind == Kind.PUSH || kind == Kind.PUSH_CONTENT) {
@@ -536,7 +536,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             int attrTextBase,
             @NotNull Kind kind) {
         int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
-        if (parenIdx <= 0) return;
+        if (parenIdx < 0) return;
 
         Fxml2ExpressionParser.Expression callExpr;
         try {
@@ -1450,7 +1450,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             return;
         }
 
-        if (Fxml2BindingPathResolver.functionCallParenIndex(expr.strippedPath()) > 0) return;
+        if (Fxml2BindingPathResolver.functionCallParenIndex(expr.strippedPath()) >= 0) return;
 
         XmlTag contextTag = attrVal.getParent() instanceof XmlAttribute attr
                 && attr.getParent() instanceof XmlTag tag ? tag : null;
@@ -1643,7 +1643,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         // (which would indicate an attached-property group like "(VBox.margin)").
         // e.g. "formatDouble(value)", "String.format('...', x)", "Color(0.5, 0.5, 0.5, 1.0)".
         int parenIdx = Fxml2BindingPathResolver.functionCallParenIndex(path);
-        if (parenIdx > 0) {
+        if (parenIdx >= 0) {
             int pathBase = 1 + expr.strippedPathOffset() + (selector != null ? selector.selectorLength() : 0);
             // fx:Push (reverse binding) is not applicable to function expressions; the compiler
             // fails on this alone, so report only that and skip detailed function validation.

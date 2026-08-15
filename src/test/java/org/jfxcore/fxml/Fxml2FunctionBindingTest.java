@@ -188,6 +188,23 @@ class Fxml2FunctionBindingTest extends Fxml2TestBase {
     }
 
     /**
+     * A class used as the static-method qualifier of a grouped invocation
+     * (e.g. {@code $(Map.of('k','v')).size}) counts as a use of the corresponding import,
+     * even though the expression opens with a grouping parenthesis rather than a function name.
+     */
+    @Test
+    void staticMethodClassImportUsedOnlyInGroupedInvocationIsNotFlaggedAsUnused() {
+        getFixture().enableInspections(new org.jfxcore.fxml.annotator.Fxml2UnusedImportsInspection());
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\njava.util.Map",
+                """
+                  <Label text="$(Map.of&lt;String,String&gt;('key','value')).size"/>
+                """
+        ));
+        getFixture().checkHighlighting(true, false, false);
+    }
+
+    /**
      * When the constructor class of a function-binding expression is not imported, the
      * "'X' ... cannot be resolved" error must offer an "Add import for 'X'" quick fix that
      * inserts the missing {@code <?import?>} processing instruction.
