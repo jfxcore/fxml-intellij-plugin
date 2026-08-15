@@ -69,6 +69,7 @@ import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -1597,28 +1598,41 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                             .withTypeText(currentClass.getName()));
                 }
             } else {
-                // Offer all instance property names on currentClass matching the partial name
+                // Offer all instance property names on currentClass matching the partial name,
+                // plus the names of instance methods callable in a binding expression.  A property
+                // written in short notation and its "xProperty" accessor are equivalent, so only
+                // the short notation is offered whenever both match the partial name.
+                Set<String> propertyNames = new LinkedHashSet<>();
                 for (String propName : Fxml2PropertyResolver.getAllPropertyNames(currentClass)) {
                     if (propName.startsWith(partialName)) {
-                        LookupElementBuilder elem = LookupElementBuilder
-                                .create(propName)
-                                .withIcon(AllIcons.Nodes.Property)
-                                .withTypeText(getPropertyTypeText(currentClass, propName));
-                        prefixResult.addElement(elem);
+                        propertyNames.add(propName);
                     }
                 }
-
-                Set<String> instanceMethodNames = new HashSet<>();
+                Set<String> instanceMethodNames = new LinkedHashSet<>();
                 for (PsiMethod method : currentClass.getAllMethods()) {
                     if (!method.hasModifierProperty(PsiModifier.PUBLIC)
                             || method.hasModifierProperty(PsiModifier.STATIC)) {
                         continue;
                     }
                     String methodName = method.getName();
-                    if (!methodName.startsWith(partialName)
-                            || !instanceMethodNames.add(methodName)) {
-                        continue;
+                    if (methodName.startsWith(partialName)) {
+                        instanceMethodNames.add(methodName);
                     }
+                }
+                Set<String> segmentNames = new LinkedHashSet<>(propertyNames);
+                segmentNames.addAll(instanceMethodNames);
+                segmentNames = Fxml2PropertyNameUtil.preferShortPropertyNotation(segmentNames);
+
+                for (String propName : propertyNames) {
+                    if (!segmentNames.contains(propName)) continue;
+                    prefixResult.addElement(LookupElementBuilder
+                            .create(propName)
+                            .withIcon(AllIcons.Nodes.Property)
+                            .withTypeText(getPropertyTypeText(currentClass, propName)));
+                }
+
+                for (String methodName : instanceMethodNames) {
+                    if (!segmentNames.contains(methodName) || propertyNames.contains(methodName)) continue;
                     prefixResult.addElement(LookupElementBuilder.create(methodName)
                             .withIcon(AllIcons.Nodes.Method)
                             .withTypeText(currentClass.getName()));
@@ -1656,12 +1670,16 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
                     PsiClass rootTagClass = Fxml2BindingPathResolver.resolveRootTagClass(xmlFile);
                     if (rootTagClass != null && !rootTagClass.equals(currentClass)
                             && !currentClass.isInheritor(rootTagClass, true)) {
+                        Set<String> rootPropertyNames = new LinkedHashSet<>();
                         for (String propName : Fxml2PropertyResolver.getAllPropertyNames(rootTagClass)) {
                             if (propName.startsWith(partialName)) {
-                                prefixResult.addElement(LookupElementBuilder.create(propName)
-                                        .withIcon(AllIcons.Nodes.Property)
-                                        .withTypeText(rootTagClass.getName()));
+                                rootPropertyNames.add(propName);
                             }
+                        }
+                        for (String propName : Fxml2PropertyNameUtil.preferShortPropertyNotation(rootPropertyNames)) {
+                            prefixResult.addElement(LookupElementBuilder.create(propName)
+                                    .withIcon(AllIcons.Nodes.Property)
+                                    .withTypeText(rootTagClass.getName()));
                         }
                         for (PsiField field : rootTagClass.getAllFields()) {
                             if (!field.hasModifierProperty(PsiModifier.PUBLIC)) continue;

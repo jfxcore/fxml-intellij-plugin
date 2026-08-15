@@ -1521,6 +1521,78 @@ class Fxml2CompletionTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // Binding path completion: short property notation vs. xProperty() accessor
+    // -----------------------------------------------------------------------
+
+    private void addTitleViewModelCodeBehind() {
+        getFixture().addFileToProject("test/CodeBehindTitles.java",
+                """
+                package test;
+                import javafx.beans.property.StringProperty;
+                import javafx.beans.property.SimpleStringProperty;
+                public class CodeBehindTitles extends javafx.scene.layout.BorderPane {
+                    private final StringProperty title = new SimpleStringProperty();
+                    public StringProperty titleProperty() { return title; }
+                    public String getTitle() { return title.get(); }
+                    public void setTitle(String value) { title.set(value); }
+                    public String getTitleSuffix() { return ""; }
+                }
+                """);
+    }
+
+    /**
+     * A binding path segment written in the short notation ({@code $title}) and the
+     * {@code titleProperty()} accessor name have identical semantics.  When both would match
+     * the typed prefix, only the short notation is offered.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionOffersOnlyShortPropertyNotation() {
+        addTitleViewModelCodeBehind();
+        getFixture().configureByText("BindingShortNotation.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${tit<caret>}"/>
+                """,
+                "test.CodeBehindTitles"
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        assertNotNull(items, "Expected binding path completions");
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("title"),
+                "Expected short notation 'title' in completions, got: " + names);
+        assertFalse(names.contains("titleProperty"),
+                "Accessor name 'titleProperty' must not be offered next to 'title', got: " + names);
+    }
+
+    /**
+     * When the typed prefix no longer matches the short notation, the {@code titleProperty()}
+     * accessor name is offered, since it is then the only equivalent completion.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void bindingPathCompletionOffersAccessorNameWhenShortNotationDoesNotMatch() {
+        addTitleViewModelCodeBehind();
+        getFixture().configureByText("BindingAccessorNotation.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <Label text="${titleP<caret>}"/>
+                """,
+                "test.CodeBehindTitles"
+        ));
+        LookupElement[] items = getFixture().completeBasic();
+        if (items == null) {
+            String text = getFixture().getEditor().getDocument().getText();
+            assertTrue(text.contains("titleProperty"),
+                    "Expected 'titleProperty' to be auto-inserted, document: " + text);
+            return;
+        }
+        List<String> names = displayNames(items);
+        assertTrue(names.contains("titleProperty"),
+                "Expected 'titleProperty' in completions after 'titleP', got: " + names);
+    }
+
+    // -----------------------------------------------------------------------
     // fx: intrinsic attribute name completion
     // -----------------------------------------------------------------------
 
