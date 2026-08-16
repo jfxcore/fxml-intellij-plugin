@@ -7,6 +7,10 @@ import com.intellij.psi.util.PropertyUtilBase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 /**
  * Utility methods for recognising and converting JavaFX / JavaBeans accessor naming
  * conventions to plain property names.
@@ -126,6 +130,30 @@ public final class Fxml2PropertyNameUtil {
     // -----------------------------------------------------------------------
     // Higher-level helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Removes every {@code xProperty} name whose short notation {@code x} is also contained in
+     * {@code names}.
+     *
+     * <p>Both notations denote the same property, so offering them side by side would present the
+     * user with two equivalent choices. The short notation is preferred; the {@code xProperty}
+     * name survives only when {@code x} is absent (for instance because a typed prefix no longer
+     * matches it).
+     *
+     * @param names candidate names, in the order they should be presented
+     * @return a new set holding the retained names in their original order
+     */
+    public static @NotNull Set<String> preferShortPropertyNotation(@NotNull Collection<String> names) {
+        Set<String> distinct = new LinkedHashSet<>(names);
+        Set<String> retained = new LinkedHashSet<>();
+        for (String name : distinct) {
+            if (isPropertyAccessorName(name) && distinct.contains(propertyAccessorToPropertyName(name))) {
+                continue;
+            }
+            retained.add(name);
+        }
+        return retained;
+    }
 
 
     /**
