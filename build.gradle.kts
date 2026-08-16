@@ -66,6 +66,12 @@ intellijPlatform {
             IDE support for the <a href="https://jfxcore.github.io/fxml-compiler">FXML/2</a>
             markup format for JavaFX UIs.<br/><br/>
 
+            This plugin is compatible with version 0.16.0 or later of the FXML/2 Gradle plugin:
+            <pre><code>plugins {
+                id("org.jfxcore.fxmlplugin") version "0.16.0"
+            }</code></pre>
+            <br/>
+
             Features include:
             <ul>
                 <li>FXML syntax highlighting, folding, formatting, and EditorConfig-aware indentation
@@ -74,6 +80,14 @@ intellijPlatform {
                 <li>Inspections for unresolved tags and attributes, unused imports, invalid values, and more
                 <li>Import optimization and intentions to move markup between <code>.fxml</code>
                     files and embedded markup with <code>@ComponentView</code>
+            </ul>
+        """.trimIndent()
+
+        changeNotes = """
+            This version supports the following new FXML/2 language features:
+            <ul>
+                <li>Arithmetic, comparison, and logical expressions
+                <li>Comma-separated list expressions
             </ul>
         """.trimIndent()
 
