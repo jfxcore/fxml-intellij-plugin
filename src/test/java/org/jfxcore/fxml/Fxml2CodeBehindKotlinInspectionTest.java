@@ -290,6 +290,36 @@ class Fxml2CodeBehindKotlinInspectionTest extends Fxml2TestBase {
     }
 
     /**
+     * The class-level quick-fix creates a class body when the class does not have one yet.
+     */
+    @Test
+    void quickFixAddsInitBlockToBodylessClass() {
+        getFixture().addFileToProject("test/FixKtBodylessControl.fxml",
+                fxml2WithClass("test.FixKtBodylessControl"));
+        getFixture().configureByText("FixKtBodylessControl.kt",
+                """
+                package test
+                class FixKtBodylessControl : FixKtBodylessControlBase()
+                open class FixKtBodylessControlBase : javafx.scene.layout.BorderPane() {
+                    protected fun initializeComponent() {}
+                }
+                """);
+        applyFix("Add init block calling initializeComponent()");
+        getFixture().checkResult("""
+                package test
+                class FixKtBodylessControl : FixKtBodylessControlBase() {
+                    init {
+                        initializeComponent()
+                    }
+                }
+
+                open class FixKtBodylessControlBase : javafx.scene.layout.BorderPane() {
+                    protected fun initializeComponent() {}
+                }
+                """);
+    }
+
+    /**
      * The constructor-level quick-fix inserts {@code initializeComponent()} as the first
      * statement of a secondary constructor body.
      */
