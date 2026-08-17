@@ -33,8 +33,8 @@ import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.psi.KtBlockExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtClass;
+import org.jetbrains.kotlin.psi.KtClassBody;
 import org.jetbrains.kotlin.psi.KtClassInitializer;
-import org.jetbrains.kotlin.psi.KtClassOrObjectKt;
 import org.jetbrains.kotlin.psi.KtDeclaration;
 import org.jetbrains.kotlin.psi.KtPsiFactory;
 import org.jetbrains.kotlin.psi.KtSecondaryConstructor;
@@ -45,6 +45,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -441,15 +442,25 @@ public final class Fxml2InitializeComponentInspection extends LocalInspectionToo
             if (ktClass == null) return;
 
             var factory = new KtPsiFactory(project);
-            var initializer = factory.createClass(
-                    "class A {\ninit {\n" + INITIALIZE_COMPONENT + "()\n}\n}")
-                    .getAnonymousInitializers().getFirst();
+            KtClass template = factory.createClass(
+                    "class A {\ninit {\n" + INITIALIZE_COMPONENT + "()\n}\n}");
 
-            var body = KtClassOrObjectKt.getOrCreateBody(ktClass);
-            List<KtDeclaration> declarations = body.getDeclarations();
-            PsiElement added = declarations.isEmpty()
-                    ? body.addAfter(initializer, body.getLBrace())
-                    : body.addBefore(initializer, declarations.getFirst());
+            KtClassBody templateBody = Objects.requireNonNull(template.getBody());
+
+            // A class without a body gets the whole templated body, including the init block.
+            KtClassBody body = ktClass.getBody();
+            PsiElement added;
+            if (body == null) {
+                var addedBody = (KtClassBody) ktClass.add(templateBody);
+                added = addedBody.getDeclarations().getFirst();
+            } else {
+                var initializer = template.getAnonymousInitializers().getFirst();
+                List<KtDeclaration> declarations = body.getDeclarations();
+                added = declarations.isEmpty()
+                        ? body.addAfter(initializer, body.getLBrace())
+                        : body.addBefore(initializer, declarations.getFirst());
+            }
+
             CodeStyleManager.getInstance(project).reformat(added);
         }
     }
