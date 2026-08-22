@@ -80,10 +80,7 @@ public final class Fxml2KotlinMarkupAnnotationInjector implements MultiHostInjec
         // which correctly strips the opening/closing quote characters including any $$
         // multi-dollar interpolation prefix.
         TextRange valueRange = ElementManipulators.getValueTextRange(stringExpr);
-        registrar
-                .startInjecting(Fxml2EmbeddedXmlLanguage.INSTANCE)
-                .addPlace(prefix, suffix, stringExpr, valueRange)
-                .doneInjecting();
+        Fxml2EmbeddedMarkupInjection.inject(registrar, stringExpr, valueRange, prefix, suffix);
     }
 
     @Override
