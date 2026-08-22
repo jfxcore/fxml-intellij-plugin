@@ -563,6 +563,41 @@
                          level="ERROR"
                          implementationClass="org.jfxcore.fxml.annotator.Fxml2PrefixDeclarationInspection"/>
 
+        <!--
+            Embedded resources: validate <?resource ?> declarations against the markup
+            language's grammar, so that every diagnostic the compiler reports for a
+            declaration is also reported in the editor, on the same span.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.resource.declaration.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2ResourceDeclarationInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.duplicate.resource.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2DuplicateResourceInspection"/>
+
+        <!--
+            Resource declarations may appear inside elements, so processing instructions in
+            element content now parse cleanly.  Import and prefix declarations are still read
+            only from the document prolog, so one written inside an element is silently
+            ignored at compile time; this inspection makes that visible.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.processing.instruction.placement.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2ProcessingInstructionPlacementInspection"/>
+
         <localInspection language="XML"
                          bundle="messages.Fxml2Bundle"
                          key="inspection.invalid.fx.intrinsic.display.name"

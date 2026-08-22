@@ -305,10 +305,18 @@ public final class Fxml2ResourceInstructionParser {
                     parameter.span(), parameter.value(), resourceName);
         }
 
+        /**
+         * Reports the media type as malformed, on the character the grammar broke at.
+         *
+         * <p>When the grammar broke because the media type ended early there is no such character,
+         * and the whole media type is highlighted instead: a zero-width highlight would report the
+         * problem without showing the user where it is.
+         */
         private @Nullable Fxml2ResourceMediaType reportInvalid() {
             int start = Math.min(offset, span.end());
-            report(Fxml2ResourceProblemKind.INVALID_MEDIA_TYPE,
-                    new Fxml2TextSpan(start, Math.min(span.end(), start + 1)), resourceName);
+            Fxml2TextSpan reported = start < span.end() ? new Fxml2TextSpan(start, start + 1) : span;
+
+            report(Fxml2ResourceProblemKind.INVALID_MEDIA_TYPE, reported, resourceName);
             return null;
         }
 
