@@ -53,12 +53,14 @@ public final class Fxml2ResourceUsageScanner {
      */
     private static boolean isWholeName(@NotNull String text, int offset, @NotNull String name) {
         int end = offset + name.length();
-        return (offset == 0 || !isNameCharacter(text.charAt(offset - 1)))
-                && (end == text.length() || !isNameCharacter(text.charAt(end)));
+        return (offset == 0 || isNameBoundary(text.charAt(offset - 1)))
+                && (end == text.length() || isNameBoundary(text.charAt(end)));
     }
 
-    private static boolean isNameCharacter(char character) {
-        return Character.isLetterOrDigit(character) || character == '-' || character == '_' || character == '.';
+    /** Returns {@code true} when {@code character} cannot be part of a resource name. */
+    private static boolean isNameBoundary(char character) {
+        return !Character.isLetterOrDigit(character)
+                && character != '-' && character != '_' && character != '.';
     }
 
     /**

@@ -1,0 +1,15 @@
+<html lang="en">
+<body>
+Reports two embedded resource declarations in the same FXML/2 document that declare the same
+resource.
+<p>
+Names are compared ignoring case, because the resource file the compiler writes is named
+case-insensitively: <code>value.txt</code> and <code>Value.txt</code> would end up as the same
+file. The message names the position of the earlier declaration, which is the one that stays in
+effect.
+<p>
+Resource declarations are scoped to the entire document and may appear before, inside, or after
+the root element, so a declaration inside an element collides with one in the prolog just as two
+in the prolog would.
+</body>
+</html>

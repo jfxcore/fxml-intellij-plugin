@@ -82,11 +82,6 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
                 : new Fxml2ResourceInjectionPlan(markupRangesAround(valueRange, payloads), payloads);
     }
 
-    /** Returns {@code true} when the markup is injected as one contiguous fragment. */
-    public boolean isSingleFragment() {
-        return markupRanges.size() == 1 && payloads.isEmpty();
-    }
-
     private static @NotNull Fxml2ResourceInjectionPlan single(@NotNull TextRange valueRange) {
         return new Fxml2ResourceInjectionPlan(List.of(valueRange), List.of());
     }

@@ -112,11 +112,6 @@ public enum Fxml2ResourcePayloadLanguage {
         return mediaTypes.getFirst();
     }
 
-    /** Returns the media types that name this language, the most canonical one first. */
-    public @NotNull List<String> mediaTypes() {
-        return mediaTypes;
-    }
-
     /**
      * Returns the platform language to inject, or {@code null} when this IDE does not have it.
      *

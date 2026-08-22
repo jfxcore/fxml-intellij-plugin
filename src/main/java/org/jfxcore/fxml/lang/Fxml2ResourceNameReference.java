@@ -43,11 +43,6 @@ public final class Fxml2ResourceNameReference extends PsiReferenceBase<XmlAttrib
         this.contextFile = contextFile;
     }
 
-    /** Returns the resource name this reference targets. */
-    public @NotNull String resourceName() {
-        return resourceName;
-    }
-
     /** Returns {@code true} when the document declares an embedded resource with this name. */
     public boolean isDeclared() {
         return entry() != null;

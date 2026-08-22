@@ -1,6 +1,5 @@
 package org.jfxcore.fxml.lang;
 
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.LiteralTextEscaper;
 import com.intellij.psi.PsiFileFactory;
 import com.intellij.psi.PsiLanguageInjectionHost;
@@ -44,12 +43,6 @@ public final class Fxml2ResourceProcessingInstruction
         String text = getText();
         Fxml2ResourceInstruction instruction = Fxml2ResourceScanner.scanAt(text, 0, text.length());
         return instruction != null && instruction.hasPayload() ? instruction : null;
-    }
-
-    /** Returns the range of the raw payload within this instruction, or {@code null} when it has none. */
-    public @Nullable TextRange payloadRange() {
-        Fxml2ResourceInstruction instruction = resourceInstruction();
-        return instruction == null ? null : instruction.payload().toTextRange();
     }
 
     @Override

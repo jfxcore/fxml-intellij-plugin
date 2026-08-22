@@ -1,0 +1,13 @@
+<html lang="en">
+<body>
+Reports an embedded resource declaration that nothing in its FXML/2 document refers to.
+<p>
+A resource is referred to with the <code>@name</code> prefix notation, with the
+<code>{ClassPathResource name}</code> markup extension, or from another resource's payload, for
+example by a stylesheet <code>@import</code>.
+<p>
+This is advisory rather than a correctness problem: the compiler materializes the resource whether
+or not the document loads it, and code outside the document can load it by name. It is, however,
+usually an oversight, and an unused resource still costs build output and class-path space.
+</body>
+</html>

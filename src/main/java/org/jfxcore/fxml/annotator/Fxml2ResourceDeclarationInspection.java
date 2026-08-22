@@ -76,7 +76,7 @@ public final class Fxml2ResourceDeclarationInspection extends LocalInspectionToo
 
             case DUPLICATE_MEDIA_TYPE_PARAMETER -> new LocalQuickFix[] {
                     new Fxml2RemoveDuplicateMediaTypeParameterFix(
-                            entry.name().value(), String.valueOf(problem.arguments().getFirst()), problem.span())};
+                            entry.name().value(), String.valueOf(problem.arguments().getFirst()))};
 
             default -> LocalQuickFix.EMPTY_ARRAY;
         };

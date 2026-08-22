@@ -189,7 +189,7 @@ public final class Fxml2ResourceInstructionParser {
 
         CharBuffer input = CharBuffer.wrap(content);
         long requested = (long)Math.ceil(input.remaining() * (double)encoder.maxBytesPerChar());
-        ByteBuffer output = ByteBuffer.allocate((int)Math.min(Integer.MAX_VALUE, Math.max(1, requested)));
+        ByteBuffer output = ByteBuffer.allocate(Math.clamp(requested, 1, Integer.MAX_VALUE));
 
         CoderResult result = encoder.encode(input, output, true);
         if (!result.isError()) {
@@ -255,7 +255,7 @@ public final class Fxml2ResourceInstructionParser {
 
         @Nullable Fxml2ResourceMediaType parse() {
             String type = parseToken();
-            if (type == null || type.equals("*") || !poll('/')) {
+            if (type == null || type.equals("*") || absent('/')) {
                 return reportInvalid();
             }
 
@@ -269,7 +269,7 @@ public final class Fxml2ResourceInstructionParser {
 
             while (offset < span.end()) {
                 skipOptionalWhitespace();
-                if (!poll(';')) return reportInvalid();
+                if (absent(';')) return reportInvalid();
 
                 skipOptionalWhitespace();
                 int parameterStart = offset;
@@ -277,7 +277,7 @@ public final class Fxml2ResourceInstructionParser {
                 if (name == null) return reportInvalid();
 
                 skipOptionalWhitespace();
-                if (!poll('=')) return reportInvalid();
+                if (absent('=')) return reportInvalid();
 
                 skipOptionalWhitespace();
                 String value = parseParameterValue();
@@ -360,12 +360,13 @@ public final class Fxml2ResourceInstructionParser {
             }
         }
 
-        private boolean poll(char expected) {
+        /** Consumes {@code expected} when it is next, and reports whether it was not there. */
+        private boolean absent(char expected) {
             if (offset < span.end() && source.charAt(offset) == expected) {
                 ++offset;
-                return true;
+                return false;
             }
-            return false;
+            return true;
         }
     }
 }

@@ -79,9 +79,15 @@ public final class Fxml2ParserDefinition extends ASTFactory implements ParserDef
         return new XmlFileImpl(viewProvider, Fxml2FileElementType.INSTANCE);
     }
 
+    /**
+     * Delegates to the platform's XML rule, treating a missing left token as "no constraint".
+     * The delegate expects both tokens, and only the parser's own error recovery ever passes none.
+     */
     @Override
     public @NotNull SpaceRequirements spaceExistenceTypeBetweenTokens(@Nullable ASTNode left, @NotNull ASTNode right) {
-        return delegate.spaceExistenceTypeBetweenTokens(left, right);
+        return left == null
+                ? SpaceRequirements.MAY
+                : delegate.spaceExistenceTypeBetweenTokens(left, right);
     }
 
     /**

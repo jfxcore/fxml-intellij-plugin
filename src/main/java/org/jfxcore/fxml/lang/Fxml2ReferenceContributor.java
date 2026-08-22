@@ -597,17 +597,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
     // -----------------------------------------------------------------------
 
     /**
-     * Resolves a known built-in resource extension class ({@code DynamicResource},
-     * {@code StaticResource}, {@code ClassPathResource}) by its simple name, using
-     * {@link GlobalSearchScope#allScope} to ensure the class is found even when it is not
-     * explicitly imported in the containing file (e.g. embedded FXML where imports come
-     * only from the host Java file's import declarations).
-     *
-     * @param simpleName the unqualified class name (e.g. {@code "DynamicResource"})
-     * @param project    the current project
-     * @return the resolved {@link PsiClass}, or {@code null} if the class is not on the classpath
-     */
-    /**
      * Adds an embedded resource reference for {@code name} when the document declares a resource
      * with that name, mirroring the runtime lookup order: an embedded resource first, an external
      * file second.
@@ -643,6 +632,17 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         return true;
     }
 
+    /**
+     * Resolves a known built-in resource extension class ({@code DynamicResource},
+     * {@code StaticResource}, {@code ClassPathResource}) by its simple name, using
+     * {@link GlobalSearchScope#allScope} to ensure the class is found even when it is not
+     * explicitly imported in the containing file (e.g. embedded FXML where imports come
+     * only from the host Java file's import declarations).
+     *
+     * @param simpleName the unqualified class name (e.g. {@code "DynamicResource"})
+     * @param project    the current project
+     * @return the resolved {@link PsiClass}, or {@code null} if the class is not on the classpath
+     */
     private static @Nullable PsiClass resolveBuiltInExtensionBySimpleName(
             @NotNull String simpleName, @NotNull Project project) {
         GlobalSearchScope allScope = GlobalSearchScope.allScope(project);

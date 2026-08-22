@@ -2,7 +2,6 @@ package org.jfxcore.fxml.annotator;
 
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.LocalInspectionToolSession;
-import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.PsiElementVisitor;
@@ -36,7 +35,7 @@ public final class Fxml2UnusedResourceInspection extends LocalInspectionTool {
                     entry.declaration().nameSpan().toTextRange(),
                     "Embedded resource '" + entry.name().value() + "' is never used in this document",
                     ProblemHighlightType.LIKE_UNUSED_SYMBOL,
-                    new LocalQuickFix[] {new Fxml2RemoveResourceDeclarationFix(entry.name().value())});
+                    new Fxml2RemoveResourceDeclarationFix(entry.name().value()));
         });
     }
 

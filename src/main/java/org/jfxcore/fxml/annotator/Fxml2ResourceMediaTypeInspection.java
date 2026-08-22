@@ -2,7 +2,6 @@ package org.jfxcore.fxml.annotator;
 
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.LocalInspectionToolSession;
-import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.PsiElementVisitor;
@@ -49,8 +48,7 @@ public final class Fxml2ResourceMediaTypeInspection extends LocalInspectionTool 
                             : entry.declaration().nameSpan().toTextRange(),
                     message,
                     ProblemHighlightType.WEAK_WARNING,
-                    new LocalQuickFix[] {
-                            new Fxml2SetResourceMediaTypeFix(entry.name().value(), implied.canonicalMediaType())});
+                    new Fxml2SetResourceMediaTypeFix(entry.name().value(), implied.canonicalMediaType()));
         });
     }
 

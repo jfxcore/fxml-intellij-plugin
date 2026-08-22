@@ -4,7 +4,6 @@ import com.intellij.lang.injection.MultiHostRegistrar;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiLanguageInjectionHost;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -59,17 +58,5 @@ final class Fxml2EmbeddedMarkupInjection {
                     .addPlace(null, null, host, payload.range())
                     .doneInjecting();
         }
-    }
-
-    /**
-     * Returns the payload fragment plan for {@code host}, or {@code null} when the host is not an
-     * embedded markup host.  Exposed for the editor helpers that need to know whether the caret
-     * sits in markup or in a payload.
-     */
-    static @Nullable Fxml2ResourceInjectionPlan planFor(@Nullable PsiLanguageInjectionHost host,
-                                                        @Nullable TextRange valueRange) {
-        return host == null || valueRange == null
-                ? null
-                : Fxml2ResourceInjectionPlan.of(host.getText(), valueRange);
     }
 }

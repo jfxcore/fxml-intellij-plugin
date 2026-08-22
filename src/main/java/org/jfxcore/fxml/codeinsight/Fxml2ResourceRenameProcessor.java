@@ -66,16 +66,6 @@ public final class Fxml2ResourceRenameProcessor extends RenamePsiElementProcesso
         }
     }
 
-    /**
-     * Declines to prepare a rename dialog target of its own: the element the rename starts from is
-     * already the declaration, whether the caret was on it or on one of its usages.
-     */
-    @Override
-    public @Nullable PsiElement substituteElementToRename(@NotNull PsiElement element,
-                                                          @Nullable com.intellij.openapi.editor.Editor editor) {
-        return element;
-    }
-
     @Override
     public void prepareRenaming(@NotNull PsiElement element,
                                 @NotNull String newName,

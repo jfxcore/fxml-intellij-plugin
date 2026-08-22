@@ -1,0 +1,14 @@
+<html lang="en">
+<body>
+Reports an embedded resource declaration whose media type does not agree with the file extension
+of its name, and one that omits the media type its extension implies.
+<p>
+The media type is what the IDE reads to decide how to edit a payload: a <code>text/css</code>
+payload is edited with stylesheet highlighting, completion and reformatting. When the declaration
+omits the media type, the IDE infers it from the resource name's extension, which is an inference
+the markup language itself does not make. Writing the media type down makes the intent explicit.
+<p>
+This is advisory: apart from the <code>charset</code> parameter, the media type is informational
+and does not change how the compiler processes the resource.
+</body>
+</html>

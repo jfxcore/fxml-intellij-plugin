@@ -45,19 +45,9 @@ public record Fxml2ResourceEntry(@NotNull Fxml2ResourceDeclaration declaration,
         return span.shifted(anchor.getTextRange().getStartOffset()).toTextRange();
     }
 
-    /** Returns {@code span} as a range relative to {@link #anchor()}, which is what a reference needs. */
-    public @NotNull TextRange anchorRangeOf(@NotNull Fxml2TextSpan span) {
-        return span.toTextRange();
-    }
-
     /** Returns the range of the resource name in the declaring file, excluding any quotes. */
     public @NotNull TextRange nameRange() {
         return fileRangeOf(declaration.nameSpan());
-    }
-
-    /** Returns the range of the raw payload in the declaring file. */
-    public @NotNull TextRange payloadRange() {
-        return fileRangeOf(declaration.payloadSpan());
     }
 
     /** Returns {@code true} when this entry has no diagnostics. */

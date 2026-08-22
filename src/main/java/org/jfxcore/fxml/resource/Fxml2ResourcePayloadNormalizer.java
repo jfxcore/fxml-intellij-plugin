@@ -57,12 +57,12 @@ public final class Fxml2ResourcePayloadNormalizer {
             removedOpeningLine = true;
         }
 
-        int lastLineBreak = payload.lastIndexOf('\n');
+        int lastLineBreak = payload.lastLineBreak();
         if (lastLineBreak >= 0 && isHorizontalWhitespace(payload, lastLineBreak + 1, payload.length())) {
             payload.remove(lastLineBreak, payload.length());
         }
 
-        if (!removedOpeningLine && payload.lastIndexOf('\n') < 0) {
+        if (!removedOpeningLine && payload.lastLineBreak() < 0) {
             return payload.toPayload();
         }
 
@@ -243,9 +243,10 @@ public final class Fxml2ResourcePayloadNormalizer {
             return new String(characters, start, end - start);
         }
 
-        int lastIndexOf(char character) {
+        /** Returns the offset of the last line break, or {@code -1} when the text has none. */
+        int lastLineBreak() {
             for (int i = length - 1; i >= 0; --i) {
-                if (characters[i] == character) return i;
+                if (characters[i] == '\n') return i;
             }
             return -1;
         }

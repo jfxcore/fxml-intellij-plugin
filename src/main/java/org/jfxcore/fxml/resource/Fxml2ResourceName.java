@@ -78,11 +78,6 @@ public record Fxml2ResourceName(@NotNull String value, @NotNull Fxml2ResourceQuo
         return value.equals(reference);
     }
 
-    /** Returns {@code true} when this name and {@code other} are duplicate declarations. */
-    public boolean collidesWith(@NotNull Fxml2ResourceName other) {
-        return value.equalsIgnoreCase(other.value);
-    }
-
     /** Returns the declaration text of this name, including quotes when its quoting style needs them. */
     public @NotNull String text() {
         return quoting.write(value);
