@@ -15,6 +15,7 @@ import com.intellij.psi.impl.source.xml.XmlFileImpl;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.IFileElementType;
 import com.intellij.psi.tree.TokenSet;
+import com.intellij.psi.xml.XmlElementType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,11 +85,16 @@ public final class Fxml2ParserDefinition extends ASTFactory implements ParserDef
     }
 
     /**
-     * Returns {@code null} for every node type that needs no substitution, letting the platform
-     * factory create the standard XML composite.
+     * Substitutes {@link Fxml2ResourceProcessingInstruction} for XML processing instructions, so
+     * that a {@code <?resource ?>} declaration can host the injected payload language.
+     *
+     * <p>Every other node type returns {@code null}, letting the platform factory create the
+     * standard XML composite unchanged.
      */
     @Override
     public @Nullable CompositeElement createComposite(@NotNull IElementType type) {
-        return null;
+        return type == XmlElementType.XML_PROCESSING_INSTRUCTION
+                ? new Fxml2ResourceProcessingInstruction()
+                : null;
     }
 }

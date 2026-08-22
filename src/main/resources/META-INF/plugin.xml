@@ -65,6 +65,15 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2MarkupAnnotationInjector"/>
 
         <!--
+            Injects the payload language into a <?resource ?> declaration of a standalone
+            FXML/2 document, so that e.g. a text/css payload is edited as a stylesheet.
+            Registered for Fxml2ResourceProcessingInstruction, a host class only FXML/2
+            documents produce, so no other injector competes for it.
+        -->
+        <multiHostInjector
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceInjector"/>
+
+        <!--
             ParserDefinition for Fxml2EmbeddedXmlLanguage: used when the @ComponentView
             injectors inject Fxml2EmbeddedXmlLanguage (a dialect of XML).
             The sole purpose is to produce Fxml2EmbeddedXmlFile instances whose
