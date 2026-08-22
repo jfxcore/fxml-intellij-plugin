@@ -403,6 +403,17 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                                         new TextRange(keyStart, keyStart + resourceKey.length())));
                             }
                         }
+
+                        // For ClassPathResource in its long form, resolve the positional default
+                        // argument against the document's embedded resources, exactly as the
+                        // equivalent @name prefix notation does.
+                        if (CLASSPATH_RESOURCE_FQN.equals(extClass.getQualifiedName())) {
+                            String resourceName = extractPositionalDefaultArg(paramsPart);
+                            if (resourceName != null) {
+                                addEmbeddedResourceRef(refs, attrVal, resourceName,
+                                        base + paramsPartInRaw, xmlFile);
+                            }
+                        }
                     }
                 }
             }
@@ -565,12 +576,18 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                     path = path.substring(1, path.length() - 1);
                     pathStart++; // skip the opening single quote
                 }
-                FileReferenceSet refSet = new FileReferenceSet(path, attrVal, pathStart, null, true);
-                if (path.startsWith("/")) {
-                    refSet.addCustomization(FileReferenceSet.DEFAULT_PATH_EVALUATOR_OPTION,
-                            FileReferenceSet.ABSOLUTE_TOP_LEVEL);
+                // Embedded resources come first, mirroring the runtime lookup order: a simple
+                // relative name names an embedded resource when the document declares one, and
+                // an external file otherwise.  A name that is absolute or contains a path
+                // separator can only be external, and the resource model rejects it.
+                if (!addEmbeddedResourceRef(refs, attrVal, path, pathStart, xmlFile)) {
+                    FileReferenceSet refSet = new FileReferenceSet(path, attrVal, pathStart, null, true);
+                    if (path.startsWith("/")) {
+                        refSet.addCustomization(FileReferenceSet.DEFAULT_PATH_EVALUATOR_OPTION,
+                                FileReferenceSet.ABSOLUTE_TOP_LEVEL);
+                    }
+                    java.util.Collections.addAll(refs, refSet.getAllReferences());
                 }
-                java.util.Collections.addAll(refs, refSet.getAllReferences());
             }
         }
     }
@@ -590,6 +607,42 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      * @param project    the current project
      * @return the resolved {@link PsiClass}, or {@code null} if the class is not on the classpath
      */
+    /**
+     * Adds an embedded resource reference for {@code name} when the document declares a resource
+     * with that name, mirroring the runtime lookup order: an embedded resource first, an external
+     * file second.
+     *
+     * <p>{@code name} may be written in single quotes, which is how a name containing spaces is
+     * spelled in a usage; the quotes are part of the usage text, not of the name.
+     *
+     * @param nameStart offset of {@code name} within the attribute value text
+     * @return {@code true} when a reference was added, meaning the name is declared in this document
+     */
+    private static boolean addEmbeddedResourceRef(@NotNull List<PsiReference> refs,
+                                                  @NotNull XmlAttributeValue attrVal,
+                                                  @NotNull String name,
+                                                  int nameStart,
+                                                  @NotNull XmlFile xmlFile) {
+        if (name.isEmpty()) return false;
+
+        int start = nameStart;
+        String logicalName = name;
+        if (logicalName.length() >= 2
+                && logicalName.charAt(0) == '\''
+                && logicalName.charAt(logicalName.length() - 1) == '\'') {
+            logicalName = logicalName.substring(1, logicalName.length() - 1);
+            start++;
+        }
+
+        TextRange range = new TextRange(start, start + logicalName.length());
+        Fxml2ResourceNameReference reference =
+                new Fxml2ResourceNameReference(attrVal, range, logicalName, xmlFile);
+        if (!reference.isDeclared()) return false;
+
+        refs.add(reference);
+        return true;
+    }
+
     private static @Nullable PsiClass resolveBuiltInExtensionBySimpleName(
             @NotNull String simpleName, @NotNull Project project) {
         GlobalSearchScope allScope = GlobalSearchScope.allScope(project);

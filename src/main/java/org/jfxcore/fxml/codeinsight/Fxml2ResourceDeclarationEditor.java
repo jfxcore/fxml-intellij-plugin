@@ -60,6 +60,11 @@ public final class Fxml2ResourceDeclarationEditor {
         Document document = documentManager.getDocument(file);
         if (document == null) return false;
 
+        // An edit made through PSI earlier in the same refactoring leaves the document locked
+        // until those changes are written back.  Writing by offset into a locked document would
+        // apply the replacement to text the document does not have yet.
+        documentManager.doPostponedOperationsAndUnblockDocument(document);
+
         var range = entry.fileRangeOf(span);
         if (range.getEndOffset() > document.getTextLength()) return false;
 
