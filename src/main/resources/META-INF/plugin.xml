@@ -77,6 +77,17 @@
                                implementationClass="org.jfxcore.fxml.lang.Fxml2EmbeddedXmlParserDefinition"/>
 
         <!--
+            ParserDefinition for Fxml2Language, the dialect of XML used by standalone FXML/2
+            documents.  Owning the parser definition is what lets the plugin substitute its own
+            PSI for standard XML node types: PsiBuilderImpl consults a parser definition that is
+            also an ASTFactory before the language-keyed factory lookup, and the substitution is
+            scoped to files parsed as FXML/2.  Parsing itself is delegated to the platform's XML
+            parser definition, so an FXML/2 document is lexed and parsed like any other XML file.
+        -->
+        <lang.parserDefinition language="FXML2"
+                               implementationClass="org.jfxcore.fxml.lang.Fxml2ParserDefinition"/>
+
+        <!--
             InjectedFormattingOptionsProvider: when the user reformats from inside an
             injected FXML editor fragment, this delegates the request back to the
             Java/Kotlin host file.  The host formatter then runs as normal, and the
@@ -177,7 +188,7 @@
                 name="FXML/2"
                 implementationClass="org.jfxcore.fxml.lang.Fxml2FileType"
                 fieldName="INSTANCE"
-                language="XML"
+                language="FXML2"
                 extensions="fxmlx"/>
 
         <!--
