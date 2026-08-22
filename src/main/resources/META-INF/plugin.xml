@@ -106,6 +106,14 @@
                                implementationClass="org.jfxcore.fxml.lang.Fxml2ParserDefinition"/>
 
         <!--
+            Folds the payload of a multi-line <?resource ?> declaration away, leaving the name
+            and media type visible.  Registered for FXML2 only: the fold regions are anchored
+            on Fxml2ResourceProcessingInstruction, which only FXML/2 documents produce.
+        -->
+        <lang.foldingBuilder language="FXML2"
+                             implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceFoldingBuilder"/>
+
+        <!--
             InjectedFormattingOptionsProvider: when the user reformats from inside an
             injected FXML editor fragment, this delegates the request back to the
             Java/Kotlin host file.  The host formatter then runs as normal, and the
@@ -615,6 +623,22 @@
                          enabledByDefault="true"
                          level="WARNING"
                          implementationClass="org.jfxcore.fxml.annotator.Fxml2ProcessingInstructionPlacementInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.unused.resource.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2UnusedResourceInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.resource.media.type.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2ResourceMediaTypeInspection"/>
 
         <localInspection language="XML"
                          bundle="messages.Fxml2Bundle"
