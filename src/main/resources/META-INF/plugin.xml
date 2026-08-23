@@ -285,6 +285,16 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourceKeyDocumentationTargetProvider"/>
 
         <!--
+            DocumentationTargetProvider (V2): shows the CSS rule that declares a style class when
+            the cursor is on one of the class names of a styleClass attribute value, in a
+            standalone document as well as in markup embedded in a @ComponentView annotation
+            value.  The rule is read from the stylesheet the class selector is written in: a .css
+            file, or a stylesheet written into a <?resource ?> declaration of the document.
+        -->
+        <platform.backend.documentation.targetProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2StyleClassDocumentationTargetProvider"/>
+
+        <!--
             PsiReferenceContributor: registers soft, always-unresolved references for
             FXML binding expressions in attribute values (e.g. $vm.message,
             {fx:Observe vm.message}).  Also provides:

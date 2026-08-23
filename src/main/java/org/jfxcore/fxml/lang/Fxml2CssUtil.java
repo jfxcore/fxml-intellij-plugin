@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
+import org.jfxcore.fxml.resource.Fxml2ResourceName;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayload;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
@@ -310,6 +311,85 @@ public final class Fxml2CssUtil {
             if (m.find()) return m.group(1);
         }
 
+        return null;
+    }
+
+    // -----------------------------------------------------------------------
+    // Rule text
+    // -----------------------------------------------------------------------
+
+    /**
+     * Characters that end the selector list a class selector belongs to when scanning backwards
+     * from it: the end of the preceding rule, the start of a declaration block, and the syntax
+     * that surrounds a stylesheet written into a {@code <?resource ?>} declaration.
+     */
+    private static final String SELECTOR_LIST_STOP_CHARS = "}{;<?/";
+
+    /**
+     * Returns the source text of the CSS rule that {@code selector} is written in: its whole
+     * selector list followed by the declaration block, as it appears in the file the selector was
+     * found in.
+     *
+     * <p>The text is read from the declaring file, so that a stylesheet written into a
+     * {@code <?resource ?>} declaration reads back exactly as the author wrote it. When the
+     * selector is followed by no declaration block, the selector list alone is returned.
+     */
+    public static @NotNull String ruleTextOf(@NotNull CssSelectorElement selector) {
+        String text = selector.getContainingFile().getText();
+        TextRange range = selector.getTextRange();
+        int start = selectorListStart(text, range.getStartOffset());
+        int end = declarationBlockEnd(text, range.getEndOffset());
+        return text.substring(start, end).strip();
+    }
+
+    /** Returns the offset the selector list containing the selector at {@code selectorStart} begins at. */
+    private static int selectorListStart(@NotNull String text, int selectorStart) {
+        int index = selectorStart;
+        while (index > 0 && SELECTOR_LIST_STOP_CHARS.indexOf(text.charAt(index - 1)) < 0) {
+            index--;
+        }
+        return index;
+    }
+
+    /**
+     * Returns the offset just past the declaration block that follows the selector ending at
+     * {@code selectorEnd}, or {@code selectorEnd} itself when no block follows it.
+     */
+    private static int declarationBlockEnd(@NotNull String text, int selectorEnd) {
+        int index = selectorEnd;
+        while (index < text.length() && text.charAt(index) != '{') {
+            if (SELECTOR_LIST_STOP_CHARS.indexOf(text.charAt(index)) >= 0) return selectorEnd;
+            index++;
+        }
+
+        int depth = 0;
+        for (; index < text.length(); index++) {
+            char c = text.charAt(index);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}' && --depth == 0) {
+                return index + 1;
+            }
+        }
+        return selectorEnd;
+    }
+
+    /**
+     * Returns the name of the embedded resource that {@code selector} is written in, or
+     * {@code null} when the selector is written in a {@code .css} file of its own.
+     */
+    public static @Nullable Fxml2ResourceName embeddedResourceNameOf(@NotNull CssSelectorElement selector) {
+        if (!(selector.getContainingFile() instanceof XmlFile xmlFile)) return null;
+
+        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(xmlFile).entries()) {
+            if (Fxml2ResourcePayloadLanguage.of(entry.declaration())
+                    != Fxml2ResourcePayloadLanguage.CSS) continue;
+
+            Fxml2ResourcePayload payload = entry.declaration().payload();
+            TextRange payloadRange = entry.fileRangeOf(
+                    payload.sourceSpanOf(0, entry.declaration().content().length()));
+            if (payloadRange.contains(selector.getTextRange())) return entry.name();
+        }
         return null;
     }
 
