@@ -70,7 +70,7 @@ public final class Fxml2StyleClassReference extends PsiReferenceBase<XmlAttribut
     public ResolveResult @NotNull [] multiResolve(boolean incompleteCode) {
         GlobalSearchScope scope = GlobalSearchScope.allScope(myXmlFile.getProject());
         List<CssSelectorElement> all = Fxml2CssUtil.findAllCssSelectorElements(
-                myClassName, myCssTypeName, myXmlFile.getProject(), scope);
+                myClassName, myCssTypeName, myXmlFile, myXmlFile.getProject(), scope);
         if (all.isEmpty()) return ResolveResult.EMPTY_ARRAY;
         return all.stream()
                 .map(el -> (ResolveResult) new SimpleResolveResult(el))

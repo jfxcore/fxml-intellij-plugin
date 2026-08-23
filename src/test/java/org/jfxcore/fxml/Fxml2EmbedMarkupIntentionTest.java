@@ -268,6 +268,39 @@ class Fxml2EmbedMarkupIntentionTest extends Fxml2TestBase {
     }
 
     @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void embedsResourceDeclarationsFromEveryDocumentPosition() {
+        getFixture().configureByText("TestEmbed.fxml", """
+                <?import javafx.scene.layout.StackPane?>
+                <?resource before.txt:before?>
+                <StackPane xmlns="http://javafx.com/javafx"
+                           xmlns:fx="http://jfxcore.org/fxml/2.0"
+                           fx:<caret>subclass="test.TestEmbed">
+                    <?resource inside.txt:inside?>
+                </StackPane>
+                <?resource after.txt:after?>
+                """);
+        getFixture().addFileToProject("TestEmbed.java", """
+                package test;
+                public class TestEmbed extends TestEmbedBase {
+                    public TestEmbed() { initializeComponent(); }
+                }
+                """);
+
+        EmbedMarkupInCodeBehindIntention.skipConfirmationForTesting = true;
+        getFixture().launchAction(getFixture().findSingleIntention("Embed markup in code-behind file"));
+
+        VirtualFile javaFile = getFixture().findFileInTempDir("TestEmbed.java");
+        assertNotNull(javaFile);
+        String javaText = ReadAction.compute(() -> {
+            PsiFile psi = getFixture().getPsiManager().findFile(javaFile);
+            return psi == null ? "" : psi.getText();
+        });
+        assertTrue(javaText.contains("<?resource before.txt:before?>"));
+        assertTrue(javaText.contains("<?resource inside.txt:inside?>"));
+        assertTrue(javaText.contains("<?resource after.txt:after?>"));
+    }
+
+    @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void embedsMarkupWithLeadingXmlCommentInJavaCodeBehind() {
         // Arrange: FXML file with an XML comment before the root element.
         // The comment must be preserved in the embedded @ComponentView annotation value.

@@ -9,9 +9,13 @@ import com.intellij.psi.PsiManager;
 import com.intellij.psi.search.FilenameIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlAttribute;
+import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
+import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
+import org.jfxcore.fxml.resource.Fxml2ResourceModel;
+import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -121,6 +125,7 @@ public final class Fxml2CssUtil {
     public static @NotNull List<CssSelectorElement> findAllCssSelectorElements(
             @NotNull String className,
             @Nullable String cssTypeName,
+            @NotNull XmlFile fxmlFile,
             @NotNull Project project,
             @NotNull GlobalSearchScope scope) {
 
@@ -139,6 +144,24 @@ public final class Fxml2CssUtil {
         // Map from dedup-key -> (CssSelectorElement, isSource)
         Map<String, CssSelectorElement> byEntryPath = new LinkedHashMap<>();
         Map<String, Boolean> isSourceByKey = new LinkedHashMap<>();
+
+        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(fxmlFile).entries()) {
+            if (Fxml2ResourcePayloadLanguage.of(entry.declaration())
+                    != Fxml2ResourcePayloadLanguage.CSS) continue;
+
+            TextRange contentRange = findSelectorRange(
+                    entry.declaration().content(), className, cssTypeName);
+            if (contentRange == null) continue;
+
+            TextRange sourceRange = entry.fileRangeOf(
+                    entry.declaration().payload().sourceSpanOf(
+                            contentRange.getStartOffset(), contentRange.getEndOffset()));
+            String key = entry.declaringFile().getVirtualFile().getPath()
+                    + "#" + entry.nameRange().getStartOffset();
+            byEntryPath.put(key, new CssSelectorElement(
+                    entry.declaringFile(), sourceRange, className));
+            isSourceByKey.put(key, true);
+        }
 
         for (VirtualFile vf : FilenameIndex.getAllFilesByExt(project, "css", scope)) {
             PsiFile psiFile = psiManager.findFile(vf);

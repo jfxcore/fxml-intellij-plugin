@@ -142,6 +142,20 @@ public final class Fxml2EmbedMarkupUtil {
         return sb.toString();
     }
 
+    /** Collects processing instructions and comments that follow the document element. */
+    static @NotNull String buildDocumentTrailingContent(@NotNull XmlDocument xmlDoc) {
+        StringBuilder result = new StringBuilder();
+        boolean rootSeen = false;
+        for (PsiElement child : xmlDoc.getChildren()) {
+            if (child instanceof XmlTag) {
+                rootSeen = true;
+            } else if (rootSeen) {
+                collectPrologContent(child, result);
+            }
+        }
+        return result.toString();
+    }
+
     private static void collectPrologContent(@NotNull PsiElement node, @NotNull StringBuilder sb) {
         switch (node) {
             case XmlProlog prolog -> {
@@ -488,7 +502,11 @@ public final class Fxml2EmbedMarkupUtil {
         // Indentation and exact formatting are handled inside addAnnotationAndImports*,
         // which has access to the class's column and the project's code-style settings.
         String leadingDocPis = buildDocumentLeadingPis(xmlDoc);
+        String trailingContent = buildDocumentTrailingContent(xmlDoc);
         String rawMarkup = leadingDocPis + buildMarkupBody(rootTag);
+        if (!trailingContent.isEmpty()) {
+            rawMarkup = rawMarkup.stripTrailing() + '\n' + trailingContent.stripTrailing();
+        }
 
         // Collect imports declared in the FXML file
         List<String> fxmlImports = Fxml2ImportResolver.parseImports(xmlFile);

@@ -93,6 +93,51 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
     }
 
     @Test
+    void styleClassResolvesToSelectorInStandaloneEmbeddedResource() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <?resource styles.css text/css:
+                      .local-style {
+                        -fx-font-size: 16px;
+                      }
+                  ?>
+                  <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
+                """
+        ));
+
+        CssSelectorElement selector = assertInstanceOf(
+                CssSelectorElement.class, resolveStyleClassAtCaret());
+        assertNotNull(selector);
+        assertEquals("local-style", selector.getName());
+        assertEquals(".local-style", selector.getContainingFile().getText().substring(
+                selector.getTextRange().getStartOffset(), selector.getTextRange().getEndOffset()));
+    }
+
+    @Test
+    void styleClassResolvesToSelectorInComponentViewEmbeddedResource() {
+        getFixture().configureByText("TestView.java", """
+                package test;
+                import org.jfxcore.markup.ComponentView;
+                import javafx.scene.control.Label;
+                @ComponentView(\"""
+                    <?resource styles.css text/css:
+                        .local-style { -fx-font-size: 16px; }
+                    ?>
+                    <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
+                    \""")
+                public class TestView extends Label {}
+                """);
+
+        CssSelectorElement selector = assertInstanceOf(
+                CssSelectorElement.class, resolveStyleClassAtCaret());
+        assertNotNull(selector);
+        assertEquals("local-style", selector.getName());
+        assertEquals(".local-style", selector.getContainingFile().getText().substring(
+                selector.getTextRange().getStartOffset(), selector.getTextRange().getEndOffset()));
+    }
+
+    @Test
     void secondTokenInCommaListResolvesToCssSelectorElement() {
         getFixture().addFileToProject("style.css", CSS);
         getFixture().configureByText("TestView.fxml", fxml(
