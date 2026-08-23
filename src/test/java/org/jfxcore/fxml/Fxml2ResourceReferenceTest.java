@@ -4,18 +4,29 @@
 package org.jfxcore.fxml;
 
 import com.intellij.codeInsight.highlighting.HighlightUsagesHandlerBase;
+import com.intellij.codeInsight.navigation.actions.GotoDeclarationOrUsageHandler2;
+import com.intellij.find.usages.api.SearchTarget;
+import com.intellij.find.usages.api.UsageSearchParameters;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.search.LocalSearchScope;
+import com.intellij.psi.search.SearchScope;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlAttributeValue;
+import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.EdtTestUtil;
+import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.lang.Fxml2ResourceDeclarationElement;
+import org.jfxcore.fxml.lang.Fxml2ResourceDeclarationProvider;
 import org.jfxcore.fxml.lang.Fxml2ResourceFindUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2ResourceHighlightUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2ResourceNameReference;
+import org.jfxcore.fxml.lang.Fxml2ResourceUsageSearcher;
+import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
+import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -27,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -40,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Implementation under test: {@link Fxml2ResourceNameReference} and
  * {@link Fxml2ResourceDeclarationElement}.
  */
-@SuppressWarnings("SameParameterValue")
+@SuppressWarnings({"SameParameterValue", "UnstableApiUsage"})
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 class Fxml2ResourceReferenceTest extends Fxml2TestBase {
@@ -231,6 +243,85 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
                 """);
     }
 
+    /** Find Usages on a declaration reaches a usage written as a nested format argument. */
+    @Test
+    void referencesSearchFromDeclarationFindsNestedFormatArgumentUsage() {
+        configure("""
+                <?resource fallback.txt:Hello from an embedded resource?>
+                """, """
+                  <BorderPane accessibleText="%greeting; formatArguments=Jane, Doe, @fallback.txt"/>
+                """);
+
+        ReadAction.run(() -> {
+            var references = ReferencesSearch.search(
+                    declarationElement("fallback.txt"),
+                    new LocalSearchScope(getFixture().getFile())).findAll();
+
+            assertEquals(1, references.stream()
+                    .filter(Fxml2ResourceNameReference.class::isInstance)
+                    .count(), "the nested format argument is found as a usage");
+        });
+    }
+
+    /**
+     * The declaration name is a symbol declaration, which is what turns the Ctrl+click gesture
+     * into Show Usages instead of leaving it with nowhere to go.
+     */
+    @Test
+    void declarationNameIsRegisteredAsSymbolDeclaration() {
+        configure("""
+                <?resource sty<caret>les.css text/css:.root { -fx-base: black; }?>
+                """, """
+                  <BorderPane stylesheets="@styles.css"/>
+                """);
+
+        ReadAction.run(() -> {
+            PsiElement leaf = getFixture().getFile().findElementAt(getFixture().getCaretOffset());
+            assertNotNull(leaf);
+            int offsetInElement = getFixture().getCaretOffset() - leaf.getTextRange().getStartOffset();
+
+            var declarations = new Fxml2ResourceDeclarationProvider()
+                    .getDeclarations(leaf, offsetInElement);
+            assertEquals(1, declarations.size());
+            var declaration = declarations.iterator().next();
+            assertSame(leaf, declaration.getDeclaringElement());
+            assertNotNull(declaration.getSymbol());
+        });
+
+        assertShowsUsages();
+    }
+
+    /** The gesture behaves the same on a declaration whose media type is implied. */
+    @Test
+    void gestureOnAPlainTextDeclarationShowsUsages() {
+        configure("""
+                <?resource fall<caret>back.txt:Hello from an embedded resource?>
+                """, """
+                  <BorderPane accessibleText="%greeting; formatArguments=Jane, Doe, @fallback.txt"/>
+                """);
+
+        assertShowsUsages();
+    }
+
+    /**
+     * The Ctrl+click gesture on either declaration of a two-resource document reaches its use
+     * sites, whether the use site is a stylesheet reference or a nested format argument.
+     */
+    @Test
+    void declarationNamesReachTheirUseSites() {
+        String prolog = """
+                <?resource styles.css text/css:.my-style { -fx-text-fill: darkorange; }?>
+                <?resource fallback.txt:Hello from an embedded resource?>
+                """;
+        String body = """
+                  <BorderPane stylesheets="@styles.css"
+                              accessibleText="%greeting; formatArguments=Jane, Doe, @fallback.txt"/>
+                """;
+
+        assertEquals(1, useSiteCountFromDeclarationOf("styles.css", prolog, body));
+        assertEquals(1, useSiteCountFromDeclarationOf("fallback.txt", prolog, body));
+    }
+
     /** A resource used as a nested format argument has the same navigation and highlighting. */
     @Test
     void nestedFormatArgumentLinksToItsResourceDeclaration() {
@@ -298,6 +389,51 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
         });
     }
 
+    /** Asserts that the Ctrl+click gesture at the caret lists use sites rather than navigating. */
+    private void assertShowsUsages() {
+        assertEquals(
+                GotoDeclarationOrUsageHandler2.GTDUOutcome.SU,
+                ReadAction.compute(() ->
+                        GotoDeclarationOrUsageHandler2.testGTDUOutcome(
+                                getFixture().getEditor(), getFixture().getFile(), getFixture().getCaretOffset())),
+                "Ctrl+click on a resource declaration shows its usages");
+    }
+
+    /**
+     * Returns the number of use sites Ctrl+click on the declaration of {@code name} would list.
+     *
+     * <p>The declaration is looked up the way the platform does it, through the symbol declaration
+     * at the offset of the name, so that a gap in the declaration provider fails this assertion.
+     */
+    private long useSiteCountFromDeclarationOf(String name, String prolog, String body) {
+        configure(prolog, body);
+
+        return ReadAction.compute(() -> {
+            int offset = ReadAction.compute(() -> declarationElement(name).getTextOffset());
+            PsiElement leaf = getFixture().getFile().findElementAt(offset);
+            assertNotNull(leaf);
+
+            var declarations = new Fxml2ResourceDeclarationProvider()
+                    .getDeclarations(leaf, offset - leaf.getTextRange().getStartOffset());
+            assertEquals(1, declarations.size(), "'" + name + "' is a declaration site");
+
+            var symbol = (SearchTarget)declarations.iterator().next().getSymbol();
+            return new Fxml2ResourceUsageSearcher()
+                    .collectImmediateResults(new TestUsageSearchParameters(
+                            symbol, getFixture().getProject(),
+                            new LocalSearchScope(getFixture().getFile())))
+                    .size();
+        });
+    }
+
+    /** Returns the declaration element of the named embedded resource in the configured file. */
+    private Fxml2ResourceDeclarationElement declarationElement(String name) {
+        Fxml2ResourceEntry entry = Fxml2ResourceModel
+                .of((XmlFile)getFixture().getFile()).resolve(name);
+        assertNotNull(entry, "the document declares '" + name + "'");
+        return new Fxml2ResourceDeclarationElement(entry);
+    }
+
     private java.util.List<Fxml2ResourceNameReference> findResourceReferences() {
         return ReadAction.compute(() -> PsiTreeUtil.findChildrenOfType(
                         getFixture().getFile(), XmlAttributeValue.class).stream()
@@ -331,5 +467,25 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
 
     private static <T extends PsiElement> void computeUsages(HighlightUsagesHandlerBase<T> handler) {
         handler.computeUsages(handler.getTargets());
+    }
+
+    /** The search parameters the platform would build for a symbol-native Show Usages request. */
+    @SuppressWarnings("UnstableApiUsage")
+    private record TestUsageSearchParameters(@NotNull SearchTarget target,
+                                             @NotNull Project project,
+                                             @NotNull SearchScope searchScope)
+            implements UsageSearchParameters {
+
+        @Override
+        public @NotNull SearchTarget getTarget() { return target; }
+
+        @Override
+        public @NotNull Project getProject() { return project; }
+
+        @Override
+        public @NotNull SearchScope getSearchScope() { return searchScope; }
+
+        @Override
+        public boolean areValid() { return true; }
     }
 }

@@ -310,6 +310,14 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2FxIdDeclarationProvider"/>
 
         <!--
+            PsiSymbolDeclarationProvider: registers the name of a <?resource ?> declaration as a
+            symbol declaration, so that Ctrl+click on it shows the use sites of the embedded
+            resource instead of having nowhere to go.
+        -->
+        <psi.declarationProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceDeclarationProvider"/>
+
+        <!--
             GotoDeclarationHandler (code/binding -> FXML): when the cursor is on a Java/Kotlin
             field or method that corresponds to an fx:id-injected member, or on a binding
             expression segment, navigates to the fx:id XmlAttributeValue (canonical declaration)
@@ -468,6 +476,14 @@
         -->
         <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
                   implementationClass="org.jfxcore.fxml.lang.Fxml2FxIdUsageSearcher"/>
+
+        <!--
+            UsageSearcher: collects the use sites of an embedded resource when the symbol-native
+            "Show Usages" path is triggered for an Fxml2ResourceSymbol, which is what Ctrl+click
+            on a <?resource ?> declaration name leads to.
+        -->
+        <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
+                  implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceUsageSearcher"/>
 
         <!--
             RenameHandler: makes Shift+F6 available when the caret is on a property attribute
