@@ -5,6 +5,7 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.find.findUsages.FindUsagesHandler;
 import com.intellij.find.findUsages.FindUsagesHandlerFactory;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
@@ -27,13 +28,22 @@ public final class Fxml2ResourceFindUsagesHandlerFactory extends FindUsagesHandl
         return entry == null ? null : new FindUsagesHandler(new Fxml2ResourceDeclarationElement(entry)) {};
     }
 
-    /** Finds the declaration whose name is contained by the PSI element at the caret. */
+    /**
+     * Finds the declaration whose name is contained by the PSI element at the caret.
+     *
+     * <p>The platform also offers synthetic elements here, such as the navigation target a
+     * documentation-link reference resolves to.  Those report a containing file but occupy no
+     * range in it, so an element without a range declares nothing.
+     */
     private static @Nullable Fxml2ResourceEntry declarationAt(@NotNull PsiElement element) {
         if (!(element.getContainingFile() instanceof XmlFile xmlFile)) return null;
         if (!Fxml2FileType.isFxml2(xmlFile)) return null;
 
+        TextRange elementRange = element.getTextRange();
+        if (elementRange == null) return null;
+
         for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(xmlFile).entries()) {
-            if (element.getTextRange().contains(entry.nameRange())) return entry;
+            if (elementRange.contains(entry.nameRange())) return entry;
         }
         return null;
     }

@@ -60,7 +60,12 @@ public final class Fxml2ResourceDeclarationProvider implements PsiSymbolDeclarat
         // the element the platform called us with.  The platform walks every element around the
         // cursor, most of which do not contain the name at all, so the offsets are checked before
         // a range is built from them.
-        int elementStart = element.getTextRange().getStartOffset();
+        // A synthetic element, such as the navigation target of a documentation link, reports no
+        // range of its own and therefore contains no declaration.
+        TextRange elementRange = element.getTextRange();
+        if (elementRange == null) return List.of();
+
+        int elementStart = elementRange.getStartOffset();
         int nameStart = instruction.getTextRange().getStartOffset()
                 + declaration.nameSpan().start() - elementStart;
         int nameEnd = nameStart + declaration.nameSpan().length();

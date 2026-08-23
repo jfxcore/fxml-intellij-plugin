@@ -31,7 +31,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *       {@code fx:classModifier}, {@code fx:classParameters}</li>
  *   <li>{@code fx:} intrinsic element tags: {@code fx:define}, {@code fx:Null},
  *       {@code fx:True}, {@code fx:False}</li>
- *   <li>{@code <?prefix?>} processing-instruction keyword</li>
+ *   <li>Processing-instruction targets: {@code <?import?>}, {@code <?prefix?>},
+ *       {@code <?resource?>}</li>
  * </ul>
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -71,6 +72,10 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
             "https://jfxcore.github.io/fxml-compiler/reference/";
     private static final String PREFIX_DOCS =
             "https://jfxcore.github.io/fxml-compiler/markup-extension.html#prefix-declarations";
+    private static final String IMPORT_DOCS =
+            "https://jfxcore.github.io/fxml-compiler/getting-started/standalone.html";
+    private static final String RESOURCE_DOCS =
+            "https://jfxcore.github.io/fxml-compiler/embedded-resource.html";
 
     // -----------------------------------------------------------------------
     // Binding notation: $, ${}, #{}
@@ -209,9 +214,64 @@ class Fxml2OnlineDocsNavigationTest extends Fxml2TestBase {
         });
     }
 
+    @Test
+    void ctrlClick_onImportKeyword_opensStandaloneDocs() {
+        getFixture().configureByText("TestView.fxmlx", COMMON_FXML);
+        ReadAction.run(() -> assertEquals(IMPORT_DOCS, resolvePiTargetUrl("import"),
+                "import keyword should link to the FXML source file docs"));
+    }
+
+    @Test
+    void ctrlClick_onResourceKeyword_opensEmbeddedResourceDocs() {
+        getFixture().configureByText("TestView.fxmlx", RESOURCE_FXML);
+        ReadAction.run(() -> assertEquals(RESOURCE_DOCS, resolvePiTargetUrl("resource"),
+                "resource keyword should link to the embedded resources docs"));
+    }
+
+    @Test
+    void ctrlClick_onUnknownProcessingInstructionTarget_hasNoDocsLink() {
+        getFixture().configureByText("TestView.fxmlx", RESOURCE_FXML);
+        ReadAction.run(() -> {
+            XmlProcessingInstruction pi = findProcessingInstruction("unknown");
+            PsiReference ref = pi.findReferenceAt(pi.getText().indexOf("unknown") + 1);
+            assertNull(ref, "An instruction the language does not define should have no docs link");
+        });
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /** Markup with an embedded resource declaration and an instruction the language does not define. */
+    private static final String RESOURCE_FXML = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <?import javafx.scene.layout.VBox?>
+            <?unknown something?>
+            <?resource styles.css text/css:
+                .root { -fx-font-size: 1.1em; }
+            ?>
+            <VBox xmlns="http://javafx.com/javafx"
+                  xmlns:fx="http://jfxcore.org/fxml/2.0"
+                  stylesheets="@styles.css"/>
+            """;
+
+    /** Returns the documentation URL the target name of the named processing instruction links to. */
+    private String resolvePiTargetUrl(String targetName) {
+        XmlProcessingInstruction pi = findProcessingInstruction(targetName);
+        PsiReference ref = pi.findReferenceAt(pi.getText().indexOf(targetName) + 1);
+        assertNotNull(ref, "No reference on the '" + targetName + "' keyword");
+        return resolveToUrlTarget(ref, "'" + targetName + "' keyword").getName();
+    }
+
+    /** Returns the first processing instruction whose target is {@code targetName}. */
+    private XmlProcessingInstruction findProcessingInstruction(String targetName) {
+        XmlFile xmlFile = (XmlFile) getFixture().getFile();
+        for (XmlProcessingInstruction candidate :
+                PsiTreeUtil.findChildrenOfType(xmlFile, XmlProcessingInstruction.class)) {
+            if (candidate.getText().startsWith("<?" + targetName)) return candidate;
+        }
+        return fail("Could not find <?" + targetName + "?> processing instruction");
+    }
 
     /**
      * Finds the first attribute with the given local name and value in the parsed file,

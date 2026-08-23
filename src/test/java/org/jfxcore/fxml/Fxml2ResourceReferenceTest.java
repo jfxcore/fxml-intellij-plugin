@@ -20,6 +20,7 @@ import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.EdtTestUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jfxcore.fxml.lang.Fxml2NamespaceUrlReference;
 import org.jfxcore.fxml.lang.Fxml2ResourceDeclarationElement;
 import org.jfxcore.fxml.lang.Fxml2ResourceDeclarationProvider;
 import org.jfxcore.fxml.lang.Fxml2ResourceFindUsagesHandlerFactory;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.Timeout;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -372,6 +374,31 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * A synthetic element, such as the navigation target a documentation link resolves to, reports
+     * a containing file but occupies no range in it.  The platform offers such an element to both
+     * the declaration provider and the find-usages factory, and neither may fail on it.
+     */
+    @Test
+    void syntheticElementWithoutRange_declaresNothing() {
+        configure("""
+                <?resource styles.css text/css:
+                    .root { -fx-font-size: 1.1em; }
+                ?>
+                """, "");
+
+        ReadAction.run(() -> {
+            PsiFile file = getFixture().getFile();
+            PsiElement synthetic =
+                    new Fxml2NamespaceUrlReference.UrlNavigationTarget(file, "https://example.invalid/");
+
+            assertTrue(new Fxml2ResourceDeclarationProvider().getDeclarations(synthetic, 0).isEmpty(),
+                    "a synthetic element declares no resource name");
+            assertFalse(new Fxml2ResourceFindUsagesHandlerFactory().canFindUsages(synthetic),
+                    "a synthetic element starts no resource find-usages request");
+        });
+    }
 
     /**
      * Runs the platform rename action on the element at the caret.

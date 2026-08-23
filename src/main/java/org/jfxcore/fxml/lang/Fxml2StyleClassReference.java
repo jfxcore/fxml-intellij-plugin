@@ -88,6 +88,23 @@ public final class Fxml2StyleClassReference extends PsiReferenceBase<XmlAttribut
         return results.length > 0 ? results[0].getElement() : null;
     }
 
+    /**
+     * Returns {@code true} when {@code element} is a class selector of the name this reference
+     * targets, wherever it is written: in a {@code .css} file, in a stylesheet injected into a
+     * {@code <?resource ?>} declaration, or as the {@link CssSelectorElement} this reference
+     * resolves to.
+     *
+     * <p>A selector is matched by name rather than by element identity: the element this
+     * reference resolves to stands for a stretch of file text and is a different object than
+     * the CSS PSI element for the same selector.  Matching by name is what makes a
+     * {@code styleClass} token count as a use site for every analysis that asks a reference
+     * what it points at, the unused-selector analysis of a stylesheet among them.
+     */
+    @Override
+    public boolean isReferenceTo(@NotNull PsiElement element) {
+        return myClassName.equals(Fxml2CssUtil.selectorClassNameOf(element));
+    }
+
     @Override
     public boolean isSoft() {
         return true;

@@ -27,13 +27,17 @@ import org.jetbrains.annotations.Nullable;
 public enum Fxml2ProcessingInstructionTarget {
 
     /** Declares a class or package to resolve tag names against. */
-    IMPORT("import", Placement.DOCUMENT_LEVEL),
+    IMPORT("import", Placement.DOCUMENT_LEVEL, "getting-started/standalone.html"),
 
     /** Declares a markup extension prefix such as {@code %} or {@code @}. */
-    PREFIX("prefix", Placement.DOCUMENT_LEVEL),
+    PREFIX("prefix", Placement.DOCUMENT_LEVEL, "markup-extension.html#prefix-declarations"),
 
     /** Declares an embedded resource. */
-    RESOURCE("resource", Placement.ANYWHERE);
+    RESOURCE("resource", Placement.ANYWHERE, "embedded-resource.html");
+
+    /** Base URL of the online language documentation. */
+    private static final String DOCS_BASE_URL = "https://jfxcore.github.io/fxml-compiler/";
+
 
     /** Where the language reads a processing instruction. */
     public enum Placement {
@@ -47,15 +51,23 @@ public enum Fxml2ProcessingInstructionTarget {
 
     private final @NotNull String targetName;
     private final @NotNull Placement placement;
+    private final @NotNull String documentationPage;
 
-    Fxml2ProcessingInstructionTarget(@NotNull String targetName, @NotNull Placement placement) {
+    Fxml2ProcessingInstructionTarget(
+            @NotNull String targetName, @NotNull Placement placement, @NotNull String documentationPage) {
         this.targetName = targetName;
         this.placement = placement;
+        this.documentationPage = documentationPage;
     }
 
     /** Returns the name written after {@code <?}. */
     public @NotNull String targetName() {
         return targetName;
+    }
+
+    /** Returns the online documentation page that describes this processing instruction. */
+    public @NotNull String documentationUrl() {
+        return DOCS_BASE_URL + documentationPage;
     }
 
     /**

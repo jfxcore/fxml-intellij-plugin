@@ -328,8 +328,9 @@
 
         <!--
             ReferencesSearch extension: when "Find Usages" is invoked on a CSS class
-            selector (either our own CssSelectorElement or the CSS plugin's PSI element
-            for a .css file), searches all standalone FXML files (.fxml / .fxmlx) and
+            selector (our own CssSelectorElement, the CSS plugin's PSI element for a
+            .css file, or an element of a stylesheet injected into a <?resource ?>
+            declaration), searches all standalone FXML files (.fxml / .fxmlx) and
             all @ComponentView-annotated classes for styleClass attribute values that
             reference the same CSS class name.
 
@@ -464,6 +465,15 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2FxIdFindUsagesHandlerFactory"/>
         <findUsagesHandlerFactory
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourceFindUsagesHandlerFactory"/>
+
+        <!--
+            FindUsagesHandlerFactory: when "Find Usages" or Ctrl+click is triggered on a class
+            selector of an embedded text/css resource, searches for the styleClass tokens that
+            name it, so that the selector navigates to its use sites rather than to the
+            same-named selectors a stylesheet analysis would report.
+        -->
+        <findUsagesHandlerFactory
+                implementation="org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory"/>
         <highlightUsagesHandlerFactory
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourceHighlightUsagesHandlerFactory"/>
 
