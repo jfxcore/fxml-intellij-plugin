@@ -5,6 +5,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.impl.FakePsiElement;
+import com.intellij.psi.search.LocalSearchScope;
+import com.intellij.psi.search.SearchScope;
 import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -60,6 +62,11 @@ public final class Fxml2ResourceDeclarationElement extends FakePsiElement implem
     @Override
     public @NotNull TextRange getTextRange() {
         return nameRange;
+    }
+
+    @Override
+    public @NotNull SearchScope getUseScope() {
+        return new LocalSearchScope(file);
     }
 
     @Override

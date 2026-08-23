@@ -3,13 +3,18 @@
 
 package org.jfxcore.fxml;
 
+import com.intellij.codeInsight.highlighting.HighlightUsagesHandlerBase;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiReference;
+import com.intellij.psi.search.LocalSearchScope;
+import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.testFramework.EdtTestUtil;
 import org.jfxcore.fxml.lang.Fxml2ResourceDeclarationElement;
+import org.jfxcore.fxml.lang.Fxml2ResourceFindUsagesHandlerFactory;
+import org.jfxcore.fxml.lang.Fxml2ResourceHighlightUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2ResourceNameReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -35,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Implementation under test: {@link Fxml2ResourceNameReference} and
  * {@link Fxml2ResourceDeclarationElement}.
  */
+@SuppressWarnings("SameParameterValue")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 class Fxml2ResourceReferenceTest extends Fxml2TestBase {
@@ -49,6 +55,16 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
                 @DefaultProperty("value")
                 public final class ClassPathResource {
                     public ClassPathResource(@NamedArg("value") String value) {}
+                }
+                """);
+        getFixture().addClass("""
+                package org.jfxcore.markup.resource;
+                import javafx.beans.DefaultProperty;
+                import javafx.beans.NamedArg;
+                @DefaultProperty("key")
+                public final class StaticResource {
+                    public StaticResource(@NamedArg("key") String key,
+                                          @NamedArg("formatArguments") Object... arguments) {}
                 }
                 """);
     }
@@ -158,6 +174,76 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
         assertTrue(text.contains("stylesheets=\"@'dark theme.css'\""), "the usage is quoted: " + text);
     }
 
+    /** Find Usages on a declaration discovers every resource reference in its document. */
+    @Test
+    void referencesSearchFromDeclarationFindsPrefixAndLongFormUsages() {
+        configure("""
+                <?resource styles.css text/css:.root { -fx-base: black; }?>
+                """, """
+                  <BorderPane stylesheets="@styles.css">
+                    <BorderPane stylesheets="{ClassPathResource styles.css}"/>
+                  </BorderPane>
+                """);
+
+        ReadAction.run(() -> {
+            Fxml2ResourceNameReference usage = findResourceReferences().getFirst();
+            PsiElement declaration = usage.resolve();
+            assertNotNull(declaration);
+            var references = ReferencesSearch.search(
+                    declaration, new LocalSearchScope(getFixture().getFile())).findAll();
+
+            assertEquals(2, references.stream()
+                    .filter(Fxml2ResourceNameReference.class::isInstance)
+                    .count());
+        });
+    }
+
+    /** The declaration token is a valid starting point for the Find Usages action. */
+    @Test
+    void findUsagesStartsAtTheDeclarationName() {
+        configure("""
+                <?resource sty<caret>les.css text/css:.root { -fx-base: black; }?>
+                """, """
+                  <BorderPane stylesheets="@styles.css"/>
+                """);
+
+        ReadAction.run(() -> {
+            PsiElement leaf = getFixture().getFile().findElementAt(getFixture().getCaretOffset());
+            assertNotNull(leaf);
+            Fxml2ResourceFindUsagesHandlerFactory factory =
+                    new Fxml2ResourceFindUsagesHandlerFactory();
+            assertTrue(factory.canFindUsages(leaf));
+            var handler = factory.createFindUsagesHandler(leaf, false);
+            assertNotNull(handler);
+            assertInstanceOf(Fxml2ResourceDeclarationElement.class,
+                    handler.getPsiElement());
+        });
+    }
+
+    /** Identifier highlighting links a declaration name with its use site in either direction. */
+    @Test
+    void identifierHighlightingLinksDeclarationAndUsage() {
+        assertResourceIdentifierHighlights("styles.css", """
+                <?resource sty<caret>les.css text/css:.root { -fx-base: black; }?>
+                """);
+        assertResourceIdentifierHighlights("styles.css", """
+                <?resource styles.css text/css:.root { -fx-base: black; }?>
+                """);
+    }
+
+    /** A resource used as a nested format argument has the same navigation and highlighting. */
+    @Test
+    void nestedFormatArgumentLinksToItsResourceDeclaration() {
+        configure("""
+                <?resource fallback.txt:Hello from an embedded resource?>
+                """, """
+                  <BorderPane accessibleText="%greeting; formatArguments=Jane, Doe, @fall<caret>back.txt"/>
+                """);
+
+        assertEquals("fallback.txt", resolvedResourceName());
+        assertResourceHighlightsAtCurrentCaret("fallback.txt");
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
@@ -210,5 +296,40 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
             }
             return null;
         });
+    }
+
+    private java.util.List<Fxml2ResourceNameReference> findResourceReferences() {
+        return ReadAction.compute(() -> PsiTreeUtil.findChildrenOfType(
+                        getFixture().getFile(), XmlAttributeValue.class).stream()
+                .flatMap(value -> java.util.Arrays.stream(value.getReferences()))
+                .filter(Fxml2ResourceNameReference.class::isInstance)
+                .map(Fxml2ResourceNameReference.class::cast)
+                .toList());
+    }
+
+    private void assertResourceIdentifierHighlights(String expectedName, String prolog) {
+        String body = prolog.contains("<caret>")
+                ? "  <BorderPane stylesheets=\"@styles.css\"/>\n"
+                : "  <BorderPane stylesheets=\"@sty<caret>les.css\"/>\n";
+        configure(prolog, body);
+        assertResourceHighlightsAtCurrentCaret(expectedName);
+    }
+
+    private void assertResourceHighlightsAtCurrentCaret(String expectedName) {
+        getFixture().doHighlighting();
+        java.util.List<String> highlighted = ReadAction.compute(() -> {
+            var handler = new Fxml2ResourceHighlightUsagesHandlerFactory()
+                    .createHighlightUsagesHandler(getFixture().getEditor(), getFixture().getFile());
+            assertNotNull(handler);
+            computeUsages(handler);
+            return handler.getReadUsages().stream()
+                    .map(range -> getFixture().getEditor().getDocument().getText(range))
+                    .toList();
+        });
+        assertEquals(java.util.List.of(expectedName, expectedName), highlighted);
+    }
+
+    private static <T extends PsiElement> void computeUsages(HighlightUsagesHandlerBase<T> handler) {
+        handler.computeUsages(handler.getTargets());
     }
 }

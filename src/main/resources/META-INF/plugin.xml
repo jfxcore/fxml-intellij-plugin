@@ -454,6 +454,10 @@
         -->
         <findUsagesHandlerFactory
                 implementation="org.jfxcore.fxml.lang.Fxml2FxIdFindUsagesHandlerFactory"/>
+        <findUsagesHandlerFactory
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceFindUsagesHandlerFactory"/>
+        <highlightUsagesHandlerFactory
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceHighlightUsagesHandlerFactory"/>
 
         <!--
             UsageSearcher: when IntelliJ's symbol-native "Show Usages" path is triggered for
