@@ -2,6 +2,7 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.CustomShortcutSet;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.actionSystem.impl.DynamicActionConfigurationCustomizer;
 import org.jetbrains.annotations.NotNull;
@@ -81,8 +82,28 @@ public final class Fxml2EmbeddedCommentActionCustomizer implements DynamicAction
 
     @Override
     public void unregisterActions(@NotNull ActionManager actionManager) {
-        replacedActions.forEach((override, platformAction) ->
-                actionManager.replaceAction(override.actionId(), platformAction));
+        replacedActions.forEach((override, platformAction) -> {
+            clearShortcutSet(actionManager, platformAction);
+            actionManager.replaceAction(override.actionId(), platformAction);
+        });
         replacedActions.clear();
+    }
+
+    /**
+     * Hands {@code action} back to the action manager without a shortcut set of its own.
+     *
+     * <p>Registering an action installs a keymap-backed shortcut set on it.  The action restored
+     * here already carries the one it was given when it was first registered, and replacing that
+     * with a second one is reported as a shortcut change made outside the keymap.  Clearing it
+     * first avoids the report, and costs nothing: the registration that immediately follows
+     * installs the keymap-backed set again, leaving the action exactly as it started.
+     *
+     * <p>An action that is still registered under some other ID is left untouched, because
+     * clearing the shortcut set of a live action is the very thing being avoided here.
+     */
+    private static void clearShortcutSet(@NotNull ActionManager actionManager, @NotNull AnAction action) {
+        if (actionManager.getId(action) == null) {
+            action.registerCustomShortcutSet(CustomShortcutSet.EMPTY, null);
+        }
     }
 }
