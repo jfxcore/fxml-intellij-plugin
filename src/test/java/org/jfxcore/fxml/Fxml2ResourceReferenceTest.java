@@ -10,6 +10,7 @@ import com.intellij.find.usages.api.UsageSearchParameters;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.search.LocalSearchScope;
 import com.intellij.psi.search.SearchScope;
@@ -289,6 +290,39 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
         });
 
         assertShowsUsages();
+    }
+
+    /**
+     * The declaration provider is asked about every element around the cursor, including those
+     * that lie after the name or do not contain it at all, and answers each without failing.
+     */
+    @Test
+    void declarationProviderToleratesEveryElementOfTheDocument() {
+        configure("""
+                <?resource styles.css text/css:.root { -fx-base: black; }?>
+                <?resource fallback.txt:Hello from an embedded resource?>
+                """, """
+                  <BorderPane stylesheets="@styles.css"/>
+                """);
+
+        ReadAction.run(() -> {
+            var provider = new Fxml2ResourceDeclarationProvider();
+            PsiFile file = getFixture().getFile();
+            int declaringElements = 0;
+
+            for (int offset = 0; offset < file.getTextLength(); offset++) {
+                PsiElement leaf = file.findElementAt(offset);
+                if (leaf == null) continue;
+
+                for (PsiElement element = leaf; element != null && element != file;
+                     element = element.getParent()) {
+                    declaringElements += provider.getDeclarations(
+                            element, offset - element.getTextRange().getStartOffset()).size();
+                }
+            }
+
+            assertTrue(declaringElements > 0, "the names are still reported as declarations");
+        });
     }
 
     /** The gesture behaves the same on a declaration whose media type is implied. */

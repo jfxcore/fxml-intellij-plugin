@@ -56,16 +56,18 @@ public final class Fxml2ResourceDeclarationProvider implements PsiSymbolDeclarat
         Fxml2ResourceDeclaration declaration = result.declaration();
         if (declaration == null) return List.of();
 
-        // The name span is relative to the instruction; the declaration must be relative to the
-        // element the platform called us with, which is the leaf token under the cursor.
-        int nameStart = instruction.getTextRange().getStartOffset() + declaration.nameSpan().start();
-        TextRange nameInElement = new TextRange(
-                        nameStart, nameStart + declaration.nameSpan().length())
-                .shiftLeft(element.getTextRange().getStartOffset());
+        // The name span is relative to the instruction, while the declaration must be relative to
+        // the element the platform called us with.  The platform walks every element around the
+        // cursor, most of which do not contain the name at all, so the offsets are checked before
+        // a range is built from them.
+        int elementStart = element.getTextRange().getStartOffset();
+        int nameStart = instruction.getTextRange().getStartOffset()
+                + declaration.nameSpan().start() - elementStart;
+        int nameEnd = nameStart + declaration.nameSpan().length();
 
-        if (nameInElement.getStartOffset() < 0 || nameInElement.getEndOffset() > element.getTextLength()) {
-            return List.of();
-        }
+        if (nameStart < 0 || nameEnd > element.getTextLength()) return List.of();
+
+        TextRange nameInElement = new TextRange(nameStart, nameEnd);
         if (offsetInElement >= 0 && !nameInElement.containsOffset(offsetInElement)) {
             return List.of();
         }
