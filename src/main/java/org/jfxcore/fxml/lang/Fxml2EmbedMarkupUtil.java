@@ -282,11 +282,14 @@ public final class Fxml2EmbedMarkupUtil {
         }
 
         // Wrap in a synthetic root that declares the FXML/2 namespaces so that
-        // fx:-prefixed elements inside the user markup resolve without errors.
+        // fx:-prefixed elements inside the user markup resolve without errors.  The content
+        // starts on its own line so that the first thing in it is indented as content of the
+        // wrapper: a processing instruction that shares the wrapper's line would keep the
+        // wrapper's own indentation and end up one step short of the markup around it.
         final String wrappedXml =
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                 + "<_fxml2_r_ xmlns=\"http://javafx.com/javafx\""
-                + " xmlns:fx=\"http://jfxcore.org/fxml/2.0\">"
+                + " xmlns:fx=\"http://jfxcore.org/fxml/2.0\">\n"
                 + rawContent
                 + "</_fxml2_r_>";
 
@@ -310,11 +313,14 @@ public final class Fxml2EmbedMarkupUtil {
                             xmlCommon.getIndentOptions();
                     if (xmlOpts != null) xmlOpts.INDENT_SIZE = xmlIndentSize;
 
-                    // Create a temporary XML PSI file.  runWithLocalSettings ensures that
+                    // Create a temporary FXML/2 PSI file.  runWithLocalSettings ensures that
                     // CodeStyle.getSettings(xmlPsiFile) returns our local copy via
                     //   getSettings(project) -> getLocalOrTemporarySettings().
+                    // The file is parsed as FXML/2 rather than as plain XML so that the
+                    // FXML/2 formatter runs, which is what keeps the payload of a
+                    // <?resource ?> declaration laid out as its author wrote it.
                     LightVirtualFile tempVf = new LightVirtualFile(
-                            "_fxml2_format_tmp.fxml", XMLLanguage.INSTANCE, wrappedXml);
+                            "_fxml2_format_tmp.fxml", Fxml2Language.INSTANCE, wrappedXml);
                     PsiFile xmlPsiFile = PsiManager.getInstance(project).findFile(tempVf);
                     if (!(xmlPsiFile instanceof XmlFile xmlFile)) return null;
 

@@ -114,6 +114,15 @@
                              implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceFoldingBuilder"/>
 
         <!--
+            Formats an FXML/2 document as XML, with one difference: a <?resource ?> declaration
+            that carries a payload is reproduced exactly as written.  The payload is resource
+            content laid out by its author, not markup, so reindenting it would both destroy its
+            layout and change the resource.
+        -->
+        <lang.formatter language="FXML2"
+                        implementationClass="org.jfxcore.fxml.lang.Fxml2FormattingModelBuilder"/>
+
+        <!--
             InjectedFormattingOptionsProvider: when the user reformats from inside an
             injected FXML editor fragment, this delegates the request back to the
             Java/Kotlin host file.  The host formatter then runs as normal, and the
