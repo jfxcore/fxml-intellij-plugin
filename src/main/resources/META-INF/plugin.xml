@@ -123,6 +123,16 @@
                         implementationClass="org.jfxcore.fxml.lang.Fxml2FormattingModelBuilder"/>
 
         <!--
+            PostFormatProcessor: reformats the payload of every <?resource ?> declaration of an
+            FXML/2 document once the markup around it is laid out.  The content is formatted in
+            the code style of the language its media type names, and placed at the markup
+            indentation.  A payload whose language this IDE cannot format - CSS in IntelliJ IDEA
+            Community, for instance - is left exactly as its author wrote it.
+        -->
+        <postFormatProcessor
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadFormattingProcessor"/>
+
+        <!--
             InjectedFormattingOptionsProvider: when the user reformats from inside an
             injected FXML editor fragment, this delegates the request back to the
             Java/Kotlin host file.  The host formatter then runs as normal, and the

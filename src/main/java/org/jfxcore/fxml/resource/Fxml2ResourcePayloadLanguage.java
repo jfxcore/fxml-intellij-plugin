@@ -112,6 +112,11 @@ public enum Fxml2ResourcePayloadLanguage {
         return mediaTypes.getFirst();
     }
 
+    /** Returns the file extension that most directly names this language. */
+    public @NotNull String defaultExtension() {
+        return extensions.getFirst();
+    }
+
     /**
      * Returns the platform language to inject, or {@code null} when this IDE does not have it.
      *

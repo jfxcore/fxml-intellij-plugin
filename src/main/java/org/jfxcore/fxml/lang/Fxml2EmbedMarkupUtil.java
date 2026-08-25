@@ -22,7 +22,6 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.psi.PsiImportStatement;
 import com.intellij.psi.PsiImportStaticStatement;
 import com.intellij.psi.PsiJavaFile;
@@ -316,11 +315,14 @@ public final class Fxml2EmbedMarkupUtil {
                     // Create a temporary FXML/2 PSI file.  runWithLocalSettings ensures that
                     // CodeStyle.getSettings(xmlPsiFile) returns our local copy via
                     //   getSettings(project) -> getLocalOrTemporarySettings().
-                    // The file is parsed as FXML/2 rather than as plain XML so that the
-                    // FXML/2 formatter runs, which is what keeps the payload of a
-                    // <?resource ?> declaration laid out as its author wrote it.
-                    LightVirtualFile tempVf = new LightVirtualFile(
-                            "_fxml2_format_tmp.fxml", Fxml2Language.INSTANCE, wrappedXml);
+                    // The file is parsed as FXML/2 rather than as plain XML so that the FXML/2
+                    // formatter runs, which is what gives a <?resource ?> declaration the
+                    // treatment it gets in a standalone document.  It stands in the host's
+                    // directory so that the code style configured there applies to the markup
+                    // and to every payload language it carries.
+                    VirtualFile tempVf = new Fxml2ScratchFile(
+                            "_fxml2_format_tmp.fxml", Fxml2Language.INSTANCE, wrappedXml,
+                            hostVirtualFile != null ? hostVirtualFile.getParent() : null);
                     PsiFile xmlPsiFile = PsiManager.getInstance(project).findFile(tempVf);
                     if (!(xmlPsiFile instanceof XmlFile xmlFile)) return null;
 
@@ -391,19 +393,12 @@ public final class Fxml2EmbedMarkupUtil {
         VirtualFile hostDir = hostVirtualFile.getParent();
         if (hostDir == null) return fallback;
 
-        // Create a virtual probe file with the host directory as its logical parent.
-        // CodeStyle.getIndentOptions delegates to registered FileIndentOptionsProviders;
-        // EditorConfigIndentOptionsProvider (order="first") matches *.editorconfig rules
-        // against the probe file name and traverses .editorconfig files from probe.parent.
-        LightVirtualFile probe = new LightVirtualFile(
-                "_fxml2_indent_probe.fxml", XMLLanguage.INSTANCE, "") {
-            @Override
-            public VirtualFile getParent() { return hostDir; }
-            @Override
-            public @NotNull String getPath() {
-                return hostDir.getPath() + "/" + getName();
-            }
-        };
+        // Probe the host directory: CodeStyle.getIndentOptions delegates to registered
+        // FileIndentOptionsProviders; EditorConfigIndentOptionsProvider (order="first") matches
+        // *.editorconfig rules against the probe file name and traverses .editorconfig files
+        // from the directory the probe stands in.
+        VirtualFile probe = new Fxml2ScratchFile(
+                "_fxml2_indent_probe.fxml", XMLLanguage.INSTANCE, "", hostDir);
 
         CommonCodeStyleSettings.IndentOptions opts = CodeStyle.getIndentOptions(project, probe);
         if (opts != null && opts.INDENT_SIZE > 0) {

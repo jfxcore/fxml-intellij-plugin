@@ -111,24 +111,9 @@ public final class Fxml2ResourcePayloadNormalizer {
      * @param indent  the indentation to lay the content out at
      */
     public static @NotNull String reindent(@NotNull String content, @NotNull String indent) {
-        if (content.indexOf('\n') < 0) {
-            return content;
-        }
-
-        StringBuilder result = new StringBuilder("\n");
-        int start = 0;
-        while (start <= content.length()) {
-            int lineBreak = content.indexOf('\n', start);
-            int lineEnd = lineBreak < 0 ? content.length() : lineBreak;
-            if (lineEnd > start) {
-                result.append(indent).append(content, start, lineEnd);
-            }
-            result.append('\n');
-            if (lineBreak < 0) break;
-            start = lineBreak + 1;
-        }
-
-        return result.append(indent).toString();
+        return content.indexOf('\n') < 0
+                ? content
+                : Fxml2ResourcePayloadLayout.ON_OWN_LINES.write(content, indent, indent);
     }
 
     // -----------------------------------------------------------------------

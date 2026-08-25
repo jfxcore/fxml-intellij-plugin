@@ -22,14 +22,14 @@ import java.util.List;
  * The formatting block of a node of a standalone FXML/2 document.
  *
  * <p>It formats markup exactly as the platform's XML block does, and differs in one point: a
- * {@code <?resource ?>} declaration that carries a payload is a single unbreakable block.  The
- * payload is resource content rather than markup, so the layout it is written in belongs to the
- * author: the declaration is reproduced character for character, and the formatter only decides
- * where the declaration as a whole starts.
+ * {@code <?resource ?>} declaration that carries a payload is a single unbreakable block, so the
+ * markup formatter decides where the declaration as a whole starts and nothing else about it.
+ * Without this, the declaration would be formatted as the sequence of tokens the XML lexer splits
+ * it into, and the line breaks inside the payload would be turned into markup indentation, which
+ * both destroys the layout of the payload and changes the content of the resource.
  *
- * <p>Without this, the declaration would be formatted as the sequence of tokens the XML lexer
- * splits it into, and the line breaks inside the payload would be turned into markup indentation,
- * which both destroys the layout of the payload and changes the content of the resource.
+ * <p>The payload is a document of the language its media type names, and is formatted as one by
+ * {@link Fxml2ResourcePayloadFormattingProcessor} once the markup around it is laid out.
  *
  * @see Fxml2FormattingModelBuilder for how these blocks reach the formatter
  */
@@ -45,23 +45,20 @@ class Fxml2XmlBlock extends XmlBlock {
         super(node, wrap, alignment, policy, indent, textRange, preserveSpace);
     }
 
-    /**
-     * Returns whether {@code node} is a resource declaration whose payload the formatter must
-     * reproduce as written.
-     */
-    static boolean isVerbatim(@NotNull ASTNode node) {
+    /** Returns whether {@code node} is a resource declaration that carries a payload. */
+    private static boolean isResourceDeclaration(@NotNull ASTNode node) {
         return node.getPsi() instanceof Fxml2ResourceProcessingInstruction instruction
                 && instruction.isValidHost();
     }
 
     @Override
     protected List<Block> buildChildren() {
-        return isVerbatim(myNode) ? AbstractBlock.EMPTY : super.buildChildren();
+        return isResourceDeclaration(myNode) ? AbstractBlock.EMPTY : super.buildChildren();
     }
 
     @Override
     public boolean isLeaf() {
-        return isVerbatim(myNode) || super.isLeaf();
+        return isResourceDeclaration(myNode) || super.isLeaf();
     }
 
     @Override
