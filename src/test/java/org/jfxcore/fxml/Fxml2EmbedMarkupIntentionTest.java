@@ -301,6 +301,41 @@ class Fxml2EmbedMarkupIntentionTest extends Fxml2TestBase {
     }
 
     @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void keepsBlankLinesBetweenResourceDeclarations() {
+        getFixture().configureByText("TestEmbed.fxml", """
+                <?import javafx.scene.layout.StackPane?>
+
+                <?resource first.txt:first?>
+
+                <?resource second.txt:second?>
+
+                <StackPane xmlns="http://javafx.com/javafx"
+                           xmlns:fx="http://jfxcore.org/fxml/2.0"
+                           fx:<caret>subclass="test.TestEmbed"/>
+                """);
+        getFixture().addFileToProject("TestEmbed.java", """
+                package test;
+                public class TestEmbed extends TestEmbedBase {
+                    public TestEmbed() { initializeComponent(); }
+                }
+                """);
+
+        EmbedMarkupInCodeBehindIntention.skipConfirmationForTesting = true;
+        getFixture().launchAction(getFixture().findSingleIntention("Embed markup in code-behind file"));
+
+        VirtualFile javaFile = getFixture().findFileInTempDir("TestEmbed.java");
+        assertNotNull(javaFile);
+        String javaText = ReadAction.compute(() -> {
+            PsiFile psi = getFixture().getPsiManager().findFile(javaFile);
+            return psi == null ? "" : psi.getText();
+        });
+        assertTrue(javaText.replace(" ", "").contains(
+                        "<?resourcefirst.txt:first?>\n\n<?resourcesecond.txt:second?>"),
+                "The blank line between the two resource declarations must be preserved; got:\n"
+                        + javaText);
+    }
+
+    @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void embedsMarkupWithLeadingXmlCommentInJavaCodeBehind() {
         // Arrange: FXML file with an XML comment before the root element.
         // The comment must be preserved in the embedded @ComponentView annotation value.

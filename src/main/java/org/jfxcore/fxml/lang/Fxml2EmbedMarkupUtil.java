@@ -27,6 +27,7 @@ import com.intellij.psi.PsiImportStaticStatement;
 import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiLiteralExpression;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
@@ -126,54 +127,103 @@ public final class Fxml2EmbedMarkupUtil {
      * so only the remaining PIs and all XML comments need to be embedded verbatim.
      *
      * @param xmlDoc the FXML document whose prolog is inspected
-     * @return the collected PIs and comments as a single string ending with a newline, or
-     *         an empty string when no such content is present
+     * @return the collected PIs and comments as a single string ending with a newline
+     *         (plus the empty lines that separated the last of them from the root
+     *         element), or an empty string when no such content is present
      */
     static @NotNull String buildDocumentLeadingPis(@NotNull XmlDocument xmlDoc) {
-        StringBuilder sb = new StringBuilder();
+        PrologContentCollector collector = new PrologContentCollector();
         // Walk direct children of the document and its prolog in document order,
         // collecting non-import processing instructions and XML comments.
         // Stopping at the root element ensures we only pick up prolog content.
-        for (PsiElement child : xmlDoc.getChildren()) {
+        for (PsiElement child = xmlDoc.getFirstChild(); child != null; child = child.getNextSibling()) {
             if (child instanceof XmlTag) break; // reached the root element - stop
-            collectPrologContent(child, sb);
+            collector.collect(child);
         }
-        return sb.toString();
+        return collector.result();
     }
 
     /** Collects processing instructions and comments that follow the document element. */
     static @NotNull String buildDocumentTrailingContent(@NotNull XmlDocument xmlDoc) {
-        StringBuilder result = new StringBuilder();
+        PrologContentCollector collector = new PrologContentCollector();
         boolean rootSeen = false;
-        for (PsiElement child : xmlDoc.getChildren()) {
+        for (PsiElement child = xmlDoc.getFirstChild(); child != null; child = child.getNextSibling()) {
             if (child instanceof XmlTag) {
                 rootSeen = true;
             } else if (rootSeen) {
-                collectPrologContent(child, result);
+                collector.collect(child);
             }
         }
-        return result.toString();
+        // The gap that separated the root element from the first collected item is part
+        // of the epilog layout, so it is reported to the caller that joins the two.
+        return "\n".repeat(collector.leadingBlankLines()) + collector.result();
     }
 
-    private static void collectPrologContent(@NotNull PsiElement node, @NotNull StringBuilder sb) {
-        switch (node) {
-            case XmlProlog prolog -> {
-                // Descend into the prolog wrapper, preserving document order
-                for (PsiElement child : prolog.getChildren()) {
-                    collectPrologContent(child, sb);
+    /**
+     * Collects the processing instructions and XML comments of a document prolog or
+     * epilog as text, one per line, keeping the blank lines that separate them.
+     *
+     * <p>The empty lines that separate two collected items are kept, as are those that
+     * follow the last item. The empty lines that precede the first item are reported
+     * separately via {@link #leadingBlankLines()}, so that a caller which anchors the
+     * content to preceding markup can decide whether that gap applies.
+     */
+    private static final class PrologContentCollector {
+        private final StringBuilder sb = new StringBuilder();
+        private int pendingBlankLines;
+        private int leadingBlankLines;
+
+        void collect(@NotNull PsiElement node) {
+            switch (node) {
+                case XmlProlog prolog -> {
+                    // Descend into the prolog wrapper, preserving document order
+                    for (PsiElement child = prolog.getFirstChild(); child != null;
+                         child = child.getNextSibling()) {
+                        collect(child);
+                    }
                 }
-            }
-            case XmlProcessingInstruction pi -> {
-                String text = pi.getText();
-                // Skip the XML declaration and <?import?> PIs; both are handled elsewhere.
-                if (!text.startsWith("<?xml") && !text.startsWith("<?import")) {
-                    sb.append(text).append('\n');
+                case XmlProcessingInstruction pi -> {
+                    String text = pi.getText();
+                    // Skip the XML declaration and <?import?> PIs; both are handled elsewhere.
+                    if (!text.startsWith("<?xml") && !text.startsWith("<?import")) {
+                        emit(text);
+                    }
                 }
+                case com.intellij.psi.xml.XmlComment comment -> emit(comment.getText());
+                case PsiWhiteSpace whiteSpace ->
+                        pendingBlankLines =
+                                Math.max(pendingBlankLines, countBlankLines(whiteSpace.getText()));
+                default -> { /* ignore text and other nodes */ }
             }
-            case com.intellij.psi.xml.XmlComment comment ->
-                    sb.append(comment.getText()).append('\n');
-            default -> { /* ignore whitespace, text, and other nodes */ }
         }
+
+        private void emit(@NotNull String text) {
+            if (sb.isEmpty()) {
+                leadingBlankLines = pendingBlankLines;
+            } else {
+                sb.repeat('\n', pendingBlankLines);
+            }
+            sb.append(text).append('\n');
+            pendingBlankLines = 0;
+        }
+
+        /** The number of empty lines that preceded the first collected item. */
+        int leadingBlankLines() {
+            return leadingBlankLines;
+        }
+
+        /**
+         * The collected items, one per line, including the empty lines that followed the
+         * last of them.
+         */
+        @NotNull String result() {
+            return sb.isEmpty() ? "" : sb + "\n".repeat(pendingBlankLines);
+        }
+    }
+
+    /** Returns the number of empty lines contained in a run of whitespace. */
+    private static int countBlankLines(@NotNull String whitespace) {
+        return Math.max(0, StringUtil.countNewLines(whitespace) - 1);
     }
 
     /**
@@ -646,27 +696,34 @@ public final class Fxml2EmbedMarkupUtil {
     static @NotNull String[] splitLeadingPis(@NotNull String markupBody) {
         StringBuilder pis = new StringBuilder();
         String remaining = markupBody;
-        boolean progress = true;
-        while (progress) {
-            progress = false;
-            // Strip leading processing instructions (excluding the <?xml?> declaration)
-            while (remaining.startsWith("<?") && !remaining.startsWith("<?xml")) {
-                int end = remaining.indexOf("?>");
-                if (end < 0) break;
-                pis.append(remaining, 0, end + 2).append('\n');
-                remaining = remaining.substring(end + 2).stripLeading();
-                progress = true;
+        while (true) {
+            int wsEnd = 0;
+            while (wsEnd < remaining.length() && Character.isWhitespace(remaining.charAt(wsEnd))) {
+                wsEnd++;
             }
-            // Strip leading XML comments (<!-- ... -->)
-            while (remaining.startsWith("<!--")) {
-                int end = remaining.indexOf("-->");
-                if (end < 0) break;
-                pis.append(remaining, 0, end + 3).append('\n');
-                remaining = remaining.substring(end + 3).stripLeading();
-                progress = true;
+            String rest = remaining.substring(wsEnd);
+            int tokenEnd;
+            if (rest.startsWith("<?") && !rest.startsWith("<?xml")) {
+                // A processing instruction (excluding the <?xml?> declaration)
+                tokenEnd = rest.indexOf("?>");
+                if (tokenEnd < 0) break;
+                tokenEnd += 2;
+            } else if (rest.startsWith("<!--")) {
+                // An XML comment
+                tokenEnd = rest.indexOf("-->");
+                if (tokenEnd < 0) break;
+                tokenEnd += 3;
+            } else {
+                break;
             }
+            // Keep the blank lines that separate two leading items from each other.
+            if (!pis.isEmpty()) {
+                pis.repeat('\n', countBlankLines(remaining.substring(0, wsEnd)));
+            }
+            pis.append(rest, 0, tokenEnd).append('\n');
+            remaining = rest.substring(tokenEnd);
         }
-        return new String[] { pis.toString(), remaining };
+        return new String[] { pis.toString(), remaining.stripLeading() };
     }
 
     /**
