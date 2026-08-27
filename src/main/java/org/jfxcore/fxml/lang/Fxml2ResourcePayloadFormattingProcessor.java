@@ -101,8 +101,10 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
                                                   @NotNull Document document,
                                                   @NotNull TextRange rangeToReformat) {
 
-        VirtualFile directory = directoryOf(file);
-        int markupIndentSize = Fxml2EmbedMarkupUtil.getEffectiveXmlIndentSize(file.getProject(), file.getVirtualFile());
+        Project project = file.getProject();
+        VirtualFile contextFile = file.getVirtualFile();
+        VirtualFile directory = contextFile != null ? contextFile.getParent() : null;
+        Fxml2IndentSteps steps = stepsOf(file, contextFile);
         List<Rewrite> rewrites = new ArrayList<>();
 
         for (Fxml2ResourceProcessingInstruction instruction :
@@ -123,12 +125,15 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
             Fxml2ResourcePayloadLayout layout = Fxml2ResourcePayloadLayout.of(rawPayload);
             String content = layout.withoutSeparator(declaration.content());
 
+            Fxml2ResourcePayloadLanguage payloadLanguage = Fxml2ResourcePayloadLanguage.of(declaration);
+
             String formatted = Fxml2ResourcePayloadFormatter.format(
-                    file.getProject(), Fxml2ResourcePayloadLanguage.of(declaration), content, directory);
+                    project, payloadLanguage, content, directory, steps.payload(payloadLanguage));
             if (formatted == null) continue;
 
             String declarationIndent = " ".repeat(columnOf(document, instructionStart));
-            String payload = layout.write(formatted, declarationIndent, declarationIndent + " ".repeat(markupIndentSize));
+            String payload = layout.write(formatted, declarationIndent,
+                                          declarationIndent + steps.markup().text());
             if (!payload.equals(rawPayload)) {
                 rewrites.add(new Rewrite(payloadRange, payload));
             }
@@ -137,14 +142,22 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
         return rewrites;
     }
 
+    /**
+     * Returns the steps {@code file} is written in.
+     *
+     * <p>A document being formatted on behalf of an annotation value carries them, resolved before
+     * the reformat installed its own code style settings; a standalone document is formatted with
+     * the settings of the file itself, so its steps can be resolved here.
+     */
+    private static @NotNull Fxml2IndentSteps stepsOf(@NotNull PsiFile file, @Nullable VirtualFile contextFile) {
+        Fxml2IndentSteps carried = contextFile != null ? contextFile.getUserData(Fxml2IndentSteps.KEY) : null;
+        return carried != null
+                ? carried
+                : Fxml2EffectiveIndent.stepsFor(file.getProject(), contextFile, file.getText());
+    }
+
     /** Returns the column {@code offset} sits at, which is the indentation a declaration starts at. */
     private static int columnOf(@NotNull Document document, int offset) {
         return offset - document.getLineStartOffset(document.getLineNumber(offset));
-    }
-
-    /** Returns the directory the code style of a payload language is resolved against. */
-    private static @Nullable VirtualFile directoryOf(@NotNull PsiFile file) {
-        VirtualFile virtualFile = file.getVirtualFile();
-        return virtualFile != null ? virtualFile.getParent() : null;
     }
 }

@@ -73,8 +73,8 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
             if (declaration == null) return single(valueRange);
             if (declaration.payloadSpan().isEmpty()) continue;
 
-            Language language = Fxml2ResourcePayloadLanguage.of(declaration).languageOrPlainText();
-            payloads.add(new Fxml2PayloadInjection(declaration.payloadSpan().toTextRange(), language));
+            payloads.add(new Fxml2PayloadInjection(declaration.payloadSpan().toTextRange(),
+                                                   Fxml2ResourcePayloadLanguage.of(declaration)));
         }
 
         return payloads.isEmpty()
@@ -112,8 +112,15 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
     /**
      * One payload fragment: the range of the host it occupies, and the language it is edited in.
      *
-     * @param range    the range of the raw payload in the host text
-     * @param language the language to inject
+     * @param range           the range of the raw payload in the host text
+     * @param payloadLanguage the language the media type of the declaration names
      */
-    public record Fxml2PayloadInjection(@NotNull TextRange range, @NotNull Language language) {}
+    public record Fxml2PayloadInjection(@NotNull TextRange range,
+                                        @NotNull Fxml2ResourcePayloadLanguage payloadLanguage) {
+
+        /** Returns the platform language to inject, which is plain text when the IDE lacks it. */
+        public @NotNull Language language() {
+            return payloadLanguage.languageOrPlainText();
+        }
+    }
 }

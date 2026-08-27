@@ -269,6 +269,50 @@ class Fxml2ResourceFormattingTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // The steps a payload is indented in
+    // -----------------------------------------------------------------------
+
+    /**
+     * A payload that starts on a line of its own is placed one markup step in from its
+     * declaration, and nests from there in the steps of its own language.
+     */
+    @Test
+    void ownLinePayloadNestsTheMarkupStepAndThePayloadStep() {
+        setMarkupIndent(2);
+        setJsonIndent(4);
+
+        assertFxmlBecomes("""
+                <?resource data.json application/json:
+                {"a":{"b":1}}
+                ?>""", """
+                <?resource data.json application/json:
+                  {
+                      "a": {
+                          "b": 1
+                      }
+                  }
+                ?>""");
+    }
+
+    /**
+     * A payload that continues the declaration line is already placed by the declaration, so its
+     * remaining lines are anchored at the declaration and nest in payload steps alone.
+     */
+    @Test
+    void sameLinePayloadNestsInPayloadStepsAlone() {
+        setMarkupIndent(2);
+        setJsonIndent(4);
+
+        assertFxmlBecomes("""
+                <?resource inline application/json: {"a":{"b":1}}?>""", """
+                <?resource inline application/json: {
+                    "a": {
+                        "b": 1
+                    }
+                }?>""");
+    }
+
+    // -----------------------------------------------------------------------
     // Markup embedded in an annotation value
     // -----------------------------------------------------------------------
 
@@ -306,6 +350,53 @@ class Fxml2ResourceFormattingTest extends Fxml2TestBase {
                       }
                     ?>
                     <?resource greeting.txt:   Hello   ?>
+                    <BorderPane/>
+                \""")
+                public class TestView {
+                }
+                """, getFixture().getFile().getText());
+    }
+
+    /**
+     * Embedded markup indents a payload the same way, on top of the column the annotation value
+     * places its lines at.
+     */
+    @Test
+    void embeddedPayloadNestsInsideTheAnnotationValue() {
+        setMarkupIndent(2);
+        setJsonIndent(4);
+
+        getFixture().configureByText("TestView.java", """
+                package test;
+                import org.jfxcore.markup.ComponentView;
+                import javafx.scene.layout.BorderPane;
+                @ComponentView(\"""
+                    <?resource data.json application/json:
+                    {"a":1}
+                    ?>
+                    <?resource inline application/json: {"a":1}?>
+                    <BorderPane/>
+                    \""")
+                public class TestView {
+                }
+                """);
+        reformat();
+
+        assertEquals("""
+                package test;
+
+                import org.jfxcore.markup.ComponentView;
+                import javafx.scene.layout.BorderPane;
+
+                @ComponentView(\"""
+                    <?resource data.json application/json:
+                      {
+                          "a": 1
+                      }
+                    ?>
+                    <?resource inline application/json: {
+                        "a": 1
+                    }?>
                     <BorderPane/>
                 \""")
                 public class TestView {

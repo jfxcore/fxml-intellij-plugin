@@ -3,6 +3,7 @@
 
 package org.jfxcore.fxml.lang;
 
+import com.intellij.application.options.CodeStyle;
 import com.intellij.lang.Language;
 import com.intellij.lang.LanguageFormatting;
 import com.intellij.openapi.project.Project;
@@ -10,6 +11,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.codeStyle.CodeStyleManager;
+import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +30,12 @@ import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
  * <p>Content that does not parse is left alone as well: a payload is edited in place, and
  * reformatting a fragment that is still being written would rearrange text whose structure is not
  * yet known.
+ *
+ * <p>The step the content is indented in is passed in rather than read from the settings the
+ * formatter would pick on its own, because the step that applies is the one configured where the
+ * markup lives, which {@link Fxml2EffectiveIndent} resolves.  Installing it as a local setting for
+ * the duration of the format is what makes a payload come out the same whether the markup is a
+ * standalone document or embedded in an annotation value.
  */
 final class Fxml2ResourcePayloadFormatter {
 
@@ -46,11 +54,13 @@ final class Fxml2ResourcePayloadFormatter {
      * @param directory       the directory the declaration is written in, which is what the code
      *                        style configured for the payload language is resolved against; may be
      *                        {@code null} when the markup does not live in the file system
+     * @param indentStep      the step the content is indented in
      */
     static @Nullable String format(@NotNull Project project,
                                    @NotNull Fxml2ResourcePayloadLanguage payloadLanguage,
                                    @NotNull String content,
-                                   @Nullable VirtualFile directory) {
+                                   @Nullable VirtualFile directory,
+                                   @NotNull Fxml2IndentStep indentStep) {
 
         if (payloadLanguage == Fxml2ResourcePayloadLanguage.PLAIN_TEXT) return null;
         if (content.isBlank()) return null;
@@ -64,11 +74,17 @@ final class Fxml2ResourcePayloadFormatter {
         PsiFile psiFile = PsiManager.getInstance(project).findFile(file);
         if (psiFile == null || PsiTreeUtil.hasErrorElements(psiFile)) return null;
 
-        CodeStyleManager.getInstance(project).reformatText(psiFile, 0, psiFile.getTextLength());
+        return CodeStyle.computeWithLocalSettings(project, CodeStyle.getSettings(project), localSettings -> {
+            CommonCodeStyleSettings.IndentOptions options =
+                    localSettings.getCommonSettings(language).getIndentOptions();
+            if (options != null) options.INDENT_SIZE = indentStep.width();
 
-        // The content is anchored at column zero: the declaration decides where it is placed, and
-        // any indentation the formatter leaves at the document edges would be added on top of that.
-        String formatted = psiFile.getText().strip();
-        return formatted.isEmpty() ? null : formatted;
+            CodeStyleManager.getInstance(project).reformatText(psiFile, 0, psiFile.getTextLength());
+
+            // The content is anchored at column zero: the declaration decides where it is placed,
+            // and indentation the formatter leaves at the document edges would be added on top.
+            String formatted = psiFile.getText().strip();
+            return formatted.isEmpty() ? null : formatted;
+        });
     }
 }

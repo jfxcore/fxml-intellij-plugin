@@ -4,6 +4,7 @@
 package org.jfxcore.fxml;
 
 import com.intellij.application.options.CodeStyle;
+import com.intellij.lang.Language;
 import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Timeout;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Verifies that pressing Enter inside the CSS payload of a {@code <?resource ?>} declaration
@@ -24,6 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 class Fxml2ResourceEnterHandlerTest extends Fxml2TestBase {
+
+    /** The step the JSON payloads below nest in, deliberately wider than the markup step. */
+    private static final int JSON_INDENT_SIZE = 4;
 
     @BeforeAll
     void addMarkupAnnotation() {
@@ -111,6 +116,36 @@ class Fxml2ResourceEnterHandlerTest extends Fxml2TestBase {
         assertEquals("    ", indentAfterEnter());
     }
 
+    /**
+     * A block opened inside a payload advances by the step of the payload language, which is not
+     * the step markup nests in.
+     */
+    @Test
+    void blockStartAdvancesByThePayloadStep() {
+        useWideJsonIndent();
+        configure("""
+                <?resource data.json application/json:
+                  {<caret>
+                  }?>""");
+
+        assertEquals("      ", indentAfterEnter());
+    }
+
+    /**
+     * The line that opens a payload advances by the markup step instead: what follows it is
+     * placed as markup places it, whatever the payload language is indented in.
+     */
+    @Test
+    void payloadStartAdvancesByTheMarkupStep() {
+        useWideJsonIndent();
+        configure("""
+                <?resource data.json application/json:<caret>
+                  {
+                  }?>""");
+
+        assertEquals("  ", indentAfterEnter());
+    }
+
     /** A payload embedded in a {@code @ComponentView} annotation indents the same way. */
     @Test
     void enterInEmbeddedPayloadKeepsIndent() {
@@ -140,6 +175,20 @@ class Fxml2ResourceEnterHandlerTest extends Fxml2TestBase {
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Gives the JSON payloads above a step wider than the markup step, so that the column a line
+     * lands on says which of the two steps placed it.
+     */
+    private void useWideJsonIndent() {
+        Language json = Language.findLanguageByID("JSON");
+        assertNotNull(json, "JSON is bundled with every IDE the plugin runs in");
+
+        var options = CodeStyle.getSettings(getFixture().getProject())
+                .getCommonSettings(json).getIndentOptions();
+        assertNotNull(options, "JSON has indent options");
+        options.INDENT_SIZE = JSON_INDENT_SIZE;
+    }
 
     /** Writes {@code markup} into the {@code @ComponentView} annotation of a Java class. */
     private void configureEmbedded(String markup) {

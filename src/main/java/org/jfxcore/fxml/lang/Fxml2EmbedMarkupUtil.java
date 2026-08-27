@@ -29,7 +29,6 @@ import com.intellij.psi.PsiLiteralExpression;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.codeStyle.CodeStyleManager;
-import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
 import com.intellij.psi.codeStyle.JavaCodeStyleManager;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -342,9 +341,13 @@ public final class Fxml2EmbedMarkupUtil {
                 + rawContent
                 + "</_fxml2_r_>";
 
-        // Determine the XML indent size that applies to FXML files in the host
-        // directory (from EditorConfig, or from project XML code-style settings).
-        final int xmlIndentSize = getEffectiveXmlIndentSize(project, hostVirtualFile);
+        // Determine the indentation steps that apply where the host file lives: the markup step,
+        // and the step of every payload language the markup declares a resource in.  They are
+        // resolved here, before the local settings copy below is installed, because a lookup made
+        // while that copy is installed answers from the copy rather than from the rules
+        // configured for the host directory.
+        final Fxml2IndentSteps indentSteps = Fxml2EffectiveIndent.stepsFor(project, hostVirtualFile, rawContent);
+        final int xmlIndentSize = indentSteps.markup().width();
 
         // Run the XML formatter inside computeWithLocalSettings so that:
         //   a) The formatter's CodeStyle.getSettings(xmlPsiFile) call falls through to
@@ -373,6 +376,7 @@ public final class Fxml2EmbedMarkupUtil {
                     VirtualFile tempVf = new Fxml2ScratchFile(
                             "_fxml2_format_tmp.fxml", Fxml2Language.INSTANCE, wrappedXml,
                             hostVirtualFile != null ? hostVirtualFile.getParent() : null);
+                    tempVf.putUserData(Fxml2IndentSteps.KEY, indentSteps);
                     PsiFile xmlPsiFile = PsiManager.getInstance(project).findFile(tempVf);
                     if (!(xmlPsiFile instanceof XmlFile xmlFile)) return null;
 
@@ -411,18 +415,7 @@ public final class Fxml2EmbedMarkupUtil {
 
     /**
      * Returns the effective XML indent size for FXML files in the directory of
-     * {@code hostVirtualFile}.
-     *
-     * <p>Strategy (in priority order):
-     * <ol>
-     *   <li>If {@code hostVirtualFile} is non-null, {@link CodeStyle#getIndentOptions(Project,
-     *       VirtualFile)} is queried with a synthetic {@code .fxml} probe anchored to the host
-     *       file's directory. Registered {@code FileIndentOptionsProvider}s (including
-     *       {@code EditorConfigIndentOptionsProvider}) are consulted in their declared order,
-     *       so any {@code *.fxml} / {@code *.{xml,fxml}} EditorConfig rule is honored.</li>
-     *   <li>The project-level XML indent size from
-     *       {@link CodeStyle#getSettings(Project)} is used as fallback.</li>
-     * </ol>
+     * {@code hostVirtualFile}, which is the step markup nests in there.
      *
      * @param project         the current project
      * @param hostVirtualFile the {@code .java} / {@code .kt} file that owns the
@@ -432,30 +425,7 @@ public final class Fxml2EmbedMarkupUtil {
     static int getEffectiveXmlIndentSize(
             @NotNull Project project, @Nullable VirtualFile hostVirtualFile) {
 
-        // Base: project-wide XML indent (IntelliJ default for XML is 2).
-        CodeStyleSettings projectSettings = CodeStyle.getSettings(project);
-        CommonCodeStyleSettings xmlCommon = projectSettings.getCommonSettings(XMLLanguage.INSTANCE);
-        CommonCodeStyleSettings.IndentOptions projectXmlOpts =
-                xmlCommon.getIndentOptions();
-        int fallback = (projectXmlOpts != null) ? projectXmlOpts.INDENT_SIZE : 2;
-
-        if (hostVirtualFile == null) return fallback;
-        VirtualFile hostDir = hostVirtualFile.getParent();
-        if (hostDir == null) return fallback;
-
-        // Probe the host directory: CodeStyle.getIndentOptions delegates to registered
-        // FileIndentOptionsProviders; EditorConfigIndentOptionsProvider (order="first") matches
-        // *.editorconfig rules against the probe file name and traverses .editorconfig files
-        // from the directory the probe stands in.
-        VirtualFile probe = new Fxml2ScratchFile(
-                "_fxml2_indent_probe.fxml", XMLLanguage.INSTANCE, "", hostDir);
-
-        CommonCodeStyleSettings.IndentOptions opts = CodeStyle.getIndentOptions(project, probe);
-        if (opts != null && opts.INDENT_SIZE > 0) {
-            return opts.INDENT_SIZE;
-        }
-
-        return fallback;
+        return Fxml2EffectiveIndent.ofMarkup(project, hostVirtualFile).width();
     }
 
     /**

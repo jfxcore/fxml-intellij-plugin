@@ -11,9 +11,11 @@ import org.jetbrains.annotations.NotNull;
  *
  * <p>The payload is written inline in the FXML/2 document, so the line a payload is continued on
  * carries the indentation of the line the caret sits on, one step further in when that line opens
- * a block or the payload itself.  The rule is deliberately independent of the payload language: it
- * holds for a stylesheet as well as for any other block-structured payload, and it never reindents
- * text that is already written.
+ * a block or the payload itself.  Which step that is depends on what the line opens: a line that
+ * opens the payload is followed by content placed as markup, so it advances by the markup step,
+ * while a line that opens a block inside the payload advances by the step of the payload language.
+ * The rule is otherwise independent of the payload language: it holds for a stylesheet as well as
+ * for any other block-structured payload, and it never reindents text that is already written.
  *
  * @param width the number of spaces the new line starts with
  */
@@ -29,34 +31,27 @@ public record Fxml2PayloadIndent(int width) {
     /**
      * Returns the indentation for the line opened after {@code linePrefix}.
      *
-     * @param linePrefix the text of the caret line up to the caret
-     * @param indentSize the width of one indentation step
-     */
-    public static @NotNull Fxml2PayloadIndent of(@NotNull CharSequence linePrefix, int indentSize) {
-        return of(linePrefix, indentSize, false);
-    }
-
-    /**
-     * Returns the indentation for the line opened after {@code linePrefix}.
-     *
-     * @param linePrefix the text of the caret line up to the caret
-     * @param indentSize the width of one indentation step
+     * @param linePrefix   the text of the caret line up to the caret
+     * @param markupStep   the step markup is indented in, which a payload starting on its own line
+     *                     is placed at
+     * @param payloadStep  the step the payload language is indented in
      * @param opensPayload whether the payload of the declaration starts on the caret line, which
-     *                     indents its body one step in from the declaration
+     *                     indents its body one markup step in from the declaration
      */
     public static @NotNull Fxml2PayloadIndent of(@NotNull CharSequence linePrefix,
-                                                 int indentSize,
+                                                 @NotNull Fxml2IndentStep markupStep,
+                                                 @NotNull Fxml2IndentStep payloadStep,
                                                  boolean opensPayload) {
         int leading = 0;
         while (leading < linePrefix.length() && linePrefix.charAt(leading) == ' ') {
             leading++;
         }
 
+        if (opensPayload) return new Fxml2PayloadIndent(leading + markupStep.width());
+
         String trimmed = linePrefix.toString().stripTrailing();
         boolean opensBlock = !trimmed.isEmpty() && trimmed.charAt(trimmed.length() - 1) == BLOCK_START;
-        return new Fxml2PayloadIndent(opensBlock || opensPayload
-                ? leading + Math.max(indentSize, 0)
-                : leading);
+        return new Fxml2PayloadIndent(opensBlock ? leading + payloadStep.width() : leading);
     }
 
     /** Returns the indentation as the whitespace a line starts with. */

@@ -14,6 +14,7 @@ import com.intellij.openapi.editor.ScrollType;
 import com.intellij.openapi.editor.actionSystem.EditorActionHandler;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Ref;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.TextRange;
@@ -24,6 +25,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
 import java.util.List;
 
@@ -67,15 +69,19 @@ public final class Fxml2ResourcePayloadEnterHandler implements EnterHandlerDeleg
                 : caretOffset.get();
 
         PsiFile hostFile = injectedLanguageManager.getTopLevelFile(file);
-        Integer payloadStart = payloadStart(injectedLanguageManager, file, hostFile, hostOffset);
-        if (payloadStart == null) return Result.Continue;
+        PayloadAtCaret payload = payloadAt(injectedLanguageManager, file, hostFile, hostOffset);
+        if (payload == null) return Result.Continue;
 
         int line = hostDocument.getLineNumber(hostOffset);
         int lineStart = hostDocument.getLineStartOffset(line);
         CharSequence linePrefix = hostDocument.getImmutableCharSequence().subSequence(lineStart, hostOffset);
-        boolean opensPayload = payloadStart >= lineStart;
+        boolean opensPayload = payload.start() >= lineStart;
+        VirtualFile contextFile = hostFile.getVirtualFile();
         String inserted = "\n"
-                + Fxml2PayloadIndent.of(linePrefix, indentSize(project, hostFile), opensPayload).text();
+                + Fxml2PayloadIndent.of(linePrefix,
+                                        Fxml2EffectiveIndent.ofMarkup(project, contextFile),
+                                        Fxml2EffectiveIndent.ofPayload(project, contextFile, payload.language()),
+                                        opensPayload).text();
 
         PsiDocumentManager.getInstance(project).doPostponedOperationsAndUnblockDocument(hostDocument);
         hostDocument.insertString(hostOffset, inserted);
@@ -88,14 +94,22 @@ public final class Fxml2ResourcePayloadEnterHandler implements EnterHandlerDeleg
     }
 
     /**
-     * Returns the offset the payload the caret sits in starts at in the host document, or
-     * {@code null} when {@code hostOffset} does not sit inside the payload of a resource
-     * declaration of the markup {@code hostFile} carries.
+     * The payload the caret sits in: where it starts in the host document, and the language it is
+     * written in, which is the language its indentation steps are those of.
+     *
+     * @param start    the offset the payload starts at in the host document
+     * @param language the language the media type of the declaration names
      */
-    private static @Nullable Integer payloadStart(@NotNull InjectedLanguageManager injectedLanguageManager,
-                                                  @NotNull PsiFile file,
-                                                  @NotNull PsiFile hostFile,
-                                                  int hostOffset) {
+    private record PayloadAtCaret(int start, @NotNull Fxml2ResourcePayloadLanguage language) {}
+
+    /**
+     * Returns the payload the caret sits in, or {@code null} when {@code hostOffset} does not sit
+     * inside the payload of a resource declaration of the markup {@code hostFile} carries.
+     */
+    private static @Nullable PayloadAtCaret payloadAt(@NotNull InjectedLanguageManager injectedLanguageManager,
+                                                      @NotNull PsiFile file,
+                                                      @NotNull PsiFile hostFile,
+                                                      int hostOffset) {
 
         PsiLanguageInjectionHost host = markupHost(injectedLanguageManager, file, hostFile, hostOffset);
         if (host == null) return null;
@@ -110,7 +124,8 @@ public final class Fxml2ResourcePayloadEnterHandler implements EnterHandlerDeleg
             // with its terminator, not with more payload.
             if (payload.range().getStartOffset() <= offsetInHost
                     && offsetInHost <= payload.range().getEndOffset()) {
-                return hostStart + payload.range().getStartOffset();
+                return new PayloadAtCaret(hostStart + payload.range().getStartOffset(),
+                                          payload.payloadLanguage());
             }
         }
         return null;
@@ -151,15 +166,5 @@ public final class Fxml2ResourcePayloadEnterHandler implements EnterHandlerDeleg
             }
         }
         return false;
-    }
-
-    /**
-     * Returns the width of one indentation step of the document the payload is written in.
-     *
-     * <p>The payload shares its lines with the FXML/2 markup, so it is indented in the steps that
-     * markup uses rather than in the steps a separate file of the payload language would.
-     */
-    private static int indentSize(@NotNull Project project, @NotNull PsiFile hostFile) {
-        return Fxml2EmbedMarkupUtil.getEffectiveXmlIndentSize(project, hostFile.getVirtualFile());
     }
 }
