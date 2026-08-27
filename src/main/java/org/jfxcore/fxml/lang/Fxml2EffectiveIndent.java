@@ -8,8 +8,12 @@ import com.intellij.lang.Language;
 import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
+import com.intellij.psi.codeStyle.modifier.CodeStyleSettingsModifier;
+import com.intellij.psi.codeStyle.modifier.TransientCodeStyleSettings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
@@ -26,9 +30,16 @@ import java.util.Map;
  *
  * <p>Which step a language is indented in is a property of the file, not of the project: an
  * {@code .editorconfig} rule that applies where the file lives overrides the code style configured
- * for the language.  The platform resolves that from a path, so the step is asked for with a probe
+ * for the language.  Such a rule is resolved from a path, so the step is asked for with a probe
  * file of the right extension standing in the directory the markup lives in, which is what makes
  * the answer the same one the IDE would give for a real file written there.
+ *
+ * <p>The rules that apply to a file are contributed by {@link CodeStyleSettingsModifier}
+ * extensions, and they are asked here directly rather than through
+ * {@link CodeStyle#getIndentOptions(Project, VirtualFile)}.  That entry point reaches a modifier
+ * only for a file of the local file system, and only while no local copy of the code style
+ * settings is installed, so a probe would never see an {@code .editorconfig} section and every
+ * step would silently fall back to the code style configured project-wide for the language.
  *
  * <p>Asking through a probe also makes the answer independent of the code style settings that
  * happen to be installed on the current thread.  Formatting embedded markup runs with a local copy
@@ -36,6 +47,7 @@ import java.util.Map;
  * copy instead of the rules configured for the directory, so embedded markup and a standalone
  * document would disagree about the same payload.
  */
+@SuppressWarnings("UnstableApiUsage") // CodeStyleSettingsModifier is the only way to ask what applies to a file.
 public final class Fxml2EffectiveIndent {
 
     /** The base name of the probe files; only their extension and directory are load-bearing. */
@@ -119,8 +131,32 @@ public final class Fxml2EffectiveIndent {
         if (directory == null) return configured;
 
         VirtualFile probe = new Fxml2ScratchFile(PROBE_NAME + "." + extension, language, "", directory);
-        CommonCodeStyleSettings.IndentOptions options = CodeStyle.getIndentOptions(project, probe);
-        return options.INDENT_SIZE > 0 ? new Fxml2IndentStep(options.INDENT_SIZE) : configured;
+        PsiFile probeFile = PsiManager.getInstance(project).findFile(probe);
+        if (probeFile == null) return configured;
+
+        CommonCodeStyleSettings.IndentOptions options =
+                asWrittenIn(project, probe, probeFile).getCommonSettings(language).getIndentOptions();
+        return options != null && options.INDENT_SIZE > 0 ? new Fxml2IndentStep(options.INDENT_SIZE) : configured;
+    }
+
+    /**
+     * Returns the code style that applies to {@code probeFile} where it stands, which is the
+     * project code style with every rule of its directory applied on top.
+     */
+    private static @NotNull CodeStyleSettings asWrittenIn(@NotNull Project project,
+                                                          @NotNull VirtualFile probe,
+                                                          @NotNull PsiFile probeFile) {
+
+        CodeStyleSettings projectSettings = CodeStyle.getSettings(project);
+        TransientCodeStyleSettings settings =
+                new TransientCodeStyleSettings(probe, project, projectSettings);
+
+        boolean modified = false;
+        for (CodeStyleSettingsModifier modifier : CodeStyleSettingsModifier.EP_NAME.getExtensionList()) {
+            modified |= modifier.modifySettings(settings, probeFile);
+        }
+
+        return modified ? settings : projectSettings;
     }
 
     /** Returns the step configured project-wide for {@code language}. */

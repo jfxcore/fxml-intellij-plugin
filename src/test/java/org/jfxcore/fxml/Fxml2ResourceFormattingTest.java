@@ -4,26 +4,36 @@
 package org.jfxcore.fxml;
 
 import com.intellij.application.options.CodeStyle;
+import com.intellij.openapi.Disposable;
 import com.intellij.lang.Language;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
+import com.intellij.psi.codeStyle.modifier.CodeStyleSettingsModifier;
+import com.intellij.psi.codeStyle.modifier.CodeStyleStatusBarUIContributor;
+import com.intellij.psi.codeStyle.modifier.TransientCodeStyleSettings;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies how reformatting treats a {@code <?resource ?>} declaration.
@@ -49,6 +59,20 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 class Fxml2ResourceFormattingTest extends Fxml2TestBase {
+
+    /** Undoes the registration of a directory rule after the test that registered it. */
+    private Disposable ruleDisposable;
+
+    @AfterEach
+    void unregisterDirectoryRule() {
+        if (ruleDisposable != null) {
+            Disposer.dispose(ruleDisposable);
+            ruleDisposable = null;
+        }
+    }
+
+    /** The step a rule of the host directory contributes, distinct from every configured step. */
+    private static final int DIRECTORY_RULE_STEP = 2;
 
     @BeforeAll
     void addMarkupAnnotation() {
@@ -405,6 +429,108 @@ class Fxml2ResourceFormattingTest extends Fxml2TestBase {
     }
 
     // -----------------------------------------------------------------------
+    // The rules of the directory the markup lives in
+    // -----------------------------------------------------------------------
+
+    /**
+     * A rule that applies where the markup lives decides both steps, over the code style
+     * configured for markup and for the payload language.
+     *
+     * <p>This is how an {@code .editorconfig} section reaches a document.  The rule is contributed
+     * by a modifier registered for this test rather than by an {@code .editorconfig} file, so that
+     * the assertion holds wherever the suite runs; what it asserts is that a reformat asks for the
+     * steps that apply to the file it is formatting, whichever rule they come from.
+     */
+    @Test
+    void aRuleForTheDirectoryDecidesBothSteps() {
+        setMarkupIndent(8);
+        setJsonIndent(8);
+        registerDirectoryRule();
+
+        assertFxmlBecomes("""
+                <?resource data.json application/json:
+                {"a":{"b":1}}
+                ?>""", """
+                <?resource data.json application/json:
+                  {
+                    "a": {
+                      "b": 1
+                    }
+                  }
+                ?>""");
+    }
+
+    /** Markup embedded in an annotation value is formatted with the same rule. */
+    @Test
+    void aRuleForTheDirectoryDecidesTheStepsOfEmbeddedMarkup() {
+        setMarkupIndent(8);
+        setJsonIndent(8);
+        registerDirectoryRule();
+
+        getFixture().configureByText("TestView.java", """
+                package test;
+                import org.jfxcore.markup.ComponentView;
+                import javafx.scene.layout.BorderPane;
+                @ComponentView(\"""
+                    <?resource data.json application/json:
+                    {"a":{"b":1}}
+                    ?>
+                    <BorderPane/>
+                    \""")
+                public class TestView {
+                }
+                """);
+        reformat();
+
+        assertTrue(getFixture().getFile().getText().contains("""
+                <?resource data.json application/json:
+                  {
+                    "a": {
+                      "b": 1
+                    }
+                  }
+                ?>""".indent(4)),
+                "The rule of the host directory must decide both steps; got:\n"
+                + getFixture().getFile().getText());
+    }
+
+    /**
+     * Registers a modifier that gives markup and JSON a step of {@link #DIRECTORY_RULE_STEP} for
+     * every file, standing in for an {@code .editorconfig} section that covers both.
+     */
+    @SuppressWarnings("UnstableApiUsage") // CodeStyleSettingsModifier is how a rule reaches a file.
+    private void registerDirectoryRule() {
+        CodeStyleSettingsModifier modifier = new CodeStyleSettingsModifier() {
+            @Override
+            public boolean modifySettings(@NotNull TransientCodeStyleSettings settings, @NotNull PsiFile file) {
+                boolean modified = false;
+                for (Language language : List.of(XMLLanguage.INSTANCE, jsonLanguage())) {
+                    CommonCodeStyleSettings.IndentOptions options =
+                            settings.getCommonSettings(language).getIndentOptions();
+                    if (options == null) continue;
+                    options.INDENT_SIZE = DIRECTORY_RULE_STEP;
+                    modified = true;
+                }
+                return modified;
+            }
+
+            @Override
+            public CodeStyleStatusBarUIContributor getStatusBarUiContributor(
+                    @NotNull TransientCodeStyleSettings settings) {
+                return null;
+            }
+
+            @Override
+            public String getName() {
+                return "Test Directory Rule";
+            }
+        };
+
+        ruleDisposable = Disposer.newDisposable("fxml2.test.directoryRule");
+        CodeStyleSettingsModifier.EP_NAME.getPoint().registerExtension(modifier, ruleDisposable);
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
 
@@ -419,13 +545,18 @@ class Fxml2ResourceFormattingTest extends Fxml2TestBase {
 
     /** Sets the indentation step the JSON payloads below are formatted in. */
     private void setJsonIndent(int indentSize) {
-        Language json = Language.findLanguageByID("JSON");
-        assertNotNull(json, "JSON is bundled with every IDE the plugin runs in");
+        Language json = jsonLanguage();
 
         CodeStyleSettings settings = CodeStyle.getSettings(getFixture().getProject());
         CommonCodeStyleSettings.IndentOptions options = settings.getCommonSettings(json).getIndentOptions();
         assertNotNull(options, "JSON has indent options");
         options.INDENT_SIZE = indentSize;
+    }
+
+    private static @NotNull Language jsonLanguage() {
+        Language json = Language.findLanguageByID("JSON");
+        assertNotNull(json, "JSON is bundled with every IDE the plugin runs in");
+        return json;
     }
 
     /**

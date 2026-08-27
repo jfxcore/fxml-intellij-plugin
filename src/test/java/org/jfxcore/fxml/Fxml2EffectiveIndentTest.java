@@ -4,14 +4,25 @@
 package org.jfxcore.fxml;
 
 import com.intellij.application.options.CodeStyle;
+import com.intellij.openapi.Disposable;
 import com.intellij.lang.Language;
 import com.intellij.lang.xml.XMLLanguage;
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
+import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
+import com.intellij.psi.codeStyle.modifier.CodeStyleSettingsModifier;
+import com.intellij.psi.codeStyle.modifier.CodeStyleStatusBarUIContributor;
+import com.intellij.psi.codeStyle.modifier.TransientCodeStyleSettings;
+import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.lang.Fxml2EffectiveIndent;
 import org.jfxcore.fxml.lang.Fxml2IndentStep;
 import org.jfxcore.fxml.lang.Fxml2IndentSteps;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
@@ -31,6 +42,20 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 class Fxml2EffectiveIndentTest extends Fxml2TestBase {
+
+    /** Undoes the registration of a directory rule after the test that registered it. */
+    private Disposable ruleDisposable;
+
+    @AfterEach
+    void unregisterDirectoryRule() {
+        if (ruleDisposable != null) {
+            Disposer.dispose(ruleDisposable);
+            ruleDisposable = null;
+        }
+    }
+
+    /** The step a rule of the host directory contributes, distinct from every configured step. */
+    private static final int DIRECTORY_RULE_STEP = 6;
 
     @BeforeEach
     void useDistinctSteps() {
@@ -82,6 +107,68 @@ class Fxml2EffectiveIndentTest extends Fxml2TestBase {
         Fxml2IndentSteps steps = Fxml2EffectiveIndent.stepsFor(getFixture().getProject(), null, "<BorderPane/>");
 
         assertEquals(new Fxml2IndentStep(2), steps.payload(Fxml2ResourcePayloadLanguage.JSON));
+    }
+
+    /**
+     * A rule that applies to the directory a file lives in wins over the code style configured
+     * for its language, which is how an {@code .editorconfig} section reaches a document.
+     *
+     * <p>The rule is contributed by a modifier registered for this test rather than by an
+     * {@code .editorconfig} file, so that the assertion holds wherever the suite runs: what is
+     * under test is that the steps are resolved through the modifiers that apply where the markup
+     * lives, not which file a rule happens to come from.
+     */
+    @Test
+    void aRuleForTheDirectoryWinsOverTheConfiguredStep() {
+        registerModifier(jsonLanguage());
+        VirtualFile contextFile = getFixture().addFileToProject("TestView.java", "class TestView {}").getVirtualFile();
+        assertNotNull(contextFile, "the context file lives in the fixture file system");
+
+        assertEquals(new Fxml2IndentStep(DIRECTORY_RULE_STEP),
+                     ReadAction.compute(() -> Fxml2EffectiveIndent.ofPayload(
+                             getFixture().getProject(), contextFile, Fxml2ResourcePayloadLanguage.JSON)),
+                     "the payload step must come from the rule that applies where the markup lives");
+    }
+
+    /** The markup step is resolved the same way, through the rules of the host directory. */
+    @Test
+    void aRuleForTheDirectoryAlsoDecidesTheMarkupStep() {
+        registerModifier(XMLLanguage.INSTANCE);
+        VirtualFile contextFile = getFixture().addFileToProject("TestView.java", "class TestView {}").getVirtualFile();
+        assertNotNull(contextFile, "the context file lives in the fixture file system");
+
+        assertEquals(new Fxml2IndentStep(DIRECTORY_RULE_STEP),
+                     ReadAction.compute(() ->
+                             Fxml2EffectiveIndent.ofMarkup(getFixture().getProject(), contextFile)));
+    }
+
+    /** Registers a modifier that gives {@code language} the step of a directory rule. */
+    @SuppressWarnings("UnstableApiUsage") // CodeStyleSettingsModifier is how a rule reaches a file.
+    private void registerModifier(@NotNull Language language) {
+        CodeStyleSettingsModifier modifier = new CodeStyleSettingsModifier() {
+            @Override
+            public boolean modifySettings(@NotNull TransientCodeStyleSettings settings, @NotNull PsiFile file) {
+                CommonCodeStyleSettings.IndentOptions options =
+                        settings.getCommonSettings(language).getIndentOptions();
+                if (options == null) return false;
+                options.INDENT_SIZE = DIRECTORY_RULE_STEP;
+                return true;
+            }
+
+            @Override
+            public CodeStyleStatusBarUIContributor getStatusBarUiContributor(
+                    @NotNull TransientCodeStyleSettings settings) {
+                return null;
+            }
+
+            @Override
+            public String getName() {
+                return "Test Directory Rule";
+            }
+        };
+
+        ruleDisposable = Disposer.newDisposable("fxml2.test.directoryRule");
+        CodeStyleSettingsModifier.EP_NAME.getPoint().registerExtension(modifier, ruleDisposable);
     }
 
     private static Language jsonLanguage() {
