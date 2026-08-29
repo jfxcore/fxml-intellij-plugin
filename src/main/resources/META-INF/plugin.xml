@@ -133,6 +133,26 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadFormattingProcessor"/>
 
         <!--
+            FileIndentOptionsProvider: a fragment editor ("Edit CSS fragment" and friends) edits a
+            copy of the fragment that stands in no directory, so the rules of the place the markup
+            lives in cannot reach it.  This gives that copy the step the document the fragment
+            belongs to is written in.
+        -->
+        <fileIndentOptionsProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2FragmentIndentOptionsProvider"/>
+
+        <!--
+            InjectedFileChangesHandlerProvider: what a fragment editor ("Edit CSS fragment" and
+            friends) writes back when it is closed.  An FXML/2 fragment is injected over the text
+            of its host exactly as written, so it is spliced back unchanged; every other fragment
+            of these languages keeps the handler the platform chooses for it.
+        -->
+        <editor.injectedFileChangesHandlerProvider language="JAVA" order="first"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2InjectedFileChangesHandlerProvider"/>
+        <editor.injectedFileChangesHandlerProvider language="FXML2" order="first"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2InjectedFileChangesHandlerProvider"/>
+
+        <!--
             FormattingService: a reformat requested from inside a <?resource ?> payload is
             answered by reformatting the document the declaration is written in.  The payload
             fragment cannot answer it: it sees neither the declaration that places it nor the

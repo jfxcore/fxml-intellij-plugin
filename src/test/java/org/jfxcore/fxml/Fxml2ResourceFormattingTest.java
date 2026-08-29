@@ -19,9 +19,6 @@ import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
-import com.intellij.psi.codeStyle.modifier.CodeStyleSettingsModifier;
-import com.intellij.psi.codeStyle.modifier.CodeStyleStatusBarUIContributor;
-import com.intellij.psi.codeStyle.modifier.TransientCodeStyleSettings;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeAll;
@@ -592,39 +589,12 @@ class Fxml2ResourceFormattingTest extends Fxml2TestBase {
     }
 
     /**
-     * Registers a modifier that gives markup and JSON a step of {@link #DIRECTORY_RULE_STEP} for
-     * every file, standing in for an {@code .editorconfig} section that covers both.
+     * Registers a rule that gives markup and JSON a step of {@link #DIRECTORY_RULE_STEP} for every
+     * file, standing in for an {@code .editorconfig} section that covers both.
      */
-    @SuppressWarnings("UnstableApiUsage") // CodeStyleSettingsModifier is how a rule reaches a file.
     private void registerDirectoryRule() {
-        CodeStyleSettingsModifier modifier = new CodeStyleSettingsModifier() {
-            @Override
-            public boolean modifySettings(@NotNull TransientCodeStyleSettings settings, @NotNull PsiFile file) {
-                boolean modified = false;
-                for (Language language : List.of(XMLLanguage.INSTANCE, jsonLanguage())) {
-                    CommonCodeStyleSettings.IndentOptions options =
-                            settings.getCommonSettings(language).getIndentOptions();
-                    if (options == null) continue;
-                    options.INDENT_SIZE = DIRECTORY_RULE_STEP;
-                    modified = true;
-                }
-                return modified;
-            }
-
-            @Override
-            public CodeStyleStatusBarUIContributor getStatusBarUiContributor(
-                    @NotNull TransientCodeStyleSettings settings) {
-                return null;
-            }
-
-            @Override
-            public String getName() {
-                return "Test Directory Rule";
-            }
-        };
-
-        ruleDisposable = Disposer.newDisposable("fxml2.test.directoryRule");
-        CodeStyleSettingsModifier.EP_NAME.getPoint().registerExtension(modifier, ruleDisposable);
+        ruleDisposable = Fxml2DirectoryCodeStyleRule.install(
+                DIRECTORY_RULE_STEP, List.of(XMLLanguage.INSTANCE, jsonLanguage()));
     }
 
     // -----------------------------------------------------------------------
