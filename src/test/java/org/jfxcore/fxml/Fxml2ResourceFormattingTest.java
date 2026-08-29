@@ -10,7 +10,10 @@ import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.Pair;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.codeStyle.CodeStyleManager;
@@ -492,6 +495,100 @@ class Fxml2ResourceFormattingTest extends Fxml2TestBase {
                 ?>""".indent(4)),
                 "The rule of the host directory must decide both steps; got:\n"
                 + getFixture().getFile().getText());
+    }
+
+    // -----------------------------------------------------------------------
+    // Reformatting invoked from inside a payload
+    // -----------------------------------------------------------------------
+
+    /**
+     * A payload is an editable fragment of its own language, so the caret can sit in it when a
+     * reformat is invoked.  The request is answered by the document the declaration is written in
+     * rather than by the payload fragment alone: where a payload sits is a markup decision, and a
+     * fragment formatted in isolation knows nothing of the declaration that carries it.
+     */
+    @Test
+    void reformattingFromInsideAPayloadFormatsTheDocument() {
+        getFixture().configureByText("TestView.fxml", document("""
+                <?resource data.json application/json:
+                {"a":1,
+                      "b":2}
+                ?>"""));
+        reformatPayloadFragment();
+
+        assertEquals(document("""
+                <?resource data.json application/json:
+                  {
+                    "a": 1,
+                    "b": 2
+                  }
+                ?>"""), getFixture().getFile().getText());
+    }
+
+    /** The same holds for a payload of markup embedded in an annotation value. */
+    @Test
+    void reformattingFromInsideAnEmbeddedPayloadFormatsTheAnnotationValue() {
+        getFixture().configureByText("TestView.java", """
+                package test;
+
+                import org.jfxcore.markup.ComponentView;
+                import javafx.scene.layout.BorderPane;
+
+                @ComponentView(\"""
+                    <?resource data.json application/json:
+                    {"a":1,
+                          "b":2}
+                    ?>
+                    <BorderPane/>
+                \""")
+                public class TestView {
+                }
+                """);
+        reformatPayloadFragment();
+
+        assertEquals("""
+                package test;
+
+                import org.jfxcore.markup.ComponentView;
+                import javafx.scene.layout.BorderPane;
+
+                @ComponentView(\"""
+                    <?resource data.json application/json:
+                      {
+                        "a": 1,
+                        "b": 2
+                      }
+                    ?>
+                    <BorderPane/>
+                \""")
+                public class TestView {
+                }
+                """, getFixture().getFile().getText());
+    }
+
+    /** Reformats the payload fragment of the configured file, as Ctrl+Alt+L does with the caret in it. */
+    private void reformatPayloadFragment() {
+        warmUpInjections();
+
+        PsiFile payload = ReadAction.compute(this::findPayloadFragment);
+        assertNotNull(payload, "the payload is an injected fragment");
+        WriteCommandAction.runWriteCommandAction(getFixture().getProject(), () ->
+                CodeStyleManager.getInstance(getFixture().getProject())
+                        .reformatText(payload, 0, payload.getTextLength()));
+    }
+
+    /** Returns the injected fragment holding the JSON payload of the configured file. */
+    private PsiFile findPayloadFragment() {
+        InjectedLanguageManager manager = InjectedLanguageManager.getInstance(getFixture().getProject());
+        for (PsiLanguageInjectionHost host :
+                PsiTreeUtil.findChildrenOfType(getFixture().getFile(), PsiLanguageInjectionHost.class)) {
+            List<Pair<PsiElement, TextRange>> injected = manager.getInjectedPsiFiles(host);
+            if (injected == null) continue;
+            for (var pair : injected) {
+                if (pair.first instanceof PsiFile file && file.getLanguage() == jsonLanguage()) return file;
+            }
+        }
+        return null;
     }
 
     /**
