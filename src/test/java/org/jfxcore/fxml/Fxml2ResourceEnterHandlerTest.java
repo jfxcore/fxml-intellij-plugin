@@ -172,6 +172,82 @@ class Fxml2ResourceEnterHandlerTest extends Fxml2TestBase {
         assertEquals("            ", indentAfterEnter());
     }
 
+    /** A closing brace typed on a new line aligns with the line carrying its opening brace. */
+    @Test
+    void embeddedClosingBraceAlignsWithItsOpeningBrace() {
+        configureEmbedded("""
+                <?resource styles.css text/css: .my-style {
+                  -fx-text-fill: darkorange;<caret>
+
+                <BorderPane stylesheets="@styles.css"/>""");
+
+        getFixture().performEditorAction("EditorEnter");
+        getFixture().type('}');
+
+        assertEquals("        }", com.intellij.openapi.application.ReadAction.compute(this::caretLine));
+    }
+
+    /** A payload brace keeps the indentation of its opener in a conventionally indented text block. */
+    @Test
+    void embeddedClosingBraceKeepsHostAndMarkupIndentation() {
+        getFixture().configureByText("MainView.java", """
+                import org.jfxcore.markup.ComponentView;
+
+                @ComponentView(\"""
+                    <?resource first.css text/css: .first {
+                      -fx-animated: true;<caret>
+
+                    <?resource second.css text/css:
+                      .second {
+                        -fx-text-fill: darkorange;
+                      }
+                    ?>
+                    <BorderPane stylesheets="@second.css"/>
+                    \""")
+                public class MainView {
+                }
+                """);
+
+        getFixture().performEditorAction("EditorEnter");
+        getFixture().type('}');
+
+        assertEquals("    }", com.intellij.openapi.application.ReadAction.compute(this::caretLine));
+    }
+
+    /** A brace also preserves the markup indentation between the host and an own-line payload. */
+    @Test
+    void ownLinePayloadClosingBraceKeepsHostAndMarkupIndentation() {
+        configureEmbedded("""
+                <?resource data.json application/json:
+                  {<caret>
+
+                <BorderPane/>""");
+
+        getFixture().performEditorAction("EditorEnter");
+        getFixture().type('}');
+
+        assertEquals("          }", com.intellij.openapi.application.ReadAction.compute(this::caretLine));
+    }
+
+    /** Kotlin raw strings preserve the actual indentation of the payload opener as well. */
+    @Test
+    void kotlinEmbeddedClosingBraceKeepsHostIndentation() {
+        getFixture().configureByText("MainView.kt", """
+                import org.jfxcore.markup.ComponentView
+
+                @ComponentView(\"""
+                      <?resource styles.css text/css: .style {
+                        -fx-text-fill: darkorange;<caret>
+                \""")
+                class MainView
+                """);
+
+        getFixture().performEditorAction("EditorEnter");
+        getFixture().type('}');
+
+        assertEquals("      }", com.intellij.openapi.application.ReadAction.compute(this::caretLine));
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
@@ -220,13 +296,18 @@ class Fxml2ResourceEnterHandlerTest extends Fxml2TestBase {
 
     /** Returns the whitespace the caret line of the host document starts with. */
     private String caretLineIndent() {
-        var editor = getFixture().getEditor();
-        var document = editor.getDocument();
-        int line = document.getLineNumber(editor.getCaretModel().getOffset());
-        String text = document.getText().substring(
-                document.getLineStartOffset(line), document.getLineEndOffset(line));
+        String text = caretLine();
         int i = 0;
         while (i < text.length() && text.charAt(i) == ' ') i++;
         return text.substring(0, i);
+    }
+
+    /** Returns the complete line carrying the caret in the host document. */
+    private String caretLine() {
+        var editor = getFixture().getEditor();
+        var document = editor.getDocument();
+        int line = document.getLineNumber(editor.getCaretModel().getOffset());
+        return document.getText().substring(
+                document.getLineStartOffset(line), document.getLineEndOffset(line));
     }
 }

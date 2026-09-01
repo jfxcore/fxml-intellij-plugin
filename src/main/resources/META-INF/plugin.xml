@@ -255,6 +255,9 @@
         <typedHandler
                 implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedEqualTypedHandler"
                 order="first"/>
+        <typedHandler
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadBraceTypedHandler"
+                order="first"/>
 
         <!--
             File type declaration.
