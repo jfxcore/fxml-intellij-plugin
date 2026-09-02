@@ -704,14 +704,6 @@
                          level="WEAK WARNING"
                          implementationClass="org.jfxcore.fxml.annotator.Fxml2RedundantDoubleBangInspection"/>
 
-        <localInspection language="XML"
-                         bundle="messages.Fxml2Bundle"
-                         key="inspection.evaluate.initialization.order.display.name"
-                         groupKey="inspection.group.name"
-                         enabledByDefault="true"
-                         level="WEAK WARNING"
-                         implementationClass="org.jfxcore.fxml.annotator.Fxml2EvaluateInitializationOrderInspection"/>
-
         <!--
             Inspection: invalid observable-selection operator '::' on a non-ObservableValue member.
             The FXML compiler rejects this with INVALID_INVARIANT_REFERENCE.  The annotator already
