@@ -79,15 +79,15 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
                 """, injectedText());
     }
 
-    /** Declaration layout before and after a multi-line resource is not part of its injection. */
+    /** Complete payload lines include their indentation and terminating line break. */
     @Test
-    void multilineInjectionRangeCoversOnlyTheResource() {
+    void multilineInjectionRangeCoversCompleteResourceLines() {
         configure("""
                 <?resource styles.css text/css:%s
                     .root {
                         -fx-font-size: 1.1em;
                     }
-                ?>""".formatted("   "));
+                  ?>""".formatted("   "));
 
         ReadAction.run(() -> {
             Fxml2ResourceProcessingInstruction host = findResourceInstruction();
@@ -98,9 +98,26 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
             assertEquals(1, injected.size());
 
             TextRange range = injected.getFirst().second;
-            assertEquals('.', host.getText().charAt(range.getStartOffset()));
-            assertEquals('}', host.getText().charAt(range.getEndOffset() - 1));
+            assertEquals("""
+                    .root {
+                        -fx-font-size: 1.1em;
+                    }
+                """, range.substring(host.getText()));
         });
+    }
+
+    /** A resource sharing both boundary lines excludes adjacent declaration whitespace. */
+    @Test
+    void sameLineInjectionBoundariesExcludeDeclarationWhitespace() {
+        configure("""
+                <?resource styles.css text/css:   .root {
+                    -fx-font-size: 1.1em;
+                }   ?>""");
+
+        assertEquals("""
+                .root {
+                    -fx-font-size: 1.1em;
+                }""", injectionRangeText());
     }
 
     /**
@@ -206,6 +223,18 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
             Fxml2ResourceProcessingInstruction host = findResourceInstruction();
             assertNotNull(host);
             return injectedFileOf(host).getLanguage();
+        });
+    }
+
+    private String injectionRangeText() {
+        return ReadAction.compute(() -> {
+            Fxml2ResourceProcessingInstruction host = findResourceInstruction();
+            assertNotNull(host);
+            List<Pair<PsiElement, TextRange>> injected =
+                    InjectedLanguageManager.getInstance(host.getProject()).getInjectedPsiFiles(host);
+            assertNotNull(injected);
+            assertEquals(1, injected.size());
+            return injected.getFirst().second.substring(host.getText());
         });
     }
 

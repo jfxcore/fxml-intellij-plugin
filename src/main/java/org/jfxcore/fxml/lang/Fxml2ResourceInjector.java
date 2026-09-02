@@ -23,9 +23,9 @@ import java.util.List;
  * asking injectors as soon as one produces a result, so keeping the host class exclusive is what
  * keeps this injection and any other injection from shadowing each other.
  *
- * <p>The injected fragment spans the resource content rather than the surrounding declaration
- * whitespace. Indentation inside that span stays exactly as written so editor changes continue to
- * map directly onto the document.
+ * <p>The injected fragment includes every complete resource line and only the resource characters
+ * of a line shared with declaration syntax. Indentation inside that span stays exactly as written
+ * so editor changes continue to map directly onto the document.
  */
 public final class Fxml2ResourceInjector implements MultiHostInjector {
 
@@ -48,7 +48,7 @@ public final class Fxml2ResourceInjector implements MultiHostInjector {
 
         Language language = Fxml2ResourcePayloadLanguage.of(declaration).languageOrPlainText();
         TextRange rawPayload = declaration.payloadSpan().toTextRange();
-        TextRange payload = declaration.contentSpan().toTextRange();
+        TextRange payload = declaration.injectionSpan(text).toTextRange();
         String prefix = text.substring(rawPayload.getStartOffset(), payload.getStartOffset());
         String suffix = text.substring(payload.getEndOffset(), rawPayload.getEndOffset());
 

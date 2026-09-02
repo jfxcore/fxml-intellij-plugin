@@ -10,8 +10,9 @@ import java.nio.charset.Charset;
  * One embedded resource declared by a {@code <?resource ?>} processing instruction.
  *
  * <p>This is the unit every consumer works with: validation reports on its spans, injection uses
- * its raw payload span, references resolve against its name, and the extract and embed intentions
- * rewrite it.  All spans are in the coordinates of the text the declaration was parsed from.
+ * its editor-facing payload span, references resolve against its name, and the extract and embed
+ * intentions rewrite it. All spans are in the coordinates of the text the declaration was parsed
+ * from.
  *
  * @param name          the declared name
  * @param nameSpan      the span of the name, excluding any quotes
@@ -51,12 +52,37 @@ public record Fxml2ResourceDeclaration(@NotNull Fxml2ResourceName name,
     }
 
     /**
-     * Returns the source span from the first resource character through the last one, excluding
-     * declaration whitespace removed by payload normalization.
+     * Returns the source span presented as the injected resource in the editor.
+     *
+     * <p>Whitespace beside the colon or terminator is declaration layout and is excluded. When a
+     * boundary occupies its own line, the adjacent complete payload line belongs to the resource:
+     * its leading indentation and terminating line break are included. This makes every line that
+     * contains only resource text an entirely injected line while keeping mixed boundary lines
+     * limited to their resource characters.
      */
-    public @NotNull Fxml2TextSpan contentSpan() {
-        if (payload.isEmpty()) return payload.sourceSpanOf(0, 0);
-        return new Fxml2TextSpan(payload.sourceOffset(0), payload.sourceOffset(payload.text().length() - 1) + 1);
+    public @NotNull Fxml2TextSpan injectionSpan(@NotNull String source) {
+        String rawPayload = payloadSpan.textOf(source);
+        Fxml2ResourcePayloadLayout layout = Fxml2ResourcePayloadLayout.of(rawPayload);
+
+        int startInPayload = layout.startsOnOwnLine()
+                ? rawPayload.indexOf('\n') + 1
+                : layout.separator().length();
+        int endInPayload = layout.endsOnOwnLine()
+                ? rawPayload.lastIndexOf('\n') + 1
+                : trimHorizontalWhitespace(rawPayload, startInPayload, rawPayload.length());
+
+        return new Fxml2TextSpan(payloadSpan.start() + startInPayload, payloadSpan.start() + endInPayload);
+    }
+
+    private static int trimHorizontalWhitespace(@NotNull String source, int start, int end) {
+        while (end > start && isHorizontalWhitespace(source.charAt(end - 1))) {
+            --end;
+        }
+        return end;
+    }
+
+    private static boolean isHorizontalWhitespace(char character) {
+        return character == ' ' || character == '\t';
     }
 
     /** Returns the span the name occupies including its quotes, which is what rename replaces. */

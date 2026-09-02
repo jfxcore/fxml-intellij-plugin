@@ -102,15 +102,15 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
         assertSame(Fxml2ResourcePayloadLanguage.JSON.languageOrPlainText(), payload.getLanguage());
     }
 
-    /** The payload fragment excludes declaration whitespace normalized away from the resource. */
+    /** Complete payload lines belong to the payload fragment, including their layout whitespace. */
     @Test
-    void multilinePayloadFragmentCoversOnlyTheResource() {
+    void multilinePayloadFragmentCoversCompleteResourceLines() {
         configure("""
                 <?resource data.json application/json:%s
                     {
                         "key": 1
                     }
-                ?>
+                  ?>
                 <BorderPane/>
                 """.formatted("   "));
 
@@ -121,8 +121,8 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
         ReadAction.run(() -> {
             PsiLanguageInjectionHost host = findHost();
             assertNotNull(host);
-            assertEquals('{', host.getText().charAt(payload.getSecond().getStartOffset()));
-            assertEquals('}', host.getText().charAt(payload.getSecond().getEndOffset() - 1));
+            assertEquals("            {\n                \"key\": 1\n            }\n",
+                    payload.getSecond().substring(host.getText()));
         });
     }
 

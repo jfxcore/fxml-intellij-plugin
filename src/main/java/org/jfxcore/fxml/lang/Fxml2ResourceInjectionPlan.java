@@ -74,12 +74,12 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
             if (declaration.payload().isEmpty()) continue;
 
             TextRange rawPayload = declaration.payloadSpan().toTextRange();
-            TextRange content = declaration.contentSpan().toTextRange();
+            TextRange injectionRange = declaration.injectionSpan(hostText).toTextRange();
             payloads.add(new Fxml2PayloadInjection(
-                    content,
+                    injectionRange,
                     rawPayload,
-                    hostText.substring(rawPayload.getStartOffset(), content.getStartOffset()),
-                    hostText.substring(content.getEndOffset(), rawPayload.getEndOffset()),
+                    hostText.substring(rawPayload.getStartOffset(), injectionRange.getStartOffset()),
+                    hostText.substring(injectionRange.getEndOffset(), rawPayload.getEndOffset()),
                     Fxml2ResourcePayloadLanguage.of(declaration)));
         }
 
@@ -118,11 +118,11 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
     /**
      * One payload fragment: the range of the host it occupies, and the language it is edited in.
      *
-     * @param range           the range of the resource content in the host text, excluding
-     *                        declaration whitespace removed by normalization
+     * @param range           the editor-facing resource range in the host text: complete resource
+     *                        lines and only resource characters on mixed declaration lines
      * @param rawRange        the colon-to-terminator payload range including declaration layout
-     * @param prefix          normalized opening layout retained in the injected virtual file
-     * @param suffix          normalized closing layout retained in the injected virtual file
+     * @param prefix          opening declaration layout retained in the injected virtual file
+     * @param suffix          closing declaration layout retained in the injected virtual file
      * @param payloadLanguage the language the media type of the declaration names
      */
     public record Fxml2PayloadInjection(@NotNull TextRange range,
