@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,7 +61,7 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
         assertEquals(".root { -fx-base: black; }", injectedText());
     }
 
-    /** A multi-line payload is injected with its layout indentation intact. */
+    /** A multi-line payload retains its layout as generated virtual-file text. */
     @Test
     void multilinePayloadIsInjectedVerbatim() {
         configure("""
@@ -76,6 +77,30 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
                         -fx-font-size: 1.1em;
                     }
                 """, injectedText());
+    }
+
+    /** Declaration layout before and after a multi-line resource is not part of its injection. */
+    @Test
+    void multilineInjectionRangeCoversOnlyTheResource() {
+        configure("""
+                <?resource styles.css text/css:%s
+                    .root {
+                        -fx-font-size: 1.1em;
+                    }
+                ?>""".formatted("   "));
+
+        ReadAction.run(() -> {
+            Fxml2ResourceProcessingInstruction host = findResourceInstruction();
+            assertNotNull(host);
+            List<Pair<PsiElement, TextRange>> injected =
+                    InjectedLanguageManager.getInstance(host.getProject()).getInjectedPsiFiles(host);
+            assertNotNull(injected);
+            assertEquals(1, injected.size());
+
+            TextRange range = injected.getFirst().second;
+            assertEquals('.', host.getText().charAt(range.getStartOffset()));
+            assertEquals('}', host.getText().charAt(range.getEndOffset() - 1));
+        });
     }
 
     /**
@@ -209,7 +234,7 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
 
     private List<Fxml2ResourceProcessingInstruction> allProcessingInstructions() {
         PsiFile file = getFixture().getFile();
-        assertTrue(file instanceof XmlFile);
+        assertInstanceOf(XmlFile.class, file);
 
         return List.copyOf(PsiTreeUtil.findChildrenOfType(file, Fxml2ResourceProcessingInstruction.class));
     }

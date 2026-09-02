@@ -122,9 +122,9 @@ public final class Fxml2ResourcePayloadEnterHandler implements EnterHandlerDeleg
         for (Fxml2ResourceInjectionPlan.Fxml2PayloadInjection payload : plan.payloads()) {
             // A caret at the very end of a payload is still inside it: the declaration continues
             // with its terminator, not with more payload.
-            if (payload.range().getStartOffset() <= offsetInHost
-                    && offsetInHost <= payload.range().getEndOffset()) {
-                return new PayloadAtCaret(hostStart + payload.range().getStartOffset(),
+            if (payload.rawRange().getStartOffset() <= offsetInHost
+                    && offsetInHost <= payload.rawRange().getEndOffset()) {
+                return new PayloadAtCaret(hostStart + payload.rawRange().getStartOffset(),
                                           payload.payloadLanguage());
             }
         }

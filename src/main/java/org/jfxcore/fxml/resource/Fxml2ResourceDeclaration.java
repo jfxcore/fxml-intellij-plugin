@@ -50,6 +50,15 @@ public record Fxml2ResourceDeclaration(@NotNull Fxml2ResourceName name,
         return payload.text();
     }
 
+    /**
+     * Returns the source span from the first resource character through the last one, excluding
+     * declaration whitespace removed by payload normalization.
+     */
+    public @NotNull Fxml2TextSpan contentSpan() {
+        if (payload.isEmpty()) return payload.sourceSpanOf(0, 0);
+        return new Fxml2TextSpan(payload.sourceOffset(0), payload.sourceOffset(payload.text().length() - 1) + 1);
+    }
+
     /** Returns the span the name occupies including its quotes, which is what rename replaces. */
     public @NotNull Fxml2TextSpan quotedNameSpan() {
         return name.quoting() == Fxml2ResourceQuoting.UNQUOTED

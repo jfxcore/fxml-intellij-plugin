@@ -84,7 +84,7 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
                 """);
 
         String markup = markupFragment().getText();
-        assertTrue(markup.contains("<?resource styles.css text/css:?>"),
+        assertTrue(markup.contains("<?resource styles.css text/css:") && markup.contains("?>"),
                 "the payload is carved out of the markup fragment, leaving a well-formed instruction: " + markup);
         assertFalse(markup.contains("-fx-font-size"), "the payload text is not part of the markup fragment");
     }
@@ -100,6 +100,30 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
         PsiFile payload = payloadFragment();
         assertEquals("{\"key\": 1}", payload.getText());
         assertSame(Fxml2ResourcePayloadLanguage.JSON.languageOrPlainText(), payload.getLanguage());
+    }
+
+    /** The payload fragment excludes declaration whitespace normalized away from the resource. */
+    @Test
+    void multilinePayloadFragmentCoversOnlyTheResource() {
+        configure("""
+                <?resource data.json application/json:%s
+                    {
+                        "key": 1
+                    }
+                ?>
+                <BorderPane/>
+                """.formatted("   "));
+
+        Pair<PsiElement, TextRange> payload = ReadAction.compute(() -> injectedFragments().stream()
+                .filter(fragment -> !(fragment.getFirst() instanceof XmlFile))
+                .findFirst()
+                .orElseThrow());
+        ReadAction.run(() -> {
+            PsiLanguageInjectionHost host = findHost();
+            assertNotNull(host);
+            assertEquals('{', host.getText().charAt(payload.getSecond().getStartOffset()));
+            assertEquals('}', host.getText().charAt(payload.getSecond().getEndOffset() - 1));
+        });
     }
 
     /** Every declaration gets its own payload fragment, and no two fragments overlap. */

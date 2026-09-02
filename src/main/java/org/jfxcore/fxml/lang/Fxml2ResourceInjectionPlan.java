@@ -71,10 +71,16 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
             Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parse(hostText, instruction);
             Fxml2ResourceDeclaration declaration = result.declaration();
             if (declaration == null) return single(valueRange);
-            if (declaration.payloadSpan().isEmpty()) continue;
+            if (declaration.payload().isEmpty()) continue;
 
-            payloads.add(new Fxml2PayloadInjection(declaration.payloadSpan().toTextRange(),
-                                                   Fxml2ResourcePayloadLanguage.of(declaration)));
+            TextRange rawPayload = declaration.payloadSpan().toTextRange();
+            TextRange content = declaration.contentSpan().toTextRange();
+            payloads.add(new Fxml2PayloadInjection(
+                    content,
+                    rawPayload,
+                    hostText.substring(rawPayload.getStartOffset(), content.getStartOffset()),
+                    hostText.substring(content.getEndOffset(), rawPayload.getEndOffset()),
+                    Fxml2ResourcePayloadLanguage.of(declaration)));
         }
 
         return payloads.isEmpty()
@@ -112,10 +118,17 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
     /**
      * One payload fragment: the range of the host it occupies, and the language it is edited in.
      *
-     * @param range           the range of the raw payload in the host text
+     * @param range           the range of the resource content in the host text, excluding
+     *                        declaration whitespace removed by normalization
+     * @param rawRange        the colon-to-terminator payload range including declaration layout
+     * @param prefix          normalized opening layout retained in the injected virtual file
+     * @param suffix          normalized closing layout retained in the injected virtual file
      * @param payloadLanguage the language the media type of the declaration names
      */
     public record Fxml2PayloadInjection(@NotNull TextRange range,
+                                        @NotNull TextRange rawRange,
+                                        @NotNull String prefix,
+                                        @NotNull String suffix,
                                         @NotNull Fxml2ResourcePayloadLanguage payloadLanguage) {
 
         /** Returns the platform language to inject, which is plain text when the IDE lacks it. */
