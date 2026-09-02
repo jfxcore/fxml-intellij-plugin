@@ -140,8 +140,8 @@ public final class Fxml2EffectiveIndent {
     }
 
     /**
-     * Returns the code style that applies to {@code probeFile} where it stands, which is the
-     * project code style with every rule of its directory applied on top.
+     * Returns the code style that applies to {@code probeFile} at its current location, which is the
+     * project code style with directory-specific rules applied.
      */
     private static @NotNull CodeStyleSettings asWrittenIn(@NotNull Project project,
                                                           @NotNull VirtualFile probe,

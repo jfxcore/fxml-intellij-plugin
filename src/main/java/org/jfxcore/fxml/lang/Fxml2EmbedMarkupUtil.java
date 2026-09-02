@@ -370,7 +370,7 @@ public final class Fxml2EmbedMarkupUtil {
                     //   getSettings(project) -> getLocalOrTemporarySettings().
                     // The file is parsed as FXML/2 rather than as plain XML so that the FXML/2
                     // formatter runs, which is what gives a <?resource ?> declaration the
-                    // treatment it gets in a standalone document.  It stands in the host's
+                    // treatment it gets in a standalone document.  It is associated with the host's
                     // directory so that the code style configured there applies to the markup
                     // and to every payload language it carries.
                     VirtualFile tempVf = new Fxml2ScratchFile(

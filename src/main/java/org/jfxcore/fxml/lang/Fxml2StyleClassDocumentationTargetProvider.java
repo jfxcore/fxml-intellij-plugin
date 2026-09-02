@@ -108,7 +108,7 @@ public final class Fxml2StyleClassDocumentationTargetProvider implements Documen
      * it is written in.
      *
      * <p>The rendered documentation is held rather than the selector it was read from: the
-     * selector stands for a stretch of file text and is recreated by every resolve, so there is no
+     * selector represents a span of file text and is recreated by every resolve, so there is no
      * element to point at across a reparse.
      */
     private record CssSelectorDocumentationTarget(@NotNull String className,

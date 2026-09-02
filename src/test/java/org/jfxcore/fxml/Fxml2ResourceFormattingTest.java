@@ -42,14 +42,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * code styles meet in a declaration and each governs what it owns.  The content is formatted in
  * the code style of the payload language; where the declaration and its payload sit is decided by
  * the markup indentation, one step in from the declaration for a payload on its own lines.  The
- * shape the author chose - payload on the declaration line or below it, terminator attached or on
- * a line of its own - is preserved, which is what makes reformatting a well-formatted document
- * leave it unchanged.
+ * The layout chosen by the author, such as having the payload on the declaration line or below it,
+ * and having the terminator attached or on its own line, is preserved, ensuring that reformatting a
+ * well-formatted document leaves it unchanged.
  *
- * <p>A payload this IDE cannot format is left exactly as written: a media type with no language
- * behind it, a language this edition does not bundle - CSS in IntelliJ IDEA Community - or content
- * that does not parse yet.  The tests use JSON for the payloads that get formatted, because it is
- * bundled with every edition and therefore gives the same result wherever they run.
+ * <p>A payload this IDE cannot format is left exactly as written, such as a media type with no backing language,
+ * a language this edition does not bundle (for example, CSS in IntelliJ IDEA Community), or content
+ * that does not parse yet. The tests use JSON for the payloads that get formatted, because it is
+ * bundled with every edition and therefore yields consistent results across environments.
  *
  * <p>Implementation under test: {@link org.jfxcore.fxml.lang.Fxml2FormattingModelBuilder}, which
  * keeps the declaration out of the markup formatter's reach, and

@@ -26,9 +26,9 @@ import java.util.List;
  * <p>A payload is edited as a document of the language its media type names, in both forms markup
  * takes: {@link Fxml2ResourceInjector} injects it into a declaration of a standalone document, and
  * {@link Fxml2EmbeddedMarkupInjection} injects it beside the markup fragment of an annotation
- * value.  Whatever the editor asks of the fragment as a whole - reformatting it, above all - is a
- * question about the declaration that carries it, because where a payload sits is decided by the
- * markup around it, which the fragment does not see.
+ * value. Operations performed on the fragment as a whole (most notably reformatting) are evaluated
+ * in the context of its parent declaration. This is because a payload's positioning is determined by the
+ * surrounding markup, which is not visible to the fragment itself.
  */
 final class Fxml2ResourcePayloadFragment {
 

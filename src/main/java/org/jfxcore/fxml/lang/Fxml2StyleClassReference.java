@@ -95,8 +95,8 @@ public final class Fxml2StyleClassReference extends PsiReferenceBase<XmlAttribut
      * resolves to.
      *
      * <p>A selector is matched by name rather than by element identity: the element this
-     * reference resolves to stands for a stretch of file text and is a different object than
-     * the CSS PSI element for the same selector.  Matching by name is what makes a
+     * reference resolves to represents a span of file text and is a distinct object from the
+     * CSS PSI element for the same selector.  Matching by name is what makes a
      * {@code styleClass} token count as a use site for every analysis that asks a reference
      * what it points at, the unused-selector analysis of a stylesheet among them.
      */

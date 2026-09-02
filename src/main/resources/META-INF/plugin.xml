@@ -126,15 +126,15 @@
             PostFormatProcessor: reformats the payload of every <?resource ?> declaration of an
             FXML/2 document once the markup around it is laid out.  The content is formatted in
             the code style of the language its media type names, and placed at the markup
-            indentation.  A payload whose language this IDE cannot format - CSS in IntelliJ IDEA
-            Community, for instance - is left exactly as its author wrote it.
+            indentation.  A payload whose language this IDE cannot format (such as CSS in IntelliJ IDEA
+            Community) is left exactly as its author wrote it.
         -->
         <postFormatProcessor
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadFormattingProcessor"/>
 
         <!--
             FileIndentOptionsProvider: a fragment editor ("Edit CSS fragment" and friends) edits a
-            copy of the fragment that stands in no directory, so the rules of the place the markup
+            copy of the fragment that is not in any directory, so the rules of the place the markup
             lives in cannot reach it.  This gives that copy the step the document the fragment
             belongs to is written in.
         -->

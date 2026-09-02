@@ -30,8 +30,8 @@ import java.util.Set;
  * <p>Handing the request to the enclosing document is what makes the caret position irrelevant:
  * reformatting from inside a payload produces exactly what reformatting from anywhere else in the
  * file produces, in a standalone document as well as in markup embedded in an annotation value.
- * The document is formatted as a whole, because that is the request the user made - a reformat
- * with the payload as its subject is a reformat of the declaration that carries it.
+ * The document is formatted as a whole to fulfill the user's request. A reformat with the payload
+ * as its subject is conceptually a reformat of the declaration that carries it.
  *
  * <p>The service is consulted only for an explicit reformat.  Formatting that happens while typing
  * is left to the fragment, where {@link Fxml2ResourcePayloadEnterHandler} places new lines by the

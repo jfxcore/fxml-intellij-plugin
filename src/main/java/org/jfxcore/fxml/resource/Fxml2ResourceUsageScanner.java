@@ -64,8 +64,8 @@ public final class Fxml2ResourceUsageScanner {
     }
 
     /**
-     * Returns {@code true} when the occurrence at {@code offset} stands where a resource name is
-     * read: after an {@code @}, after {@code ClassPathResource}, or inside a {@code url(...)}.
+     * Returns {@code true} when the occurrence at {@code offset} is located where a resource name is
+     * expected: after an {@code @}, after {@code ClassPathResource}, or inside a {@code url(...)}.
      *
      * <p>An occurrence may be preceded by a quote, which is how a name containing spaces is
      * written in a usage, so quotes are skipped before the preceding text is examined.

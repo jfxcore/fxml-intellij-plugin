@@ -20,10 +20,10 @@ import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 /**
  * Formats the content of a resource as a document of the language its media type names.
  *
- * <p>Which languages this can do depends on the IDE: CSS, the media type this feature exists for,
- * is not bundled with IntelliJ IDEA Community, and a language the IDE does not have - or has no
- * formatter for - simply reports back that there is nothing to format, which leaves the payload as
- * its author wrote it.  The content is formatted in the code style of its own language rather than
+ * <p>Supported languages depend on the IDE. For instance, CSS (the primary media type for this
+ * feature) is not bundled with IntelliJ IDEA Community. If the IDE lacks a language support plugin or has
+ * no formatter for a given language, the formatter leaves the payload as originally written. The
+ * content is formatted according to the code style of its specific language rather than the markup
  * in the markup code style, because it is a document of that language; where it is then placed in
  * the declaration is a markup decision, made by the caller.
  *

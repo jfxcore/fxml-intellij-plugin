@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * A light file that stands in a directory, so that the code style configured for that directory
+ * A light file associated with a directory, ensuring that the code style configured for that directory
  * applies to it.
  *
  * <p>Formatting a fragment means formatting a file: the fragment is put into a file of its own
@@ -30,8 +30,8 @@ final class Fxml2ScratchFile extends LightVirtualFile {
      *                  and file-type settings apply
      * @param language  the language the content is parsed and formatted in
      * @param text      the content
-     * @param directory the directory the file stands in, or {@code null} when there is none, in
-     *                  which case the project-wide settings of {@code language} apply
+     * @param directory the directory associated with the file, or {@code null} when there is none,
+     *                  in which case the project-wide settings of {@code language} apply
      */
     Fxml2ScratchFile(@NotNull String name,
                      @NotNull Language language,

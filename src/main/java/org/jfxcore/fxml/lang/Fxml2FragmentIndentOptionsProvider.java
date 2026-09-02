@@ -20,12 +20,12 @@ import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
  * Gives a fragment editor of FXML/2 markup the indentation step of the document the fragment
  * belongs to.
  *
- * <p>"Edit fragment" copies the injected fragment into a file of its own so that it can be edited
- * as a document of its language.  That copy stands nowhere: it has no directory, so no rule of the
- * place the markup lives in - an {@code .editorconfig} section, say - can reach it, and the
- * language would be indented in the step configured project-wide instead.  A line typed in the
- * fragment editor would then land at a column the document the payload is written in would never
- * have placed it at, and closing the editor would write that column back into the document.
+ * <p>"Edit fragment" copies the injected fragment into a temporary file of its own to allow editing
+ * as a document of its language. Because this temporary file lacks a parent directory, standard
+ * directory-specific rules (such as those in {@code .editorconfig}) do not apply directly, which would
+ * cause the editor to fall back to project-wide indentation settings. A line typed in the fragment
+ * editor would then land at an incorrect indentation column, which would be written back into the
+ * original document upon closing the editor.
  *
  * <p>The step is therefore resolved for the host the fragment came from, exactly as
  * {@link Fxml2ResourcePayloadFormattingProcessor} resolves it when the same payload is reformatted

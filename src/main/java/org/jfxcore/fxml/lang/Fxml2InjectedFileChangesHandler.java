@@ -18,9 +18,9 @@ import java.util.List;
  * Writes what was edited in a fragment editor back into an FXML/2 document, character for
  * character.
  *
- * <p>An FXML/2 fragment - markup embedded in an annotation value, or the payload of a
- * {@code <?resource ?>} declaration in either form of markup - is injected over the text of its
- * host exactly as written, indentation included.  Committing such a fragment is therefore a plain
+ * <p>An FXML/2 fragment, which can be markup embedded in an annotation value or the payload of a
+ * {@code <?resource ?>} declaration in either form of markup, is injected over the text of its
+ * host exactly as written, including indentation.  Committing such a fragment is therefore a plain
  * splice: the text of the fragment replaces the range of the host it came from, and nothing about
  * the layout is recomputed.
  *

@@ -105,9 +105,9 @@ class Fxml2FragmentEditorTest extends Fxml2TestBase {
      * A line opened in a fragment editor is indented in the step that applies where the markup
      * lives.
      *
-     * <p>The fragment is edited in a file of its own that stands nowhere, so nothing about its
-     * path can select the rule the payload was laid out by, and the step configured project-wide
-     * for the payload language would place the line at a column the document never uses.
+     * <p>Because the fragment is edited in a temporary file without a path, standard code style
+     * lookups cannot resolve the local layout rules. This test verifies that the editor falls back
+     * to the parent document's indentation step rather than the project-wide default.
      */
     @Test
     void typingInTheFragmentEditorFollowsTheStepOfTheDocument() {
@@ -124,7 +124,7 @@ class Fxml2FragmentEditorTest extends Fxml2TestBase {
         assertEquals(" ".repeat(ANNOTATION_INDENT + 2 * DIRECTORY_RULE_STEP), indentAfterEnter());
     }
 
-    /** What the fragment editor writes is spliced back into the annotation value as it stands. */
+    /** What the fragment editor writes is spliced back into the annotation value exactly as written. */
     @Test
     void editingAnEmbeddedPayloadKeepsTheDocumentLayout() {
         configureEmbedded("""

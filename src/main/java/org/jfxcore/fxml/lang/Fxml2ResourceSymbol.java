@@ -53,7 +53,7 @@ final class Fxml2ResourceSymbol implements NavigatableSymbol, SearchTarget {
     }
 
     /**
-     * Returns the declaration this symbol stands for, or {@code null} when the document no longer
+     * Returns the declaration this symbol represents, or {@code null} when the document no longer
      * declares the name.
      */
     @Nullable Fxml2ResourceDeclarationElement getDeclaration() {

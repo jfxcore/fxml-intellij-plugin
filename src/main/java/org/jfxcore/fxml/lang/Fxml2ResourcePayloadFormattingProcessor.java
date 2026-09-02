@@ -38,9 +38,9 @@ import java.util.List;
  * <p>The formatter of the enclosing document cannot do this itself: it knows the declaration as a
  * run of markup tokens, and the line breaks inside a payload are content rather than markup
  * whitespace.  {@link Fxml2XmlBlock} therefore keeps the declaration out of its reach entirely,
- * and this processor performs the rewrite afterwards, which is also what keeps a payload the IDE
- * cannot format - CSS in IntelliJ IDEA Community, or any media type with no formatter behind it -
- * exactly as its author wrote it.
+ * and this processor performs the rewrite afterwards. This also ensures that any payload the IDE
+ * cannot format (such as CSS in IntelliJ IDEA Community, or any media type without a backing formatter)
+ * remains exactly as originally written.
  *
  * <p>Being a post-format processor is what makes the rewrite reach both forms of markup: a
  * standalone document is formatted directly, and markup embedded in a {@code @ComponentView}

@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>The selector is the declaration site of a style class, so what navigation from it has to
  * produce are its use sites: the {@code styleClass} tokens that name it.  The search runs on the
- * {@link CssSelectorElement} that stands for the selector, which
+ * {@link CssSelectorElement} representing the selector, which
  * {@link Fxml2StyleClassSearcher} answers with those tokens alone; the stylesheet's own PSI, which
  * counts every same-named selector as a use of the style class, is left out of the result.
  */

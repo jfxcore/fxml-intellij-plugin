@@ -24,7 +24,7 @@ import java.util.List;
  * <p>An FXML/2 fragment is committed by {@link Fxml2InjectedFileChangesHandler}, which splices it
  * into its host unchanged.  Every other fragment of the host language is left to the handler the
  * platform would have chosen, so registering this provider for a language the plugin does not own
- * - Java, whose fragments the Java plugin commits itself - changes nothing for anyone else.
+ * (such as Java, whose fragments the Java plugin commits itself) changes nothing for anyone else.
  */
 public final class Fxml2InjectedFileChangesHandlerProvider implements InjectedFileChangesHandlerProvider {
 
