@@ -70,7 +70,7 @@ public final class Fxml2StyleClassReference extends PsiReferenceBase<XmlAttribut
     public ResolveResult @NotNull [] multiResolve(boolean incompleteCode) {
         GlobalSearchScope scope = GlobalSearchScope.allScope(myXmlFile.getProject());
         List<CssSelectorElement> all = Fxml2CssUtil.findAllCssSelectorElements(
-                myClassName, myCssTypeName, myXmlFile.getProject(), scope);
+                myClassName, myCssTypeName, myXmlFile, myXmlFile.getProject(), scope);
         if (all.isEmpty()) return ResolveResult.EMPTY_ARRAY;
         return all.stream()
                 .map(el -> (ResolveResult) new SimpleResolveResult(el))
@@ -86,6 +86,23 @@ public final class Fxml2StyleClassReference extends PsiReferenceBase<XmlAttribut
     public @Nullable PsiElement resolve() {
         ResolveResult[] results = multiResolve(false);
         return results.length > 0 ? results[0].getElement() : null;
+    }
+
+    /**
+     * Returns {@code true} when {@code element} is a class selector of the name this reference
+     * targets, wherever it is written: in a {@code .css} file, in a stylesheet injected into a
+     * {@code <?resource ?>} declaration, or as the {@link CssSelectorElement} this reference
+     * resolves to.
+     *
+     * <p>A selector is matched by name rather than by element identity: the element this
+     * reference resolves to represents a span of file text and is a distinct object from the
+     * CSS PSI element for the same selector.  Matching by name is what makes a
+     * {@code styleClass} token count as a use site for every analysis that asks a reference
+     * what it points at, the unused-selector analysis of a stylesheet among them.
+     */
+    @Override
+    public boolean isReferenceTo(@NotNull PsiElement element) {
+        return myClassName.equals(Fxml2CssUtil.selectorClassNameOf(element));
     }
 
     @Override

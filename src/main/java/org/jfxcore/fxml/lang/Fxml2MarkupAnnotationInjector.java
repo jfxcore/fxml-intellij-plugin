@@ -73,10 +73,8 @@ public final class Fxml2MarkupAnnotationInjector implements MultiHostInjector {
         String suffix = "\n</" + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_LOCAL + ">";
 
         TextRange valueRange = ElementManipulators.getValueTextRange(literal);
-        registrar
-                .startInjecting(Fxml2EmbeddedXmlLanguage.INSTANCE)
-                .addPlace(prefix, suffix, (PsiLanguageInjectionHost) literal, valueRange)
-                .doneInjecting();
+        Fxml2EmbeddedMarkupInjection.inject(
+                registrar, (PsiLanguageInjectionHost) literal, valueRange, prefix, suffix);
     }
 
     @Override

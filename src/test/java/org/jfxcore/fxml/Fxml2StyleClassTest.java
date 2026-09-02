@@ -1,10 +1,14 @@
 package org.jfxcore.fxml;
 
 import com.intellij.codeInsight.navigation.impl.GTDActionData;
+import com.intellij.find.findUsages.FindUsagesHandler;
+import com.intellij.find.findUsages.FindUsagesOptions;
 import com.intellij.codeInsight.navigation.impl.NavigationActionResult;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.ResolveResult;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -14,12 +18,16 @@ import com.intellij.psi.xml.XmlAttributeValue;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.annotator.Fxml2StyleClassInspection;
 import org.jfxcore.fxml.lang.CssSelectorElement;
+import org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2StyleClassReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
+import com.intellij.usageView.UsageInfo;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -90,6 +98,51 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         assertNotNull(resolved, "mystyle1 should resolve to a CssSelectorElement");
         assertInstanceOf(CssSelectorElement.class, resolved);
         assertEquals("mystyle1", ((CssSelectorElement) resolved).getName());
+    }
+
+    @Test
+    void styleClassResolvesToSelectorInStandaloneEmbeddedResource() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <?resource styles.css text/css:
+                      .local-style {
+                        -fx-font-size: 16px;
+                      }
+                  ?>
+                  <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
+                """
+        ));
+
+        CssSelectorElement selector = assertInstanceOf(
+                CssSelectorElement.class, resolveStyleClassAtCaret());
+        assertNotNull(selector);
+        assertEquals("local-style", selector.getName());
+        assertEquals(".local-style", selector.getContainingFile().getText().substring(
+                selector.getTextRange().getStartOffset(), selector.getTextRange().getEndOffset()));
+    }
+
+    @Test
+    void styleClassResolvesToSelectorInComponentViewEmbeddedResource() {
+        getFixture().configureByText("TestView.java", """
+                package test;
+                import org.jfxcore.markup.ComponentView;
+                import javafx.scene.control.Label;
+                @ComponentView(\"""
+                    <?resource styles.css text/css:
+                        .local-style { -fx-font-size: 16px; }
+                    ?>
+                    <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
+                    \""")
+                public class TestView extends Label {}
+                """);
+
+        CssSelectorElement selector = assertInstanceOf(
+                CssSelectorElement.class, resolveStyleClassAtCaret());
+        assertNotNull(selector);
+        assertEquals("local-style", selector.getName());
+        assertEquals(".local-style", selector.getContainingFile().getText().substring(
+                selector.getTextRange().getStartOffset(), selector.getTextRange().getEndOffset()));
     }
 
     @Test
@@ -401,9 +454,142 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
                 + refs.stream().map(r -> r.getClass().getSimpleName()).toList());
     }
 
+    /**
+     * Find Usages on a class selector written inside an embedded {@code <?resource ?>} CSS
+     * payload must find the {@code styleClass} usage in the same document.  The selector is
+     * the declaration site, so its use sites are what navigation from it has to produce.
+     */
+    @Test
+    void findUsagesFromEmbeddedResourceSelectorFindsStyleClassUsage() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <?resource styles.css text/css:
+                      .local-style {
+                        -fx-font-size: 16px;
+                      }
+                  ?>
+                  <Label styleClass="local-style" stylesheets="@styles.css"/>
+                """
+        ));
+
+        PsiElement selectorElement = injectedElementAtLocalStyleSelector();
+        assertNotNull(selectorElement, "Expected an injected payload element at the selector");
+
+        Collection<PsiReference> refs = ReadAction.compute(() ->
+                ReferencesSearch.search(selectorElement,
+                        GlobalSearchScope.projectScope(getFixture().getProject())).findAll());
+
+        assertTrue(refs.stream().anyMatch(r -> r instanceof Fxml2StyleClassReference),
+                "Expected the styleClass usage in Find Usages results. Found "
+                + refs.size() + " refs of types: "
+                + refs.stream().map(r -> r.getClass().getSimpleName()).toList());
+    }
+
+    /**
+     * A {@code styleClass} token is a use site of every class selector of that name, whether the
+     * selector is written in a {@code .css} file or in an embedded {@code text/css} resource.
+     * Analyses that ask a reference what it points at, such as the unused-selector analysis of a
+     * stylesheet, read that relation through {@code isReferenceTo}.
+     */
+    @Test
+    void styleClassReferenceIsReferenceToEmbeddedResourceSelector() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <?resource styles.css text/css:
+                      .local-style {
+                        -fx-font-size: 16px;
+                      }
+                  ?>
+                  <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
+                """
+        ));
+
+        PsiElement selectorElement = injectedElementAtLocalStyleSelector();
+        assertNotNull(selectorElement, "Expected an injected payload element at the selector");
+
+        PsiReference reference = ReadAction.compute(this::styleClassReferenceAtCaret);
+        assertNotNull(reference, "Expected a styleClass reference at the caret");
+        assertTrue(ReadAction.compute(() -> reference.isReferenceTo(selectorElement)),
+                "The styleClass token must be a use site of the embedded selector");
+    }
+
+    /**
+     * Navigation from a class selector of an embedded {@code text/css} resource produces its use
+     * sites only: the selector itself is the declaration site, not one of its own usages.
+     */
+    @Test
+    void findUsagesHandlerForEmbeddedResourceSelectorReportsUseSitesOnly() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label",
+                """
+                  <?resource styles.css text/css:
+                      .local-style {
+                        -fx-font-size: 16px;
+                      }
+                  ?>
+                  <Label styleClass="local-style" stylesheets="@styles.css"/>
+                """
+        ));
+
+        PsiElement selectorElement = injectedElementAtLocalStyleSelector();
+        assertNotNull(selectorElement, "Expected an injected payload element at the selector");
+
+        Fxml2StyleClassFindUsagesHandlerFactory factory = new Fxml2StyleClassFindUsagesHandlerFactory();
+        assertTrue(ReadAction.compute(() -> factory.canFindUsages(selectorElement)),
+                "The embedded selector must be a Find Usages target");
+
+        FindUsagesHandler handler = ReadAction.compute(
+                () -> factory.createFindUsagesHandler(selectorElement, /* forHighlightUsages= */ false));
+        assertNotNull(handler);
+
+        List<UsageInfo> usages = new ArrayList<>();
+        ReadAction.run(() -> {
+            FindUsagesOptions options = handler.getFindUsagesOptions();
+            options.searchScope = GlobalSearchScope.projectScope(getFixture().getProject());
+            for (PsiElement primary : handler.getPrimaryElements()) {
+                handler.processElementUsages(primary, usage -> { usages.add(usage); return true; }, options);
+            }
+        });
+
+        List<Integer> offsets = ReadAction.compute(() -> usages.stream()
+                .map(UsageInfo::getNavigationOffset).toList());
+        int declarationOffset = getFixture().getFile().getText().indexOf(".local-style");
+        int useSiteOffset = getFixture().getFile().getText().indexOf("styleClass=");
+        assertEquals(1, usages.size(), "Expected the single styleClass use site, found " + offsets);
+        assertTrue(offsets.getFirst() > useSiteOffset,
+                "The reported usage must be the styleClass token, not the selector at "
+                + declarationOffset + "; found " + offsets);
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /** Returns the injected payload element at the {@code .local-style} selector, or {@code null}. */
+    private @Nullable PsiElement injectedElementAtLocalStyleSelector() {
+        return ReadAction.compute(() -> {
+            PsiFile file = getFixture().getFile();
+            int offset = file.getText().indexOf(".local-style") + 1;
+            return InjectedLanguageManager.getInstance(getFixture().getProject())
+                    .findInjectedElementAt(file, offset);
+        });
+    }
+
+    /** Returns the styleClass reference whose range covers the caret, or {@code null}. */
+    private @Nullable PsiReference styleClassReferenceAtCaret() {
+        int offset = getFixture().getCaretOffset();
+        XmlAttributeValue attrVal = PsiTreeUtil.findElementOfClassAtOffset(
+                getFixture().getFile(), offset, XmlAttributeValue.class, false);
+        if (attrVal == null) return null;
+        int relOffset = offset - attrVal.getTextRange().getStartOffset();
+        for (PsiReference ref : attrVal.getReferences()) {
+            if (!(ref instanceof Fxml2StyleClassReference)) continue;
+            if (ref.getRangeInElement().containsOffset(relOffset)) return ref;
+        }
+        return null;
+    }
 
     private @Nullable PsiElement resolveStyleClassAtCaret() {
         return ReadAction.compute(() -> {

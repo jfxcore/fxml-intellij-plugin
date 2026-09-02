@@ -22,14 +22,13 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.psi.PsiImportStatement;
 import com.intellij.psi.PsiImportStaticStatement;
 import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiLiteralExpression;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.codeStyle.CodeStyleManager;
-import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
 import com.intellij.psi.codeStyle.JavaCodeStyleManager;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -127,40 +126,103 @@ public final class Fxml2EmbedMarkupUtil {
      * so only the remaining PIs and all XML comments need to be embedded verbatim.
      *
      * @param xmlDoc the FXML document whose prolog is inspected
-     * @return the collected PIs and comments as a single string ending with a newline, or
-     *         an empty string when no such content is present
+     * @return the collected PIs and comments as a single string ending with a newline
+     *         (plus the empty lines that separated the last of them from the root
+     *         element), or an empty string when no such content is present
      */
     static @NotNull String buildDocumentLeadingPis(@NotNull XmlDocument xmlDoc) {
-        StringBuilder sb = new StringBuilder();
+        PrologContentCollector collector = new PrologContentCollector();
         // Walk direct children of the document and its prolog in document order,
         // collecting non-import processing instructions and XML comments.
         // Stopping at the root element ensures we only pick up prolog content.
-        for (PsiElement child : xmlDoc.getChildren()) {
+        for (PsiElement child = xmlDoc.getFirstChild(); child != null; child = child.getNextSibling()) {
             if (child instanceof XmlTag) break; // reached the root element - stop
-            collectPrologContent(child, sb);
+            collector.collect(child);
         }
-        return sb.toString();
+        return collector.result();
     }
 
-    private static void collectPrologContent(@NotNull PsiElement node, @NotNull StringBuilder sb) {
-        switch (node) {
-            case XmlProlog prolog -> {
-                // Descend into the prolog wrapper, preserving document order
-                for (PsiElement child : prolog.getChildren()) {
-                    collectPrologContent(child, sb);
-                }
+    /** Collects processing instructions and comments that follow the document element. */
+    static @NotNull String buildDocumentTrailingContent(@NotNull XmlDocument xmlDoc) {
+        PrologContentCollector collector = new PrologContentCollector();
+        boolean rootSeen = false;
+        for (PsiElement child = xmlDoc.getFirstChild(); child != null; child = child.getNextSibling()) {
+            if (child instanceof XmlTag) {
+                rootSeen = true;
+            } else if (rootSeen) {
+                collector.collect(child);
             }
-            case XmlProcessingInstruction pi -> {
-                String text = pi.getText();
-                // Skip the XML declaration and <?import?> PIs; both are handled elsewhere.
-                if (!text.startsWith("<?xml") && !text.startsWith("<?import")) {
-                    sb.append(text).append('\n');
-                }
-            }
-            case com.intellij.psi.xml.XmlComment comment ->
-                    sb.append(comment.getText()).append('\n');
-            default -> { /* ignore whitespace, text, and other nodes */ }
         }
+        // The gap that separated the root element from the first collected item is part
+        // of the epilog layout, so it is reported to the caller that joins the two.
+        return "\n".repeat(collector.leadingBlankLines()) + collector.result();
+    }
+
+    /**
+     * Collects the processing instructions and XML comments of a document prolog or
+     * epilog as text, one per line, keeping the blank lines that separate them.
+     *
+     * <p>The empty lines that separate two collected items are kept, as are those that
+     * follow the last item. The empty lines that precede the first item are reported
+     * separately via {@link #leadingBlankLines()}, so that a caller which anchors the
+     * content to preceding markup can decide whether that gap applies.
+     */
+    private static final class PrologContentCollector {
+        private final StringBuilder sb = new StringBuilder();
+        private int pendingBlankLines;
+        private int leadingBlankLines;
+
+        void collect(@NotNull PsiElement node) {
+            switch (node) {
+                case XmlProlog prolog -> {
+                    // Descend into the prolog wrapper, preserving document order
+                    for (PsiElement child = prolog.getFirstChild(); child != null;
+                         child = child.getNextSibling()) {
+                        collect(child);
+                    }
+                }
+                case XmlProcessingInstruction pi -> {
+                    String text = pi.getText();
+                    // Skip the XML declaration and <?import?> PIs; both are handled elsewhere.
+                    if (!text.startsWith("<?xml") && !text.startsWith("<?import")) {
+                        emit(text);
+                    }
+                }
+                case com.intellij.psi.xml.XmlComment comment -> emit(comment.getText());
+                case PsiWhiteSpace whiteSpace ->
+                        pendingBlankLines =
+                                Math.max(pendingBlankLines, countBlankLines(whiteSpace.getText()));
+                default -> { /* ignore text and other nodes */ }
+            }
+        }
+
+        private void emit(@NotNull String text) {
+            if (sb.isEmpty()) {
+                leadingBlankLines = pendingBlankLines;
+            } else {
+                sb.repeat('\n', pendingBlankLines);
+            }
+            sb.append(text).append('\n');
+            pendingBlankLines = 0;
+        }
+
+        /** The number of empty lines that preceded the first collected item. */
+        int leadingBlankLines() {
+            return leadingBlankLines;
+        }
+
+        /**
+         * The collected items, one per line, including the empty lines that followed the
+         * last of them.
+         */
+        @NotNull String result() {
+            return sb.isEmpty() ? "" : sb + "\n".repeat(pendingBlankLines);
+        }
+    }
+
+    /** Returns the number of empty lines contained in a run of whitespace. */
+    private static int countBlankLines(@NotNull String whitespace) {
+        return Math.max(0, StringUtil.countNewLines(whitespace) - 1);
     }
 
     /**
@@ -268,17 +330,24 @@ public final class Fxml2EmbedMarkupUtil {
         }
 
         // Wrap in a synthetic root that declares the FXML/2 namespaces so that
-        // fx:-prefixed elements inside the user markup resolve without errors.
+        // fx:-prefixed elements inside the user markup resolve without errors.  The content
+        // starts on its own line so that the first thing in it is indented as content of the
+        // wrapper: a processing instruction that shares the wrapper's line would keep the
+        // wrapper's own indentation and end up one step short of the markup around it.
         final String wrappedXml =
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                 + "<_fxml2_r_ xmlns=\"http://javafx.com/javafx\""
-                + " xmlns:fx=\"http://jfxcore.org/fxml/2.0\">"
+                + " xmlns:fx=\"http://jfxcore.org/fxml/2.0\">\n"
                 + rawContent
                 + "</_fxml2_r_>";
 
-        // Determine the XML indent size that applies to FXML files in the host
-        // directory (from EditorConfig, or from project XML code-style settings).
-        final int xmlIndentSize = getEffectiveXmlIndentSize(project, hostVirtualFile);
+        // Determine the indentation steps that apply where the host file lives: the markup step,
+        // and the step of every payload language the markup declares a resource in.  They are
+        // resolved here, before the local settings copy below is installed, because a lookup made
+        // while that copy is installed answers from the copy rather than from the rules
+        // configured for the host directory.
+        final Fxml2IndentSteps indentSteps = Fxml2EffectiveIndent.stepsFor(project, hostVirtualFile, rawContent);
+        final int xmlIndentSize = indentSteps.markup().width();
 
         // Run the XML formatter inside computeWithLocalSettings so that:
         //   a) The formatter's CodeStyle.getSettings(xmlPsiFile) call falls through to
@@ -296,11 +365,18 @@ public final class Fxml2EmbedMarkupUtil {
                             xmlCommon.getIndentOptions();
                     if (xmlOpts != null) xmlOpts.INDENT_SIZE = xmlIndentSize;
 
-                    // Create a temporary XML PSI file.  runWithLocalSettings ensures that
+                    // Create a temporary FXML/2 PSI file.  runWithLocalSettings ensures that
                     // CodeStyle.getSettings(xmlPsiFile) returns our local copy via
                     //   getSettings(project) -> getLocalOrTemporarySettings().
-                    LightVirtualFile tempVf = new LightVirtualFile(
-                            "_fxml2_format_tmp.fxml", XMLLanguage.INSTANCE, wrappedXml);
+                    // The file is parsed as FXML/2 rather than as plain XML so that the FXML/2
+                    // formatter runs, which is what gives a <?resource ?> declaration the
+                    // treatment it gets in a standalone document.  It is associated with the host's
+                    // directory so that the code style configured there applies to the markup
+                    // and to every payload language it carries.
+                    VirtualFile tempVf = new Fxml2ScratchFile(
+                            "_fxml2_format_tmp.fxml", Fxml2Language.INSTANCE, wrappedXml,
+                            hostVirtualFile != null ? hostVirtualFile.getParent() : null);
+                    tempVf.putUserData(Fxml2IndentSteps.KEY, indentSteps);
                     PsiFile xmlPsiFile = PsiManager.getInstance(project).findFile(tempVf);
                     if (!(xmlPsiFile instanceof XmlFile xmlFile)) return null;
 
@@ -339,18 +415,7 @@ public final class Fxml2EmbedMarkupUtil {
 
     /**
      * Returns the effective XML indent size for FXML files in the directory of
-     * {@code hostVirtualFile}.
-     *
-     * <p>Strategy (in priority order):
-     * <ol>
-     *   <li>If {@code hostVirtualFile} is non-null, {@link CodeStyle#getIndentOptions(Project,
-     *       VirtualFile)} is queried with a synthetic {@code .fxml} probe anchored to the host
-     *       file's directory. Registered {@code FileIndentOptionsProvider}s (including
-     *       {@code EditorConfigIndentOptionsProvider}) are consulted in their declared order,
-     *       so any {@code *.fxml} / {@code *.{xml,fxml}} EditorConfig rule is honored.</li>
-     *   <li>The project-level XML indent size from
-     *       {@link CodeStyle#getSettings(Project)} is used as fallback.</li>
-     * </ol>
+     * {@code hostVirtualFile}, which is the step markup nests in there.
      *
      * @param project         the current project
      * @param hostVirtualFile the {@code .java} / {@code .kt} file that owns the
@@ -360,37 +425,7 @@ public final class Fxml2EmbedMarkupUtil {
     static int getEffectiveXmlIndentSize(
             @NotNull Project project, @Nullable VirtualFile hostVirtualFile) {
 
-        // Base: project-wide XML indent (IntelliJ default for XML is 2).
-        CodeStyleSettings projectSettings = CodeStyle.getSettings(project);
-        CommonCodeStyleSettings xmlCommon = projectSettings.getCommonSettings(XMLLanguage.INSTANCE);
-        CommonCodeStyleSettings.IndentOptions projectXmlOpts =
-                xmlCommon.getIndentOptions();
-        int fallback = (projectXmlOpts != null) ? projectXmlOpts.INDENT_SIZE : 2;
-
-        if (hostVirtualFile == null) return fallback;
-        VirtualFile hostDir = hostVirtualFile.getParent();
-        if (hostDir == null) return fallback;
-
-        // Create a virtual probe file with the host directory as its logical parent.
-        // CodeStyle.getIndentOptions delegates to registered FileIndentOptionsProviders;
-        // EditorConfigIndentOptionsProvider (order="first") matches *.editorconfig rules
-        // against the probe file name and traverses .editorconfig files from probe.parent.
-        LightVirtualFile probe = new LightVirtualFile(
-                "_fxml2_indent_probe.fxml", XMLLanguage.INSTANCE, "") {
-            @Override
-            public VirtualFile getParent() { return hostDir; }
-            @Override
-            public @NotNull String getPath() {
-                return hostDir.getPath() + "/" + getName();
-            }
-        };
-
-        CommonCodeStyleSettings.IndentOptions opts = CodeStyle.getIndentOptions(project, probe);
-        if (opts != null && opts.INDENT_SIZE > 0) {
-            return opts.INDENT_SIZE;
-        }
-
-        return fallback;
+        return Fxml2EffectiveIndent.ofMarkup(project, hostVirtualFile).width();
     }
 
     /**
@@ -488,7 +523,11 @@ public final class Fxml2EmbedMarkupUtil {
         // Indentation and exact formatting are handled inside addAnnotationAndImports*,
         // which has access to the class's column and the project's code-style settings.
         String leadingDocPis = buildDocumentLeadingPis(xmlDoc);
+        String trailingContent = buildDocumentTrailingContent(xmlDoc);
         String rawMarkup = leadingDocPis + buildMarkupBody(rootTag);
+        if (!trailingContent.isEmpty()) {
+            rawMarkup = rawMarkup.stripTrailing() + '\n' + trailingContent.stripTrailing();
+        }
 
         // Collect imports declared in the FXML file
         List<String> fxmlImports = Fxml2ImportResolver.parseImports(xmlFile);
@@ -627,27 +666,34 @@ public final class Fxml2EmbedMarkupUtil {
     static @NotNull String[] splitLeadingPis(@NotNull String markupBody) {
         StringBuilder pis = new StringBuilder();
         String remaining = markupBody;
-        boolean progress = true;
-        while (progress) {
-            progress = false;
-            // Strip leading processing instructions (excluding the <?xml?> declaration)
-            while (remaining.startsWith("<?") && !remaining.startsWith("<?xml")) {
-                int end = remaining.indexOf("?>");
-                if (end < 0) break;
-                pis.append(remaining, 0, end + 2).append('\n');
-                remaining = remaining.substring(end + 2).stripLeading();
-                progress = true;
+        while (true) {
+            int wsEnd = 0;
+            while (wsEnd < remaining.length() && Character.isWhitespace(remaining.charAt(wsEnd))) {
+                wsEnd++;
             }
-            // Strip leading XML comments (<!-- ... -->)
-            while (remaining.startsWith("<!--")) {
-                int end = remaining.indexOf("-->");
-                if (end < 0) break;
-                pis.append(remaining, 0, end + 3).append('\n');
-                remaining = remaining.substring(end + 3).stripLeading();
-                progress = true;
+            String rest = remaining.substring(wsEnd);
+            int tokenEnd;
+            if (rest.startsWith("<?") && !rest.startsWith("<?xml")) {
+                // A processing instruction (excluding the <?xml?> declaration)
+                tokenEnd = rest.indexOf("?>");
+                if (tokenEnd < 0) break;
+                tokenEnd += 2;
+            } else if (rest.startsWith("<!--")) {
+                // An XML comment
+                tokenEnd = rest.indexOf("-->");
+                if (tokenEnd < 0) break;
+                tokenEnd += 3;
+            } else {
+                break;
             }
+            // Keep the blank lines that separate two leading items from each other.
+            if (!pis.isEmpty()) {
+                pis.repeat('\n', countBlankLines(remaining.substring(0, wsEnd)));
+            }
+            pis.append(rest, 0, tokenEnd).append('\n');
+            remaining = rest.substring(tokenEnd);
         }
-        return new String[] { pis.toString(), remaining };
+        return new String[] { pis.toString(), remaining.stripLeading() };
     }
 
     /**

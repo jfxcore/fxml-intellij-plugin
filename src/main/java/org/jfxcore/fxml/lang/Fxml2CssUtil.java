@@ -1,17 +1,27 @@
 package org.jfxcore.fxml.lang;
 
+import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.search.FilenameIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlAttribute;
+import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
+import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
+import org.jfxcore.fxml.resource.Fxml2ResourceModel;
+import org.jfxcore.fxml.resource.Fxml2ResourceName;
+import org.jfxcore.fxml.resource.Fxml2ResourcePayload;
+import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -46,6 +56,9 @@ public final class Fxml2CssUtil {
      */
     static final Pattern CLASS_SELECTOR_PATTERN =
             Pattern.compile("\\.(-?[_a-zA-Z][\\w-]*)(?=[\\s,:{.\\[>+~#]|$)", Pattern.MULTILINE);
+
+    /** Pattern matching a valid CSS identifier (class name without leading dot). */
+    private static final Pattern CSS_IDENTIFIER = Pattern.compile("-?[_a-zA-Z][\\w-]*");
 
     /**
      * Pattern that matches a simple CSS type selector immediately preceding a class selector
@@ -121,6 +134,7 @@ public final class Fxml2CssUtil {
     public static @NotNull List<CssSelectorElement> findAllCssSelectorElements(
             @NotNull String className,
             @Nullable String cssTypeName,
+            @NotNull XmlFile fxmlFile,
             @NotNull Project project,
             @NotNull GlobalSearchScope scope) {
 
@@ -139,6 +153,24 @@ public final class Fxml2CssUtil {
         // Map from dedup-key -> (CssSelectorElement, isSource)
         Map<String, CssSelectorElement> byEntryPath = new LinkedHashMap<>();
         Map<String, Boolean> isSourceByKey = new LinkedHashMap<>();
+
+        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(fxmlFile).entries()) {
+            if (Fxml2ResourcePayloadLanguage.of(entry.declaration())
+                    != Fxml2ResourcePayloadLanguage.CSS) continue;
+
+            TextRange contentRange = findSelectorRange(
+                    entry.declaration().content(), className, cssTypeName);
+            if (contentRange == null) continue;
+
+            TextRange sourceRange = entry.fileRangeOf(
+                    entry.declaration().payload().sourceSpanOf(
+                            contentRange.getStartOffset(), contentRange.getEndOffset()));
+            String key = entry.declaringFile().getVirtualFile().getPath()
+                    + "#" + entry.nameRange().getStartOffset();
+            byEntryPath.put(key, new CssSelectorElement(
+                    entry.declaringFile(), sourceRange, className));
+            isSourceByKey.put(key, true);
+        }
 
         for (VirtualFile vf : FilenameIndex.getAllFilesByExt(project, "css", scope)) {
             PsiFile psiFile = psiManager.findFile(vf);
@@ -172,6 +204,194 @@ public final class Fxml2CssUtil {
         return new ArrayList<>(byEntryPath.values());
     }
 
+
+    /**
+     * Returns the class selector that the host range {@code hostRange} covers, or {@code null}
+     * when it covers no selector or more than one.
+     *
+     * <p>{@code hostRange} is a range in {@code fxmlFile} that overlaps the payload of a
+     * {@code text/css} {@code <?resource ?>} declaration.  It is how an element of the injected
+     * stylesheet is identified from the declaring document: an editor with CSS PSI hands in the
+     * range of one selector, while a plain-text payload hands in the range of the text it covers,
+     * which names a class exactly when that text holds a single class selector.
+     */
+    public static @Nullable CssSelectorElement findEmbeddedSelectorAt(@NotNull XmlFile fxmlFile,
+                                                                      @NotNull TextRange hostRange) {
+        CssSelectorElement found = null;
+
+        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(fxmlFile).entries()) {
+            if (Fxml2ResourcePayloadLanguage.of(entry.declaration())
+                    != Fxml2ResourcePayloadLanguage.CSS) continue;
+
+            Fxml2ResourcePayload payload = entry.declaration().payload();
+            Matcher m = CLASS_SELECTOR_PATTERN.matcher(entry.declaration().content());
+            while (m.find()) {
+                TextRange selectorRange = entry.fileRangeOf(
+                        payload.sourceSpanOf(m.start(), m.end(1)));
+                if (!selectorRange.intersects(hostRange)) continue;
+                if (found != null && !found.getName().equals(m.group(1))) return null;
+                found = new CssSelectorElement(entry.declaringFile(), selectorRange, m.group(1));
+            }
+        }
+
+        return found;
+    }
+
+    /**
+     * Returns the class selector {@code element} is part of, when {@code element} belongs to a
+     * stylesheet injected into a {@code <?resource ?>} declaration of an FXML/2 document.
+     *
+     * <p>The injected fragment has no {@code .css} file of its own, so the element is mapped back
+     * to its range in the declaring document and matched against the class selectors written in
+     * the payload there.
+     *
+     * @return the selector, or {@code null} when {@code element} is not in such a payload or does
+     *         not name exactly one class selector
+     */
+    public static @Nullable CssSelectorElement embeddedSelectorAt(@NotNull PsiElement element) {
+        PsiFile injectedFile = element.getContainingFile();
+        if (injectedFile == null) return null;
+
+        // The host of the fragment identifies it before the element itself is read, so that an
+        // element of an ordinary file is rejected without loading its syntax tree.
+        InjectedLanguageManager injectedLanguageManager =
+                InjectedLanguageManager.getInstance(element.getProject());
+        if (!injectedLanguageManager.isInjectedFragment(injectedFile)) return null;
+
+        PsiLanguageInjectionHost host = injectedLanguageManager.getInjectionHost(injectedFile);
+        if (!(host instanceof Fxml2ResourceProcessingInstruction)) return null;
+        if (!(host.getContainingFile() instanceof XmlFile xmlFile)) return null;
+
+        TextRange elementRange = element.getTextRange();
+        if (elementRange == null) return null;
+
+        return findEmbeddedSelectorAt(
+                xmlFile, injectedLanguageManager.injectedToHost(element, elementRange));
+    }
+
+    /**
+     * Returns the CSS class name that {@code element} declares as a class selector, or
+     * {@code null} when it declares none.
+     *
+     * <p>A selector reaches the plugin in three shapes: as the {@link CssSelectorElement} the
+     * plugin resolves a {@code styleClass} token to, as an element of a stylesheet injected into
+     * a {@code <?resource ?>} declaration, and as an element of a {@code .css} file, which the
+     * CSS PSI models with classes this plugin does not depend on.  The last shape is read
+     * through {@link PsiNamedElement} and the element text, so that no CSS PSI class is named.
+     */
+    public static @Nullable String selectorClassNameOf(@NotNull PsiElement element) {
+        if (element instanceof CssSelectorElement selector) {
+            return selector.getName();
+        }
+
+        CssSelectorElement embedded = embeddedSelectorAt(element);
+        if (embedded != null) return embedded.getName();
+
+        PsiFile file = element.getContainingFile();
+        if (file == null) return null;
+        VirtualFile virtualFile = file.getVirtualFile();
+        if (virtualFile == null || !"css".equalsIgnoreCase(virtualFile.getExtension())) return null;
+
+        if (element instanceof PsiNamedElement named) {
+            String name = named.getName();
+            if (name != null && !name.isBlank() && CSS_IDENTIFIER.matcher(name).matches()) {
+                return name;
+            }
+        }
+
+        String text = element.getText().strip();
+        if (text.startsWith(".")) text = text.substring(1);
+        if (!text.isBlank() && CSS_IDENTIFIER.matcher(text).matches()) {
+            return text;
+        }
+
+        PsiElement parent = element.getParent();
+        if (parent != null) {
+            Matcher m = CLASS_SELECTOR_PATTERN.matcher(parent.getText());
+            if (m.find()) return m.group(1);
+        }
+
+        return null;
+    }
+
+    // -----------------------------------------------------------------------
+    // Rule text
+    // -----------------------------------------------------------------------
+
+    /**
+     * Characters that end the selector list a class selector belongs to when scanning backwards
+     * from it: the end of the preceding rule, the start of a declaration block, and the syntax
+     * that surrounds a stylesheet written into a {@code <?resource ?>} declaration.
+     */
+    private static final String SELECTOR_LIST_STOP_CHARS = "}{;<?/";
+
+    /**
+     * Returns the source text of the CSS rule that {@code selector} is written in: its whole
+     * selector list followed by the declaration block, as it appears in the file the selector was
+     * found in.
+     *
+     * <p>The text is read from the declaring file, so that a stylesheet written into a
+     * {@code <?resource ?>} declaration reads back exactly as the author wrote it. When the
+     * selector is followed by no declaration block, the selector list alone is returned.
+     */
+    public static @NotNull String ruleTextOf(@NotNull CssSelectorElement selector) {
+        String text = selector.getContainingFile().getText();
+        TextRange range = selector.getTextRange();
+        int start = selectorListStart(text, range.getStartOffset());
+        int end = declarationBlockEnd(text, range.getEndOffset());
+        return text.substring(start, end).strip();
+    }
+
+    /** Returns the offset the selector list containing the selector at {@code selectorStart} begins at. */
+    private static int selectorListStart(@NotNull String text, int selectorStart) {
+        int index = selectorStart;
+        while (index > 0 && SELECTOR_LIST_STOP_CHARS.indexOf(text.charAt(index - 1)) < 0) {
+            index--;
+        }
+        return index;
+    }
+
+    /**
+     * Returns the offset just past the declaration block that follows the selector ending at
+     * {@code selectorEnd}, or {@code selectorEnd} itself when no block follows it.
+     */
+    private static int declarationBlockEnd(@NotNull String text, int selectorEnd) {
+        int index = selectorEnd;
+        while (index < text.length() && text.charAt(index) != '{') {
+            if (SELECTOR_LIST_STOP_CHARS.indexOf(text.charAt(index)) >= 0) return selectorEnd;
+            index++;
+        }
+
+        int depth = 0;
+        for (; index < text.length(); index++) {
+            char c = text.charAt(index);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}' && --depth == 0) {
+                return index + 1;
+            }
+        }
+        return selectorEnd;
+    }
+
+    /**
+     * Returns the name of the embedded resource that {@code selector} is written in, or
+     * {@code null} when the selector is written in a {@code .css} file of its own.
+     */
+    public static @Nullable Fxml2ResourceName embeddedResourceNameOf(@NotNull CssSelectorElement selector) {
+        if (!(selector.getContainingFile() instanceof XmlFile xmlFile)) return null;
+
+        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(xmlFile).entries()) {
+            if (Fxml2ResourcePayloadLanguage.of(entry.declaration())
+                    != Fxml2ResourcePayloadLanguage.CSS) continue;
+
+            Fxml2ResourcePayload payload = entry.declaration().payload();
+            TextRange payloadRange = entry.fileRangeOf(
+                    payload.sourceSpanOf(0, entry.declaration().content().length()));
+            if (payloadRange.contains(selector.getTextRange())) return entry.name();
+        }
+        return null;
+    }
 
     // -----------------------------------------------------------------------
     // Internal helpers

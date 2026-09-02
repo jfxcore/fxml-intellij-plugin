@@ -1,6 +1,5 @@
 package org.jfxcore.fxml.lang;
 
-import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -62,7 +61,7 @@ public final class Fxml2FileViewProvider extends SingleRootFileViewProvider {
     public Fxml2FileViewProvider(@NotNull PsiManager manager,
                                  @NotNull VirtualFile file,
                                  boolean eventSystemEnabled) {
-        super(manager, file, eventSystemEnabled, XMLLanguage.INSTANCE);
+        super(manager, file, eventSystemEnabled, Fxml2Language.INSTANCE);
     }
 
     // -----------------------------------------------------------------------

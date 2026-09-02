@@ -22,10 +22,13 @@ public final class CssSelectorElement extends FakePsiElement {
     private final @NotNull String myClassName;  // the name without the dot
 
     CssSelectorElement(@NotNull PsiFile file, @NotNull TextRange range) {
+        this(file, range, file.getText().substring(range.getStartOffset() + 1, range.getEndOffset()));
+    }
+
+    CssSelectorElement(@NotNull PsiFile file, @NotNull TextRange range, @NotNull String className) {
         this.myFile      = file;
         this.myRange     = range;
-        // range starts at the dot; the class name is everything after the dot up to range end
-        this.myClassName = file.getText().substring(range.getStartOffset() + 1, range.getEndOffset());
+        this.myClassName = className;
     }
 
     // FakePsiElement requires a non-null parent

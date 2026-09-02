@@ -17,7 +17,8 @@ import javax.swing.Icon;
  * {@code http://jfxcore.org/fxml/2.0} namespace (content-detected via
  * {@link Fxml2FileTypeOverrider} so any static {@code .fxml} XML mapping does not win).
  *
- * <p>By extending {@link XmlLikeFileType} and backing it with {@link XMLLanguage#INSTANCE} the IDE
+ * <p>By extending {@link XmlLikeFileType} and backing it with {@link Fxml2Language}, a dialect of
+ * {@link XMLLanguage}, the IDE
  * automatically provides all standard XML editor features (syntax highlighting, brace matching,
  * code folding, formatting, structure view, ...) without any additional code.
  */
@@ -27,7 +28,7 @@ public final class Fxml2FileType extends XmlLikeFileType {
     public static final Fxml2FileType INSTANCE = new Fxml2FileType();
 
     private Fxml2FileType() {
-        super(XMLLanguage.INSTANCE);
+        super(Fxml2Language.INSTANCE);
     }
 
     @Override

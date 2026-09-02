@@ -65,6 +65,24 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2MarkupAnnotationInjector"/>
 
         <!--
+            Injects the payload language into a <?resource ?> declaration of a standalone
+            FXML/2 document, so that e.g. a text/css payload is edited as a stylesheet.
+            Registered for Fxml2ResourceProcessingInstruction, a host class only FXML/2
+            documents produce, so no other injector competes for it.
+        -->
+        <multiHostInjector
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceInjector"/>
+
+        <!--
+            RenamePsiElementProcessor for embedded resources.  A <?resource ?> declaration is
+            not ordinary PSI in either document form, so it is represented by a synthetic
+            Fxml2ResourceDeclarationElement; this processor routes a rename to it and rewrites
+            every @name / {ClassPathResource name} usage in the declaring document.
+        -->
+        <renamePsiElementProcessor
+                implementation="org.jfxcore.fxml.codeinsight.Fxml2ResourceRenameProcessor"/>
+
+        <!--
             ParserDefinition for Fxml2EmbeddedXmlLanguage: used when the @ComponentView
             injectors inject Fxml2EmbeddedXmlLanguage (a dialect of XML).
             The sole purpose is to produce Fxml2EmbeddedXmlFile instances whose
@@ -75,6 +93,73 @@
         -->
         <lang.parserDefinition language="Fxml2EmbeddedXml"
                                implementationClass="org.jfxcore.fxml.lang.Fxml2EmbeddedXmlParserDefinition"/>
+
+        <!--
+            ParserDefinition for Fxml2Language, the dialect of XML used by standalone FXML/2
+            documents.  Owning the parser definition is what lets the plugin substitute its own
+            PSI for standard XML node types: PsiBuilderImpl consults a parser definition that is
+            also an ASTFactory before the language-keyed factory lookup, and the substitution is
+            scoped to files parsed as FXML/2.  Parsing itself is delegated to the platform's XML
+            parser definition, so an FXML/2 document is lexed and parsed like any other XML file.
+        -->
+        <lang.parserDefinition language="FXML2"
+                               implementationClass="org.jfxcore.fxml.lang.Fxml2ParserDefinition"/>
+
+        <!--
+            Folds the payload of a multi-line <?resource ?> declaration away, leaving the name
+            and media type visible.  Registered for FXML2 only: the fold regions are anchored
+            on Fxml2ResourceProcessingInstruction, which only FXML/2 documents produce.
+        -->
+        <lang.foldingBuilder language="FXML2"
+                             implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceFoldingBuilder"/>
+
+        <!--
+            Formats an FXML/2 document as XML, with one difference: a <?resource ?> declaration
+            that carries a payload is reproduced exactly as written.  The payload is resource
+            content laid out by its author, not markup, so reindenting it would both destroy its
+            layout and change the resource.
+        -->
+        <lang.formatter language="FXML2"
+                        implementationClass="org.jfxcore.fxml.lang.Fxml2FormattingModelBuilder"/>
+
+        <!--
+            PostFormatProcessor: reformats the payload of every <?resource ?> declaration of an
+            FXML/2 document once the markup around it is laid out.  The content is formatted in
+            the code style of the language its media type names, and placed at the markup
+            indentation.  A payload whose language this IDE cannot format (such as CSS in IntelliJ IDEA
+            Community) is left exactly as its author wrote it.
+        -->
+        <postFormatProcessor
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadFormattingProcessor"/>
+
+        <!--
+            FileIndentOptionsProvider: a fragment editor ("Edit CSS fragment" and friends) edits a
+            copy of the fragment that is not in any directory, so the rules of the place the markup
+            lives in cannot reach it.  This gives that copy the step the document the fragment
+            belongs to is written in.
+        -->
+        <fileIndentOptionsProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2FragmentIndentOptionsProvider"/>
+
+        <!--
+            InjectedFileChangesHandlerProvider: what a fragment editor ("Edit CSS fragment" and
+            friends) writes back when it is closed.  An FXML/2 fragment is injected over the text
+            of its host exactly as written, so it is spliced back unchanged; every other fragment
+            of these languages keeps the handler the platform chooses for it.
+        -->
+        <editor.injectedFileChangesHandlerProvider language="JAVA" order="first"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2InjectedFileChangesHandlerProvider"/>
+        <editor.injectedFileChangesHandlerProvider language="FXML2" order="first"
+                implementationClass="org.jfxcore.fxml.lang.Fxml2InjectedFileChangesHandlerProvider"/>
+
+        <!--
+            FormattingService: a reformat requested from inside a <?resource ?> payload is
+            answered by reformatting the document the declaration is written in.  The payload
+            fragment cannot answer it: it sees neither the declaration that places it nor the
+            markup that decides the indentation the declaration sits at.
+        -->
+        <formattingService
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadFormattingService"/>
 
         <!--
             InjectedFormattingOptionsProvider: when the user reformats from inside an
@@ -150,6 +235,14 @@
         <enterHandlerDelegate
                 implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers$EnterHandler"
                 order="first"/>
+        <!--
+            EnterHandlerDelegate: continues the indentation of a <?resource ?> payload when Enter
+            is pressed inside it, instead of letting the enclosing FXML formatter indent the new
+            line as markup.
+        -->
+        <enterHandlerDelegate
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadEnterHandler"
+                order="first"/>
 
         <!--
             TypedHandlerDelegate: intercepts '=' typed after an XML attribute name in embedded
@@ -161,6 +254,9 @@
         -->
         <typedHandler
                 implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedEqualTypedHandler"
+                order="first"/>
+        <typedHandler
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadBraceTypedHandler"
                 order="first"/>
 
         <!--
@@ -177,7 +273,7 @@
                 name="FXML/2"
                 implementationClass="org.jfxcore.fxml.lang.Fxml2FileType"
                 fieldName="INSTANCE"
-                language="XML"
+                language="FXML2"
                 extensions="fxmlx"/>
 
         <!--
@@ -248,6 +344,16 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourceKeyDocumentationTargetProvider"/>
 
         <!--
+            DocumentationTargetProvider (V2): shows the CSS rule that declares a style class when
+            the cursor is on one of the class names of a styleClass attribute value, in a
+            standalone document as well as in markup embedded in a @ComponentView annotation
+            value.  The rule is read from the stylesheet the class selector is written in: a .css
+            file, or a stylesheet written into a <?resource ?> declaration of the document.
+        -->
+        <platform.backend.documentation.targetProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2StyleClassDocumentationTargetProvider"/>
+
+        <!--
             PsiReferenceContributor: registers soft, always-unresolved references for
             FXML binding expressions in attribute values (e.g. $vm.message,
             {fx:Observe vm.message}).  Also provides:
@@ -273,6 +379,14 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2FxIdDeclarationProvider"/>
 
         <!--
+            PsiSymbolDeclarationProvider: registers the name of a <?resource ?> declaration as a
+            symbol declaration, so that Ctrl+click on it shows the use sites of the embedded
+            resource instead of having nowhere to go.
+        -->
+        <psi.declarationProvider
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceDeclarationProvider"/>
+
+        <!--
             GotoDeclarationHandler (code/binding -> FXML): when the cursor is on a Java/Kotlin
             field or method that corresponds to an fx:id-injected member, or on a binding
             expression segment, navigates to the fx:id XmlAttributeValue (canonical declaration)
@@ -283,8 +397,9 @@
 
         <!--
             ReferencesSearch extension: when "Find Usages" is invoked on a CSS class
-            selector (either our own CssSelectorElement or the CSS plugin's PSI element
-            for a .css file), searches all standalone FXML files (.fxml / .fxmlx) and
+            selector (our own CssSelectorElement, the CSS plugin's PSI element for a
+            .css file, or an element of a stylesheet injected into a <?resource ?>
+            declaration), searches all standalone FXML files (.fxml / .fxmlx) and
             all @ComponentView-annotated classes for styleClass attribute values that
             reference the same CSS class name.
 
@@ -417,6 +532,19 @@
         -->
         <findUsagesHandlerFactory
                 implementation="org.jfxcore.fxml.lang.Fxml2FxIdFindUsagesHandlerFactory"/>
+        <findUsagesHandlerFactory
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceFindUsagesHandlerFactory"/>
+
+        <!--
+            FindUsagesHandlerFactory: when "Find Usages" or Ctrl+click is triggered on a class
+            selector of an embedded text/css resource, searches for the styleClass tokens that
+            name it, so that the selector navigates to its use sites rather than to the
+            same-named selectors a stylesheet analysis would report.
+        -->
+        <findUsagesHandlerFactory
+                implementation="org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory"/>
+        <highlightUsagesHandlerFactory
+                implementation="org.jfxcore.fxml.lang.Fxml2ResourceHighlightUsagesHandlerFactory"/>
 
         <!--
             UsageSearcher: when IntelliJ's symbol-native "Show Usages" path is triggered for
@@ -427,6 +555,14 @@
         -->
         <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
                   implementationClass="org.jfxcore.fxml.lang.Fxml2FxIdUsageSearcher"/>
+
+        <!--
+            UsageSearcher: collects the use sites of an embedded resource when the symbol-native
+            "Show Usages" path is triggered for an Fxml2ResourceSymbol, which is what Ctrl+click
+            on a <?resource ?> declaration name leads to.
+        -->
+        <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
+                  implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceUsageSearcher"/>
 
         <!--
             RenameHandler: makes Shift+F6 available when the caret is on a property attribute
@@ -551,6 +687,57 @@
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="org.jfxcore.fxml.annotator.Fxml2PrefixDeclarationInspection"/>
+
+        <!--
+            Embedded resources: validate <?resource ?> declarations against the markup
+            language's grammar, so that every diagnostic the compiler reports for a
+            declaration is also reported in the editor, on the same span.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.resource.declaration.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2ResourceDeclarationInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.duplicate.resource.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2DuplicateResourceInspection"/>
+
+        <!--
+            Resource declarations may appear inside elements, so processing instructions in
+            element content now parse cleanly.  Import and prefix declarations are still read
+            only from the document prolog, so one written inside an element is silently
+            ignored at compile time; this inspection makes that visible.
+        -->
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.processing.instruction.placement.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2ProcessingInstructionPlacementInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.unused.resource.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2UnusedResourceInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
+                         key="inspection.resource.media.type.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="WEAK WARNING"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2ResourceMediaTypeInspection"/>
 
         <localInspection language="XML"
                          bundle="messages.Fxml2Bundle"

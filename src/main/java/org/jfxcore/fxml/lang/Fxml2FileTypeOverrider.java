@@ -1,5 +1,6 @@
 package org.jfxcore.fxml.lang;
 
+import com.intellij.injected.editor.VirtualFileWindow;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.impl.FileTypeOverrider;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -35,6 +36,7 @@ public final class Fxml2FileTypeOverrider implements FileTypeOverrider {
 
     @Override
     public @Nullable FileType getOverriddenFileType(@NotNull VirtualFile file) {
+        if (file instanceof VirtualFileWindow) return null;
         if (!file.getName().endsWith(".fxml")) return null;
         try {
             // isDirectory() / isValid() / getInputStream() may throw

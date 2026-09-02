@@ -164,6 +164,18 @@ class Fxml2ResourceMarkupExtensionTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, false);
     }
 
+    /** A single resource value supplies one item of a collection-valued property. */
+    @Test
+    void classPathResource_collectionItemType_noError() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.layout.BorderPane",
+                """
+                  <BorderPane stylesheets="@styles.css"/>
+                """
+        ));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     /**
      * {@code @path} on an {@code opacity} property (double): ClassPathResource supports only
      * String/URI/URL, not double -> type-mismatch error.

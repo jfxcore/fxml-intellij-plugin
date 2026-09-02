@@ -3,6 +3,7 @@ package org.jfxcore.fxml.lang;
 import com.intellij.codeInsight.daemon.impl.analysis.PsiReferenceWithUnresolvedQuickFixes;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.LocalQuickFixProvider;
+import com.intellij.lang.ASTNode;
 import com.intellij.lang.properties.references.PropertyReference;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.project.Project;
@@ -30,6 +31,7 @@ import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlProcessingInstruction;
+import com.intellij.psi.xml.XmlTokenType;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
@@ -243,10 +245,16 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
 
         // Class name in <?prefix X = ClassName?> processing instructions:
         // navigates to the markup-extension class declared as the prefix target.
-        // The "prefix" keyword itself opens the prefix-declarations documentation page.
         registrar.registerReferenceProvider(
                 PlatformPatterns.psiElement(XmlProcessingInstruction.class),
                 new PrefixDeclarationClassReferenceProvider(),
+                PsiReferenceRegistrar.HIGHER_PRIORITY);
+
+        // Target name of a processing instruction the language defines (<?import?>, <?prefix?>,
+        // <?resource?>): links to the documentation page that describes it.
+        registrar.registerReferenceProvider(
+                PlatformPatterns.psiElement(XmlProcessingInstruction.class),
+                new ProcessingInstructionTargetReferenceProvider(),
                 PsiReferenceRegistrar.HIGHER_PRIORITY);
 
         // fx:* attribute names (e.g. fx:id, fx:subclass, fx:context): each name links
@@ -401,6 +409,17 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                                 refs.add(new PropertyReference(
                                         resourceKey, attrVal, null, /* soft= */ false,
                                         new TextRange(keyStart, keyStart + resourceKey.length())));
+                            }
+                        }
+
+                        // For ClassPathResource in its long form, resolve the positional default
+                        // argument against the document's embedded resources, exactly as the
+                        // equivalent @name prefix notation does.
+                        if (CLASSPATH_RESOURCE_FQN.equals(extClass.getQualifiedName())) {
+                            String resourceName = extractPositionalDefaultArg(paramsPart);
+                            if (resourceName != null) {
+                                addEmbeddedResourceRef(refs, attrVal, resourceName,
+                                        base + paramsPartInRaw, xmlFile);
                             }
                         }
                     }
@@ -565,12 +584,18 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                     path = path.substring(1, path.length() - 1);
                     pathStart++; // skip the opening single quote
                 }
-                FileReferenceSet refSet = new FileReferenceSet(path, attrVal, pathStart, null, true);
-                if (path.startsWith("/")) {
-                    refSet.addCustomization(FileReferenceSet.DEFAULT_PATH_EVALUATOR_OPTION,
-                            FileReferenceSet.ABSOLUTE_TOP_LEVEL);
+                // Embedded resources come first, mirroring the runtime lookup order: a simple
+                // relative name names an embedded resource when the document declares one, and
+                // an external file otherwise.  A name that is absolute or contains a path
+                // separator can only be external, and the resource model rejects it.
+                if (!addEmbeddedResourceRef(refs, attrVal, path, pathStart, xmlFile)) {
+                    FileReferenceSet refSet = new FileReferenceSet(path, attrVal, pathStart, null, true);
+                    if (path.startsWith("/")) {
+                        refSet.addCustomization(FileReferenceSet.DEFAULT_PATH_EVALUATOR_OPTION,
+                                FileReferenceSet.ABSOLUTE_TOP_LEVEL);
+                    }
+                    java.util.Collections.addAll(refs, refSet.getAllReferences());
                 }
-                java.util.Collections.addAll(refs, refSet.getAllReferences());
             }
         }
     }
@@ -578,6 +603,42 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
     // -----------------------------------------------------------------------
     // Markup extension reference helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * Adds an embedded resource reference for {@code name} when the document declares a resource
+     * with that name, mirroring the runtime lookup order: an embedded resource first, an external
+     * file second.
+     *
+     * <p>{@code name} may be written in single quotes, which is how a name containing spaces is
+     * spelled in a usage; the quotes are part of the usage text, not of the name.
+     *
+     * @param nameStart offset of {@code name} within the attribute value text
+     * @return {@code true} when a reference was added, meaning the name is declared in this document
+     */
+    private static boolean addEmbeddedResourceRef(@NotNull List<PsiReference> refs,
+                                                  @NotNull XmlAttributeValue attrVal,
+                                                  @NotNull String name,
+                                                  int nameStart,
+                                                  @NotNull XmlFile xmlFile) {
+        if (name.isEmpty()) return false;
+
+        int start = nameStart;
+        String logicalName = name;
+        if (logicalName.length() >= 2
+                && logicalName.charAt(0) == '\''
+                && logicalName.charAt(logicalName.length() - 1) == '\'') {
+            logicalName = logicalName.substring(1, logicalName.length() - 1);
+            start++;
+        }
+
+        TextRange range = new TextRange(start, start + logicalName.length());
+        Fxml2ResourceNameReference reference =
+                new Fxml2ResourceNameReference(attrVal, range, logicalName, xmlFile);
+        if (!reference.isDeclared()) return false;
+
+        refs.add(reference);
+        return true;
+    }
 
     /**
      * Resolves a known built-in resource extension class ({@code DynamicResource},
@@ -2396,14 +2457,11 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
      * {@code XmlUnresolvedReferenceInspection}; resolution errors in prefix declarations
      * are reported by {@link org.jfxcore.fxml.annotator.Fxml2PrefixDeclarationInspection}.
      *
-     * <p>In addition to the class-name reference, a soft reference is emitted for the
-     * {@code prefix} keyword itself (at offset 2 in the PI text, after {@code <?}).
-     * Ctrl+click on the keyword opens the prefix-declarations section of the online docs.
+     * <p>The {@code prefix} keyword itself is handled by
+     * {@link ProcessingInstructionTargetReferenceProvider}, which links every processing
+     * instruction the language defines to its documentation page.
      */
     private static final class PrefixDeclarationClassReferenceProvider extends PsiReferenceProvider {
-
-        private static final String PREFIX_DOCS_URL =
-                "https://jfxcore.github.io/fxml-compiler/markup-extension.html#prefix-declarations";
 
         @Override
         public PsiReference @NotNull [] getReferencesByElement(
@@ -2412,25 +2470,15 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             if (!(element instanceof XmlProcessingInstruction pi)) return PsiReference.EMPTY_ARRAY;
             if (!(pi.getContainingFile() instanceof XmlFile xmlFile)) return PsiReference.EMPTY_ARRAY;
             if (!Fxml2FileType.isFxml2(xmlFile)) return PsiReference.EMPTY_ARRAY;
-
-            // The PI text is "<?prefix X = ClassName?>"; "prefix" starts at offset 2.
-            String piText = pi.getText();
-            int prefixKeywordStart = piText.indexOf("prefix");
-            if (prefixKeywordStart < 0) return PsiReference.EMPTY_ARRAY;
-            TextRange prefixKeywordRange =
-                    new TextRange(prefixKeywordStart, prefixKeywordStart + "prefix".length());
-            PsiReference prefixKeywordRef = new PsiReferenceBase<>(pi, prefixKeywordRange, /* soft= */ true) {
-                @Override
-                public @NotNull PsiElement resolve() {
-                    return new Fxml2NamespaceUrlReference.UrlNavigationTarget(pi, PREFIX_DOCS_URL);
-                }
-            };
+            if (Fxml2ProcessingInstructionTarget.of(pi) != Fxml2ProcessingInstructionTarget.PREFIX) {
+                return PsiReference.EMPTY_ARRAY;
+            }
 
             String typeName = Fxml2ImportResolver.getPrefixDeclarationTypeName(pi);
-            if (typeName == null) return new PsiReference[]{ prefixKeywordRef };
+            if (typeName == null) return PsiReference.EMPTY_ARRAY;
 
             int offset = Fxml2ImportResolver.getPrefixDeclarationTypeNameOffset(pi);
-            if (offset < 0) return new PsiReference[]{ prefixKeywordRef };
+            if (offset < 0) return PsiReference.EMPTY_ARRAY;
 
             // Resolve the class: try FQN first, then via the file's imports for simple names.
             GlobalSearchScope allScope = GlobalSearchScope.allScope(xmlFile.getProject());
@@ -2444,19 +2492,17 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                 // FQN: emit per-segment package + class references for each dot-separated part,
                 // so that Ctrl+click on any segment navigates to the corresponding package or class.
                 List<PsiReference> refs = new ArrayList<>();
-                refs.add(prefixKeywordRef);
                 JavaPsiFacade facade = JavaPsiFacade.getInstance(xmlFile.getProject());
                 addFqnClassSegmentRefs(refs, pi, offset, typeName, resolved, facade, /* soft= */ true);
                 return refs.toArray(PsiReference.EMPTY_ARRAY);
             }
 
-            if (resolved == null) return new PsiReference[]{ prefixKeywordRef };
+            if (resolved == null) return PsiReference.EMPTY_ARRAY;
 
             // Simple name: a single soft reference spanning the entire class name token.
             TextRange range = new TextRange(offset, offset + typeName.length());
             final PsiClass finalResolved = resolved;
             return new PsiReference[]{
-                prefixKeywordRef,
                 new PsiReferenceBase<>(pi, range, /* soft= */ true) {
                     @Override
                     public @NotNull PsiElement resolve() { return finalResolved; }
@@ -2464,6 +2510,49 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                     @Override
                     public boolean isReferenceTo(@NotNull PsiElement candidate) {
                         return pi.getManager().areElementsEquivalent(finalResolved, candidate);
+                    }
+                }
+            };
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Processing instruction target name provider
+    // -----------------------------------------------------------------------
+
+    /**
+     * Provides a soft {@link PsiReference} on the target name of every processing instruction the
+     * language defines ({@code <?import?>}, {@code <?prefix?>}, {@code <?resource?>}).
+     * Ctrl+click on the name opens the documentation page that describes the instruction.
+     *
+     * <p>The reference spans the name token only, so that references on the instruction's
+     * arguments, such as the class name of an import, keep their own ranges.
+     */
+    private static final class ProcessingInstructionTargetReferenceProvider extends PsiReferenceProvider {
+
+        @Override
+        public PsiReference @NotNull [] getReferencesByElement(
+                @NotNull PsiElement element, @NotNull ProcessingContext context) {
+
+            if (!(element instanceof XmlProcessingInstruction pi)) return PsiReference.EMPTY_ARRAY;
+            if (!(pi.getContainingFile() instanceof XmlFile xmlFile)) return PsiReference.EMPTY_ARRAY;
+            if (!Fxml2FileType.isFxml2(xmlFile)) return PsiReference.EMPTY_ARRAY;
+
+            Fxml2ProcessingInstructionTarget target = Fxml2ProcessingInstructionTarget.of(pi);
+            if (target == null) return PsiReference.EMPTY_ARRAY;
+
+            ASTNode nameNode = pi.getNode().findChildByType(XmlTokenType.XML_NAME);
+            if (nameNode == null) return PsiReference.EMPTY_ARRAY;
+
+            int start = nameNode.getStartOffset() - pi.getTextRange().getStartOffset();
+            TextRange nameRange = new TextRange(start, start + nameNode.getTextLength());
+            String url = target.documentationUrl();
+
+            return new PsiReference[]{
+                new PsiReferenceBase<>(pi, nameRange, /* soft= */ true) {
+                    @Override
+                    public @NotNull PsiElement resolve() {
+                        return new Fxml2NamespaceUrlReference.UrlNavigationTarget(pi, url);
                     }
                 }
             };

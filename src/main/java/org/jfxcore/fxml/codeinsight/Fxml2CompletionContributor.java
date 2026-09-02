@@ -126,6 +126,12 @@ public final class Fxml2CompletionContributor extends CompletionContributor {
 
         int caretOffset = parameters.getOffset();
 
+        // -- Processing instruction target: <?re<caret> ---------------------
+        if (Fxml2ProcessingInstructionCompletion.complete(parameters, result)) {
+            result.runRemainingContributors(parameters, r -> { /* discard all default items */ });
+            return;
+        }
+
         // -- Import PI: <?import javafx.scene.List<caret>?> -----------------
         PsiElement origPos = parameters.getOriginalFile().findElementAt(caretOffset);
         if (origPos != null) {

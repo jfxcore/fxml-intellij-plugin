@@ -1,0 +1,29 @@
+<html lang="en">
+<body>
+Validates embedded resource declarations against the FXML/2 grammar, so that every problem the
+compiler reports for a <code>&lt;?resource ?&gt;</code> declaration is also reported in the editor.
+<p>
+An embedded resource is a text file declared directly in an FXML/2 document and materialized as a
+classpath resource next to the generated class:
+<pre>
+  &lt;?resource styles.css text/css:
+      .root { -fx-font-size: 1.1em; }
+  ?&gt;
+</pre>
+Reported problems:
+<ul>
+  <li>A declaration that does not follow the
+      <code>&lt;?resource name [media-type]:content?&gt;</code> grammar, including a missing
+      content separator and an unterminated quote.</li>
+  <li>A missing resource name.</li>
+  <li>A name that is not a portable file name: an empty name, <code>.</code> or <code>..</code>,
+      a name containing a path separator or another character that is not portable in a file name,
+      a name ending in a space or a dot, and a reserved device name such as <code>CON</code>.</li>
+  <li>A media type that does not follow the <code>type/subtype</code> grammar.</li>
+  <li>A media type declaring the same parameter more than once.</li>
+  <li>A <code>charset</code> parameter naming a charset that is unknown or is not a legal
+      charset name.</li>
+  <li>A payload character that the selected charset cannot encode.</li>
+</ul>
+</body>
+</html>
