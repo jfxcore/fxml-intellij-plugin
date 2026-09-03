@@ -7,7 +7,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
@@ -39,12 +38,12 @@ public final class Fxml2ResourceInjector implements MultiHostInjector {
         if (!(context instanceof Fxml2ResourceProcessingInstruction instruction)) return;
         if (!instruction.isValidHost()) return;
 
-        String text = instruction.getText();
-        Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parseAt(text, 0, text.length());
-        if (result == null) return;
+        Fxml2ResourceParseResult directive = instruction.resourceDirective();
+        if (directive == null) return;
 
-        Fxml2ResourceDeclaration declaration = result.declaration();
-        if (declaration == null || declaration.payload().isEmpty()) return;
+        String text = instruction.getText();
+        Fxml2ResourceDeclaration declaration = directive.declaration();
+        if (declaration.payload().isEmpty()) return;
 
         Language language = Fxml2ResourcePayloadLanguage.of(declaration).languageOrPlainText();
         TextRange rawPayload = declaration.payloadSpan().toTextRange();

@@ -95,7 +95,7 @@ public final class Fxml2StyleClassDocumentationTargetProvider implements Documen
 
     /** Returns the stylesheet {@code selector} is written in, as it is shown to the user. */
     private static @NotNull String locationOf(@NotNull CssSelectorElement selector) {
-        Fxml2ResourceName resourceName = Fxml2CssUtil.embeddedResourceNameOf(selector);
+        Fxml2ResourceName resourceName = selector.embeddedResource();
         return resourceName != null
                 ? resourceName.value()
                 : selector.getContainingFile().getName();

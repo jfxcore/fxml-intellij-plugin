@@ -52,7 +52,7 @@ public final class Fxml2UnusedResourceInspection extends LocalInspectionTool {
 
         return Fxml2ResourceUsageScanner.isUsed(
                 text,
-                entry.declaration().instruction().instruction().shifted(anchorStart),
+                entry.instructionSpan().shifted(anchorStart),
                 entry.name().value());
     }
 }

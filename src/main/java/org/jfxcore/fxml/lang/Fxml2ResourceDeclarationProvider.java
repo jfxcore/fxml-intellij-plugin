@@ -54,7 +54,7 @@ public final class Fxml2ResourceDeclarationProvider implements PsiSymbolDeclarat
         if (result == null) return List.of();
 
         Fxml2ResourceDeclaration declaration = result.declaration();
-        if (declaration == null) return List.of();
+        if (!declaration.hasName()) return List.of();
 
         // The name span is relative to the instruction, while the declaration must be relative to
         // the element the platform called us with.  The platform walks every element around the

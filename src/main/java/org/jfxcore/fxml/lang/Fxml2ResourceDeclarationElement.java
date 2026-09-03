@@ -13,7 +13,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.codeinsight.Fxml2ResourceDeclarationEditor;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceName;
-import org.jfxcore.fxml.resource.Fxml2ResourceQuoting;
 
 /**
  * The declaration site of an embedded resource, as a navigable and renameable element.
@@ -98,7 +97,7 @@ public final class Fxml2ResourceDeclarationElement extends FakePsiElement implem
         Fxml2ResourceDeclarationEditor.replace(
                 file.getProject(), entry,
                 entry.declaration().quotedNameSpan(),
-                Fxml2ResourceQuoting.required(newName).write(newName));
+                Fxml2ResourceName.write(newName));
 
         Fxml2ResourceEntry renamed = Fxml2ResourceDeclarationEditor.findDeclaration(file, newName);
         return renamed != null ? new Fxml2ResourceDeclarationElement(renamed) : this;

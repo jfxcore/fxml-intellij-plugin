@@ -16,7 +16,6 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLayout;
@@ -110,12 +109,12 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
         for (Fxml2ResourceProcessingInstruction instruction :
                 PsiTreeUtil.findChildrenOfType(file, Fxml2ResourceProcessingInstruction.class)) {
 
-            String text = instruction.getText();
-            Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parseAt(text, 0, text.length());
-            if (result == null) continue;
+            Fxml2ResourceParseResult directive = instruction.resourceDirective();
+            if (directive == null) continue;
 
-            Fxml2ResourceDeclaration declaration = result.declaration();
-            if (declaration == null || declaration.payloadSpan().isEmpty()) continue;
+            String text = instruction.getText();
+            Fxml2ResourceDeclaration declaration = directive.declaration();
+            if (declaration.payloadSpan().isEmpty()) continue;
 
             int instructionStart = instruction.getTextRange().getStartOffset();
             TextRange payloadRange = declaration.payloadSpan().toTextRange().shiftRight(instructionStart);

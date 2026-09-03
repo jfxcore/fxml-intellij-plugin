@@ -9,8 +9,8 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlProcessingInstruction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstruction;
-import org.jfxcore.fxml.resource.Fxml2ResourceScanner;
+import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
+import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 
 /**
  * A {@code <?resource ?>} processing instruction in a standalone FXML/2 document, which is also an
@@ -23,10 +23,6 @@ import org.jfxcore.fxml.resource.Fxml2ResourceScanner;
  * definition itself as an AST factory before the language-keyed lookup, which lets
  * {@link Fxml2ParserDefinition} substitute this class for the standard one.  Because the
  * substitution goes through the parser definition, it applies only to documents parsed as FXML/2.
- *
- * <p>Only a resource instruction that actually has a payload is a valid host.  An import
- * instruction, or a resource instruction that is still being typed and has no content separator
- * yet, reports {@code false} so that nothing is injected into it.
  */
 public final class Fxml2ResourceProcessingInstruction
         extends XmlProcessingInstructionImpl
@@ -36,18 +32,28 @@ public final class Fxml2ResourceProcessingInstruction
     private static final String DUMMY_FILE_NAME = "_fxml2_resource_update.fxml";
 
     /**
-     * Returns the scanned structure of this instruction, or {@code null} when it is not a resource
-     * declaration or carries no payload.
+     * Returns the parsed declaration of this instruction, or {@code null} when it is not a
+     * resource declaration at all.
+     *
+     * <p>Parsing this instruction is a common enough question that it is answered here rather than
+     * by every consumer importing the parser: injection, folding, and formatting all start from it.
      */
-    public @Nullable Fxml2ResourceInstruction resourceInstruction() {
+    public @Nullable Fxml2ResourceParseResult resourceDirective() {
         String text = getText();
-        Fxml2ResourceInstruction instruction = Fxml2ResourceScanner.scanAt(text, 0, text.length());
-        return instruction != null && instruction.hasPayload() ? instruction : null;
+        return Fxml2ResourceInstructionParser.parseAt(text, 0, text.length());
     }
 
+    /**
+     * Only a resource instruction that declares a named resource and writes the content separator
+     * is a valid host.  An import instruction, or a resource instruction that is still being typed,
+     * reports {@code false} so that nothing is injected into it.
+     */
     @Override
     public boolean isValidHost() {
-        return resourceInstruction() != null;
+        Fxml2ResourceParseResult directive = resourceDirective();
+        return directive != null
+                && directive.declaration().hasName()
+                && directive.declaration().hasContentSeparator();
     }
 
     /**

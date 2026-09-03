@@ -13,8 +13,6 @@ import com.intellij.psi.PsiLanguageInjectionHost;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
@@ -73,10 +71,9 @@ final class Fxml2ResourcePayloadFragment {
         int startInHost = manager.injectedToHost(file, 0) - host.getTextRange().getStartOffset();
         String hostText = host.getText();
 
-        if (host instanceof Fxml2ResourceProcessingInstruction) {
-            Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parseAt(hostText, 0, hostText.length());
-            Fxml2ResourceDeclaration declaration = result != null ? result.declaration() : null;
-            return declaration != null ? Fxml2ResourcePayloadLanguage.of(declaration) : null;
+        if (host instanceof Fxml2ResourceProcessingInstruction instruction) {
+            Fxml2ResourceParseResult directive = instruction.resourceDirective();
+            return directive != null ? Fxml2ResourcePayloadLanguage.of(directive.declaration()) : null;
         }
 
         Fxml2ResourceInjectionPlan plan =

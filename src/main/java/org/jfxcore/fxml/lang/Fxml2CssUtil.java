@@ -19,7 +19,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
-import org.jfxcore.fxml.resource.Fxml2ResourceName;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayload;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
@@ -154,10 +153,7 @@ public final class Fxml2CssUtil {
         Map<String, CssSelectorElement> byEntryPath = new LinkedHashMap<>();
         Map<String, Boolean> isSourceByKey = new LinkedHashMap<>();
 
-        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(fxmlFile).entries()) {
-            if (Fxml2ResourcePayloadLanguage.of(entry.declaration())
-                    != Fxml2ResourcePayloadLanguage.CSS) continue;
-
+        for (Fxml2ResourceEntry entry : cssResourcesOf(fxmlFile)) {
             TextRange contentRange = findSelectorRange(
                     entry.declaration().content(), className, cssTypeName);
             if (contentRange == null) continue;
@@ -168,7 +164,7 @@ public final class Fxml2CssUtil {
             String key = entry.declaringFile().getVirtualFile().getPath()
                     + "#" + entry.nameRange().getStartOffset();
             byEntryPath.put(key, new CssSelectorElement(
-                    entry.declaringFile(), sourceRange, className));
+                    entry.declaringFile(), sourceRange, className, entry.name()));
             isSourceByKey.put(key, true);
         }
 
@@ -219,10 +215,7 @@ public final class Fxml2CssUtil {
                                                                       @NotNull TextRange hostRange) {
         CssSelectorElement found = null;
 
-        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(fxmlFile).entries()) {
-            if (Fxml2ResourcePayloadLanguage.of(entry.declaration())
-                    != Fxml2ResourcePayloadLanguage.CSS) continue;
-
+        for (Fxml2ResourceEntry entry : cssResourcesOf(fxmlFile)) {
             Fxml2ResourcePayload payload = entry.declaration().payload();
             Matcher m = CLASS_SELECTOR_PATTERN.matcher(entry.declaration().content());
             while (m.find()) {
@@ -230,7 +223,8 @@ public final class Fxml2CssUtil {
                         payload.sourceSpanOf(m.start(), m.end(1)));
                 if (!selectorRange.intersects(hostRange)) continue;
                 if (found != null && !found.getName().equals(m.group(1))) return null;
-                found = new CssSelectorElement(entry.declaringFile(), selectorRange, m.group(1));
+                found = new CssSelectorElement(
+                        entry.declaringFile(), selectorRange, m.group(1), entry.name());
             }
         }
 
@@ -374,28 +368,17 @@ public final class Fxml2CssUtil {
         return selectorEnd;
     }
 
-    /**
-     * Returns the name of the embedded resource that {@code selector} is written in, or
-     * {@code null} when the selector is written in a {@code .css} file of its own.
-     */
-    public static @Nullable Fxml2ResourceName embeddedResourceNameOf(@NotNull CssSelectorElement selector) {
-        if (!(selector.getContainingFile() instanceof XmlFile xmlFile)) return null;
-
-        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(xmlFile).entries()) {
-            if (Fxml2ResourcePayloadLanguage.of(entry.declaration())
-                    != Fxml2ResourcePayloadLanguage.CSS) continue;
-
-            Fxml2ResourcePayload payload = entry.declaration().payload();
-            TextRange payloadRange = entry.fileRangeOf(
-                    payload.sourceSpanOf(0, entry.declaration().content().length()));
-            if (payloadRange.contains(selector.getTextRange())) return entry.name();
-        }
-        return null;
-    }
-
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
+
+    /** Returns the embedded resources of {@code fxmlFile} whose payload is a stylesheet. */
+    private static @NotNull List<Fxml2ResourceEntry> cssResourcesOf(@NotNull XmlFile fxmlFile) {
+        return Fxml2ResourceModel.of(fxmlFile).entries().stream()
+                .filter(entry -> Fxml2ResourcePayloadLanguage.of(entry.declaration())
+                        == Fxml2ResourcePayloadLanguage.CSS)
+                .toList();
+    }
 
 
     /**

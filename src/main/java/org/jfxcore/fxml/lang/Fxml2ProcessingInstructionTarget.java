@@ -27,36 +27,22 @@ import org.jetbrains.annotations.Nullable;
 public enum Fxml2ProcessingInstructionTarget {
 
     /** Declares a class or package to resolve tag names against. */
-    IMPORT("import", Placement.DOCUMENT_LEVEL, "getting-started/standalone.html"),
+    IMPORT("import", "getting-started/standalone.html"),
 
     /** Declares a markup extension prefix such as {@code %} or {@code @}. */
-    PREFIX("prefix", Placement.DOCUMENT_LEVEL, "markup-extension.html#prefix-declarations"),
+    PREFIX("prefix", "markup-extension.html#prefix-declarations"),
 
     /** Declares an embedded resource. */
-    RESOURCE("resource", Placement.ANYWHERE, "embedded-resource.html");
+    RESOURCE("resource", "embedded-resource.html");
 
     /** Base URL of the online language documentation. */
     private static final String DOCS_BASE_URL = "https://jfxcore.github.io/fxml-compiler/";
 
-
-    /** Where the language reads a processing instruction. */
-    public enum Placement {
-
-        /** Read only from the document's direct children. */
-        DOCUMENT_LEVEL,
-
-        /** Read wherever XML permits a processing instruction. */
-        ANYWHERE
-    }
-
     private final @NotNull String targetName;
-    private final @NotNull Placement placement;
     private final @NotNull String documentationPage;
 
-    Fxml2ProcessingInstructionTarget(
-            @NotNull String targetName, @NotNull Placement placement, @NotNull String documentationPage) {
+    Fxml2ProcessingInstructionTarget(@NotNull String targetName, @NotNull String documentationPage) {
         this.targetName = targetName;
-        this.placement = placement;
         this.documentationPage = documentationPage;
     }
 
@@ -71,11 +57,13 @@ public enum Fxml2ProcessingInstructionTarget {
     }
 
     /**
-     * Returns {@code true} when an instruction with this target is read at a position enclosed by
-     * {@code enclosingElement}, which is {@code null} for a direct child of the document.
+     * Returns {@code true} when an instruction with this target is read inside element content.
+     *
+     * <p>Only a resource declaration is: it is scoped to the whole document, while an import or
+     * prefix declaration is read only from the document's direct children.
      */
-    public boolean isReadInside(@Nullable XmlTag enclosingElement) {
-        return placement == Placement.ANYWHERE || enclosingElement == null;
+    public boolean canOccurInElement() {
+        return this == RESOURCE;
     }
 
     /** Returns the target named {@code targetName}, or {@code null} when the language has none. */

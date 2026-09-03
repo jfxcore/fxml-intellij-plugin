@@ -54,7 +54,7 @@ public final class Fxml2RemoveResourceDeclarationFix implements LocalQuickFix {
     private static @NotNull Fxml2TextSpan withOwnLine(@NotNull Fxml2ResourceEntry entry) {
         String text = entry.declaringFile().getText();
         int anchorStart = entry.anchor().getTextRange().getStartOffset();
-        Fxml2TextSpan instruction = entry.declaration().instruction().instruction().shifted(anchorStart);
+        Fxml2TextSpan instruction = entry.instructionSpan().shifted(anchorStart);
 
         int start = instruction.start();
         while (start > 0 && isHorizontalWhitespace(text.charAt(start - 1))) --start;

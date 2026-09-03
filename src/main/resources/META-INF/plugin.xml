@@ -691,7 +691,9 @@
         <!--
             Embedded resources: validate <?resource ?> declarations against the markup
             language's grammar, so that every diagnostic the compiler reports for a
-            declaration is also reported in the editor, on the same span.
+            declaration is also reported in the editor, on the same span.  Name collisions
+            between two declarations are part of that grammar check, because they are the
+            same kind of error about the same directive.
         -->
         <localInspection language="XML"
                          bundle="messages.Fxml2Bundle"
@@ -700,14 +702,6 @@
                          enabledByDefault="true"
                          level="ERROR"
                          implementationClass="org.jfxcore.fxml.annotator.Fxml2ResourceDeclarationInspection"/>
-
-        <localInspection language="XML"
-                         bundle="messages.Fxml2Bundle"
-                         key="inspection.duplicate.resource.display.name"
-                         groupKey="inspection.group.name"
-                         enabledByDefault="true"
-                         level="ERROR"
-                         implementationClass="org.jfxcore.fxml.annotator.Fxml2DuplicateResourceInspection"/>
 
         <!--
             Resource declarations may appear inside elements, so processing instructions in

@@ -16,11 +16,9 @@ import com.intellij.psi.codeStyle.modifier.CodeStyleSettingsModifier;
 import com.intellij.psi.codeStyle.modifier.TransientCodeStyleSettings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstruction;
 import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
+import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
-import org.jfxcore.fxml.resource.Fxml2ResourceScanner;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -109,12 +107,8 @@ public final class Fxml2EffectiveIndent {
         Map<Fxml2ResourcePayloadLanguage, Fxml2IndentStep> payloads =
                 new EnumMap<>(Fxml2ResourcePayloadLanguage.class);
 
-        for (Fxml2ResourceInstruction instruction : Fxml2ResourceScanner.scanAll(markup)) {
-            Fxml2ResourceDeclaration declaration =
-                    Fxml2ResourceInstructionParser.parse(markup, instruction).declaration();
-            if (declaration == null) continue;
-
-            payloads.computeIfAbsent(Fxml2ResourcePayloadLanguage.of(declaration),
+        for (Fxml2ResourceParseResult result : Fxml2ResourceInstructionParser.parseAll(markup)) {
+            payloads.computeIfAbsent(Fxml2ResourcePayloadLanguage.of(result.declaration()),
                                      language -> ofPayload(project, contextFile, language));
         }
 

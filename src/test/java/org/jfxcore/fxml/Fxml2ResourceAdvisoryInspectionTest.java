@@ -152,7 +152,7 @@ class Fxml2ResourceAdvisoryInspectionTest extends Fxml2TestBase {
         getFixture().launchAction(getFixture().findSingleIntention("Set media type to 'text/css'"));
 
         String text = ReadAction.compute(() -> getFixture().getFile().getText());
-        assertTrue(text.contains("<?resource styles.css text/css;charset=UTF-16LE:"),
+        assertTrue(text.contains("<?resource styles.css text/css; charset=UTF-16LE:"),
                 "the charset parameter survives: " + text);
     }
 

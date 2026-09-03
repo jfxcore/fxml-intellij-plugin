@@ -72,7 +72,7 @@ final class Fxml2ProcessingInstructionCompletion {
                 new PlainPrefixMatcher(text.substring(nameStart, caret), /* prefixMatchesOnly= */ true));
 
         for (Fxml2ProcessingInstructionTarget target : Fxml2ProcessingInstructionTarget.values()) {
-            if (!target.isReadInside(enclosingElement)) continue;
+            if (enclosingElement != null && !target.canOccurInElement()) continue;
 
             targets.addElement(LookupElementBuilder.create(target.targetName())
                     .withPresentableText("<?" + target.targetName() + " ?>")

@@ -28,8 +28,9 @@ import java.util.List;
  *
  * <p>Normalization is offset-preserving in the sense that every character of the result remembers
  * where it came from, so a diagnostic about a character in the content can be highlighted at its
- * position in the source.  {@link #reindent} performs the inverse operation, which is what lets
- * markup move between a standalone document and an annotation value without changing the resource.
+ * position in the source.  {@link Fxml2ResourcePayloadLayout#write} performs the inverse operation,
+ * which is what lets markup move between a standalone document and an annotation value without
+ * changing the resource.
  */
 public final class Fxml2ResourcePayloadNormalizer {
 
@@ -81,39 +82,6 @@ public final class Fxml2ResourcePayloadNormalizer {
         }
 
         return payload.toPayload();
-    }
-
-    /**
-     * Returns the longest leading run of spaces and tabs shared by every non-blank line, which is
-     * the indentation normalization removes.  Returns an empty string when there is none.
-     */
-    public static @NotNull String commonIndentOf(@NotNull String content) {
-        MappedText text = new MappedText(content, 0, content.length());
-        return commonIndentOf(text, splitLines(text));
-    }
-
-    /**
-     * Returns the raw payload text that lays {@code content} out at {@code indent}, that is, the
-     * text a declaration would carry between its colon and its {@code ?>} terminator.
-     *
-     * <p>Content that contains no line break is written on the declaration line unchanged, which
-     * preserves it exactly, leading and trailing spaces included.  Multi-line content is written
-     * one line per content line, each non-blank line prefixed with {@code indent}; blank lines
-     * stay blank so that reindenting never introduces trailing whitespace.
-     *
-     * <p>{@code normalize(reindent(content, indent))} is {@code content} for every indentation
-     * consisting of spaces and tabs, and for every content that {@link #normalize} can produce.
-     * Multi-line content whose lines all share a leading run of spaces or tabs is outside that
-     * set: such content is not expressible in a declaration at all, because normalization would
-     * strip the shared run again.
-     *
-     * @param content the resource content
-     * @param indent  the indentation to lay the content out at
-     */
-    public static @NotNull String reindent(@NotNull String content, @NotNull String indent) {
-        return content.indexOf('\n') < 0
-                ? content
-                : Fxml2ResourcePayloadLayout.ON_OWN_LINES.write(content, indent, indent);
     }
 
     // -----------------------------------------------------------------------

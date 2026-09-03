@@ -6,7 +6,6 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceName;
-import org.jfxcore.fxml.resource.Fxml2ResourceQuoting;
 
 /**
  * Replaces a resource name that is not a portable file name with the nearest one that is.
@@ -85,6 +84,6 @@ public final class Fxml2MakeResourceNamePortableFix implements LocalQuickFix {
 
         Fxml2ResourceDeclarationEditor.replace(project, entry,
                 entry.declaration().quotedNameSpan(),
-                Fxml2ResourceQuoting.required(portableName).write(portableName));
+                Fxml2ResourceName.write(portableName));
     }
 }

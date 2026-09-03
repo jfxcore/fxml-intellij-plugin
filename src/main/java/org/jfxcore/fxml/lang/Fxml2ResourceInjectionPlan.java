@@ -4,11 +4,9 @@ import com.intellij.lang.Language;
 import com.intellij.openapi.util.TextRange;
 import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstruction;
 import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
-import org.jfxcore.fxml.resource.Fxml2ResourceScanner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,19 +56,15 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
     public static @NotNull Fxml2ResourceInjectionPlan of(@NotNull String hostText, @NotNull TextRange valueRange) {
         List<Fxml2PayloadInjection> payloads = new ArrayList<>();
 
-        for (Fxml2ResourceInstruction instruction : Fxml2ResourceScanner.scanAll(hostText)) {
-            TextRange instructionRange = instruction.instruction().toTextRange();
-            if (!valueRange.contains(instructionRange)) continue;
+        for (Fxml2ResourceParseResult directive : Fxml2ResourceInstructionParser.parseAll(hostText)) {
+            if (!valueRange.contains(directive.instructionSpan().toTextRange())) continue;
 
-            if (!instruction.hasPayload()) {
-                // A declaration with no content separator cannot be split on; leave the
-                // document as one fragment rather than guessing where the payload would be.
+            Fxml2ResourceDeclaration declaration = directive.declaration();
+            if (!declaration.hasName()) {
+                // A declaration that cannot be read cannot be split on; leave the document as one
+                // fragment rather than guessing where the payload would be.
                 return single(valueRange);
             }
-
-            Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parse(hostText, instruction);
-            Fxml2ResourceDeclaration declaration = result.declaration();
-            if (declaration == null) return single(valueRange);
             if (declaration.payload().isEmpty()) continue;
 
             TextRange rawPayload = declaration.payloadSpan().toTextRange();

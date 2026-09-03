@@ -7,8 +7,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.resolve.Fxml2TextSpan;
 import org.jfxcore.fxml.resource.Fxml2MediaTypeParameter;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
+import org.jfxcore.fxml.resource.Fxml2ResourceMediaType;
 
-import java.util.stream.Collectors;
+import java.util.List;
 
 /**
  * Writes an explicit media type into a {@code <?resource ?>} declaration, replacing the declared
@@ -44,7 +45,7 @@ public final class Fxml2SetResourceMediaTypeFix implements LocalQuickFix {
                 Fxml2ResourceDeclarationEditor.findDeclaration(descriptor.getPsiElement(), declaredName);
         if (entry == null) return;
 
-        String replacement = mediaType + parametersOf(entry);
+        String replacement = replacementFor(entry);
 
         if (entry.declaration().hasExplicitMediaType()) {
             Fxml2ResourceDeclarationEditor.replace(
@@ -60,16 +61,20 @@ public final class Fxml2SetResourceMediaTypeFix implements LocalQuickFix {
                 " " + replacement);
     }
 
-    /** Returns the parameters of the declared media type, written back as declaration text. */
-    private static @NotNull String parametersOf(@NotNull Fxml2ResourceEntry entry) {
-        if (!entry.declaration().hasExplicitMediaType()) return "";
+    /**
+     * Returns the declaration text of the new media type, carrying over the parameters of the
+     * declared one.
+     *
+     * <p>The text is written by the media type itself, so that a parameter value needing quotes or
+     * escapes keeps them: a second serializer here would be a second set of escaping rules.
+     */
+    private @NotNull String replacementFor(@NotNull Fxml2ResourceEntry entry) {
+        List<Fxml2MediaTypeParameter> parameters = entry.declaration().hasExplicitMediaType()
+                ? entry.declaration().effectiveMediaType().parameters()
+                : List.of();
 
-        return entry.declaration().effectiveMediaType().parameters().stream()
-                .map(Fxml2SetResourceMediaTypeFix::writeParameter)
-                .collect(Collectors.joining());
-    }
-
-    private static @NotNull String writeParameter(@NotNull Fxml2MediaTypeParameter parameter) {
-        return ";" + parameter.name() + "=" + parameter.value();
+        int slash = mediaType.indexOf('/');
+        return new Fxml2ResourceMediaType(
+                mediaType.substring(0, slash), mediaType.substring(slash + 1), parameters).text();
     }
 }

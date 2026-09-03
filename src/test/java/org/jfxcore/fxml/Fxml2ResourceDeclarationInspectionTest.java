@@ -3,7 +3,6 @@
 
 package org.jfxcore.fxml;
 
-import org.jfxcore.fxml.annotator.Fxml2DuplicateResourceInspection;
 import org.jfxcore.fxml.annotator.Fxml2ProcessingInstructionPlacementInspection;
 import org.jfxcore.fxml.annotator.Fxml2ResourceDeclarationInspection;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +27,6 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
     void enableInspections() {
         getFixture().enableInspections(
                 new Fxml2ResourceDeclarationInspection(),
-                new Fxml2DuplicateResourceInspection(),
                 new Fxml2ProcessingInstructionPlacementInspection());
     }
 
@@ -53,6 +51,18 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
     void unportableNameIsReported() {
         configure("""
                 <?resource "<error descr="Invalid resource name 'sub/dir.css'">sub/dir.css</error>":body?>
+                """, "");
+        getFixture().checkHighlighting(false, false, true);
+    }
+
+    /**
+     * A declaration that names no resource is reported on the whole instruction, because the span
+     * the name would have occupied is empty and the platform cannot highlight nothing.
+     */
+    @Test
+    void missingNameIsReported() {
+        configure("""
+                <error descr="Missing resource name"><?resource ?></error>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
     }

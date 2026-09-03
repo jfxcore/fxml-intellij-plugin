@@ -14,10 +14,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import org.jfxcore.fxml.resource.Fxml2ResourceProblem;
-import org.jfxcore.fxml.resource.Fxml2ResourceProblemKind;
 
-import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -93,11 +90,5 @@ final class Fxml2ResourceInspectionSupport {
         holder.registerProblem(anchor, message, highlightType,
                 intersection == null || intersection.isEmpty() ? anchorRange : intersection,
                 fixes);
-    }
-
-    /** Returns the diagnostics of {@code entry} that are of one of {@code kinds}. */
-    static @NotNull List<Fxml2ResourceProblem> problemsOf(@NotNull Fxml2ResourceEntry entry,
-                                                          @NotNull Set<Fxml2ResourceProblemKind> kinds) {
-        return entry.problems().stream().filter(problem -> kinds.contains(problem.kind())).toList();
     }
 }

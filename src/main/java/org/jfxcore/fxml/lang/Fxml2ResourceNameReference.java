@@ -12,7 +12,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import org.jfxcore.fxml.resource.Fxml2ResourceName;
-import org.jfxcore.fxml.resource.Fxml2ResourceQuoting;
 
 import java.util.Objects;
 
@@ -64,8 +63,8 @@ public final class Fxml2ResourceNameReference extends PsiReferenceBase<XmlAttrib
     @Override
     public @NotNull PsiElement handleElementRename(@NotNull String newElementName)
             throws IncorrectOperationException {
-        String written = Fxml2ResourceQuoting.needsQuoting(newElementName)
-                ? Fxml2ResourceQuoting.SINGLE.write(newElementName)
+        String written = Fxml2ResourceName.needsQuoting(newElementName)
+                ? "'" + newElementName + "'"
                 : newElementName;
 
         return ElementManipulators.handleContentChange(getElement(), getRangeInElement(), written);

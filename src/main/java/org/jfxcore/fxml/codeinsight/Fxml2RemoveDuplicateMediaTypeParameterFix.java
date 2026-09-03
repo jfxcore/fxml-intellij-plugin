@@ -6,9 +6,9 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2TextSpan;
+import org.jfxcore.fxml.resource.Fxml2MediaTypeParameter;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceProblem;
-import org.jfxcore.fxml.resource.Fxml2ResourceProblemKind;
 
 /**
  * Removes the repeated occurrence of a media-type parameter that is declared more than once.
@@ -70,9 +70,9 @@ public final class Fxml2RemoveDuplicateMediaTypeParameterFix implements LocalQui
      */
     private @Nullable Fxml2TextSpan duplicateParameterSpan(@NotNull Fxml2ResourceEntry entry) {
         return entry.problems().stream()
-                .filter(problem -> problem.kind() == Fxml2ResourceProblemKind.DUPLICATE_MEDIA_TYPE_PARAMETER)
-                .filter(problem -> parameterName.equals(String.valueOf(problem.arguments().getFirst())))
-                .map(Fxml2ResourceProblem::span)
+                .map(Fxml2ResourceProblem::duplicateParameter)
+                .filter(parameter -> parameter != null && parameter.hasName(parameterName))
+                .map(Fxml2MediaTypeParameter::span)
                 .findFirst()
                 .orElse(null);
     }

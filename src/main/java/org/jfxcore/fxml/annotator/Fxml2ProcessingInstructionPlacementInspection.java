@@ -43,7 +43,8 @@ public final class Fxml2ProcessingInstructionPlacementInspection extends LocalIn
                 Fxml2ProcessingInstructionTarget target =
                         Fxml2ProcessingInstructionTarget.of(instruction);
                 if (target == null) return;
-                if (target.isReadInside(Fxml2ProcessingInstructionTarget.enclosingElement(instruction))) return;
+                if (target.canOccurInElement()) return;
+                if (Fxml2ProcessingInstructionTarget.enclosingElement(instruction) == null) return;
 
                 holder.registerProblem(
                         instruction,

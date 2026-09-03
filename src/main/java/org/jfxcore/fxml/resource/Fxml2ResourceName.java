@@ -6,7 +6,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * The name of an embedded resource, together with the quoting style it is written in.
+ * The name of an embedded resource.
  *
  * <p>A resource name is a single portable file name.  The portability rules are the ones the
  * markup language applies: a name may not be empty, may not be {@code .} or {@code ..}, may not
@@ -19,10 +19,13 @@ import java.util.Set;
  * the runtime derives the resource file name from the logical name verbatim, so a name that
  * differs in case or in interior whitespace would not resolve at runtime either.
  *
- * @param value   the logical name, without any quotes
- * @param quoting how the name is written in the declaration
+ * <p>Quoting is a property of the declaration text only and never becomes part of the logical
+ * name.  A name has to be quoted when it contains a character the unquoted form cannot express,
+ * which is any XML whitespace character or the content separator.
+ *
+ * @param value the logical name, without any quotes
  */
-public record Fxml2ResourceName(@NotNull String value, @NotNull Fxml2ResourceQuoting quoting) {
+public record Fxml2ResourceName(@NotNull String value) {
 
     private static final Set<String> RESERVED_DEVICE_NAMES = Set.of(
             "CON", "PRN", "AUX", "NUL",
@@ -32,9 +35,24 @@ public record Fxml2ResourceName(@NotNull String value, @NotNull Fxml2ResourceQuo
     /** The characters that are not portable in a file name. */
     private static final String ILLEGAL_CHARACTERS = "/\\:*?\"<>|";
 
-    /** Returns the name {@code value} written in the least intrusive quoting style that fits it. */
-    public static @NotNull Fxml2ResourceName of(@NotNull String value) {
-        return new Fxml2ResourceName(value, Fxml2ResourceQuoting.required(value));
+    /** Returns {@code name} written in the least intrusive spelling a declaration accepts. */
+    public static @NotNull String write(@NotNull String name) {
+        if (!needsQuoting(name)) return name;
+        char quote = name.indexOf('"') < 0 ? '"' : '\'';
+        return quote + name + quote;
+    }
+
+    /**
+     * Returns {@code true} when {@code name} cannot be written without quotes, which is the case
+     * for an empty name and for any name containing XML whitespace or the content separator.
+     */
+    public static boolean needsQuoting(@NotNull String name) {
+        if (name.isEmpty()) return true;
+        for (int i = 0; i < name.length(); ++i) {
+            char ch = name.charAt(i);
+            if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == ':') return true;
+        }
+        return false;
     }
 
     /** Returns {@code true} when {@code value} satisfies every portability rule for a resource name. */
@@ -78,8 +96,8 @@ public record Fxml2ResourceName(@NotNull String value, @NotNull Fxml2ResourceQuo
         return value.equals(reference);
     }
 
-    /** Returns the declaration text of this name, including quotes when its quoting style needs them. */
+    /** Returns the declaration text of this name, including quotes when it needs them. */
     public @NotNull String text() {
-        return quoting.write(value);
+        return write(value);
     }
 }
