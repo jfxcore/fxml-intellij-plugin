@@ -91,13 +91,4 @@ public record Fxml2ResourceName(@NotNull String value) {
                 : value.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
-    /** Returns {@code true} when this name resolves a reference written as {@code reference}. */
-    public boolean matches(@NotNull String reference) {
-        return value.equals(reference);
-    }
-
-    /** Returns the declaration text of this name, including quotes when it needs them. */
-    public @NotNull String text() {
-        return write(value);
-    }
 }

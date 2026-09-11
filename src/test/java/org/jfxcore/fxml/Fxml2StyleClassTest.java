@@ -22,8 +22,11 @@ import org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2StyleClassReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import com.intellij.usageView.UsageInfo;
 
@@ -64,16 +67,8 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
             """;
 
     @BeforeAll
-    void addMarkupAnnotation() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+    void addTestClasses() {
+        installComponentViewAnnotation();
     }
 
     @BeforeEach
@@ -100,41 +95,18 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         assertEquals("mystyle1", ((CssSelectorElement) resolved).getName());
     }
 
-    @Test
-    void styleClassResolvesToSelectorInStandaloneEmbeddedResource() {
-        getFixture().configureByText("TestView.fxml", fxml(
-                "javafx.scene.control.Label",
-                """
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void styleClassResolvesToSelectorInEmbeddedResource(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
+                <?import javafx.scene.control.Label?>
+                """, """
                   <?resource styles.css text/css:
                       .local-style {
                         -fx-font-size: 16px;
                       }
                   ?>
                   <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
-                """
-        ));
-
-        CssSelectorElement selector = assertInstanceOf(
-                CssSelectorElement.class, resolveStyleClassAtCaret());
-        assertNotNull(selector);
-        assertEquals("local-style", selector.getName());
-        assertEquals(".local-style", selector.getContainingFile().getText().substring(
-                selector.getTextRange().getStartOffset(), selector.getTextRange().getEndOffset()));
-    }
-
-    @Test
-    void styleClassResolvesToSelectorInComponentViewEmbeddedResource() {
-        getFixture().configureByText("TestView.java", """
-                package test;
-                import org.jfxcore.markup.ComponentView;
-                import javafx.scene.control.Label;
-                @ComponentView(\"""
-                    <?resource styles.css text/css:
-                        .local-style { -fx-font-size: 16px; }
-                    ?>
-                    <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
-                    \""")
-                public class TestView extends Label {}
                 """);
 
         CssSelectorElement selector = assertInstanceOf(
@@ -459,19 +431,30 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
      * payload must find the {@code styleClass} usage in the same document.  The selector is
      * the declaration site, so its use sites are what navigation from it has to produce.
      */
-    @Test
-    void findUsagesFromEmbeddedResourceSelectorFindsStyleClassUsage() {
-        getFixture().configureByText("TestView.fxml", fxml(
-                "javafx.scene.control.Label",
-                """
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = "STANDALONE")
+    void findUsagesFromEmbeddedResourceSelectorFindsStyleClassUsage(Fxml2DocumentForm form) {
+        assertFindUsagesFromEmbeddedResourceSelector(form);
+    }
+
+    @Disabled("CSS payload selectors in component views must be recognized as Find Usages targets")
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void findUsagesFromComponentViewResourceSelectorFindsStyleClassUsage(Fxml2DocumentForm form) {
+        assertFindUsagesFromEmbeddedResourceSelector(form);
+    }
+
+    private void assertFindUsagesFromEmbeddedResourceSelector(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
+                <?import javafx.scene.control.Label?>
+                """, """
                   <?resource styles.css text/css:
                       .local-style {
                         -fx-font-size: 16px;
                       }
                   ?>
                   <Label styleClass="local-style" stylesheets="@styles.css"/>
-                """
-        ));
+                """);
 
         PsiElement selectorElement = injectedElementAtLocalStyleSelector();
         assertNotNull(selectorElement, "Expected an injected payload element at the selector");

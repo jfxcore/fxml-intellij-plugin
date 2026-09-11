@@ -38,11 +38,6 @@ public final class Fxml2ResourceDeclarationElement extends FakePsiElement implem
         this.name = entry.name().value();
     }
 
-    /** Returns {@code true} when this element is the declaration site of {@code entry}. */
-    public boolean declares(@NotNull Fxml2ResourceEntry entry) {
-        return name.equals(entry.name().value()) && file.equals(entry.declaringFile());
-    }
-
     @Override
     public @NotNull PsiElement getParent() {
         return file;

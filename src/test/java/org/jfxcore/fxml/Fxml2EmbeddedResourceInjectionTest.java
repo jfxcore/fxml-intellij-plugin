@@ -3,15 +3,12 @@
 
 package org.jfxcore.fxml;
 
-import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiLanguageInjectionHost;
-import com.intellij.psi.PsiLiteralExpression;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
@@ -26,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -47,17 +43,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
 
+    private static final Fxml2DocumentForm FORM = Fxml2DocumentForm.JAVA;
+
     @BeforeAll
-    void addMarkupAnnotation() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+    void addTestClasses() {
+        installComponentViewAnnotation();
     }
 
     /** One resource declaration produces two fragments: the markup and the payload. */
@@ -83,7 +73,7 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
                 <BorderPane/>
                 """);
 
-        String markup = markupFragment().getText();
+        String markup = ReadAction.compute(() -> FORM.markupFile(getFixture()).getText());
         assertTrue(markup.contains("<?resource styles.css text/css:") && markup.contains("?>"),
                 "the payload is carved out of the markup fragment, leaving a well-formed instruction: " + markup);
         assertFalse(markup.contains("-fx-font-size"), "the payload text is not part of the markup fragment");
@@ -97,9 +87,11 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
                 <BorderPane/>
                 """);
 
-        PsiFile payload = payloadFragment();
-        assertEquals("{\"key\": 1}", payload.getText());
-        assertSame(Fxml2ResourcePayloadLanguage.JSON.languageOrPlainText(), payload.getLanguage());
+        ReadAction.run(() -> {
+            PsiFile payload = FORM.payloadFile(getFixture());
+            assertEquals("{\"key\": 1}", payload.getText());
+            assertSame(Fxml2ResourcePayloadLanguage.JSON.languageOrPlainText(), payload.getLanguage());
+        });
     }
 
     /** Complete payload lines belong to the payload fragment, including their layout whitespace. */
@@ -119,8 +111,7 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
                 .findFirst()
                 .orElseThrow());
         ReadAction.run(() -> {
-            PsiLanguageInjectionHost host = findHost();
-            assertNotNull(host);
+            PsiLanguageInjectionHost host = FORM.host(getFixture());
             assertEquals("            {\n                \"key\": 1\n            }\n",
                     payload.getSecond().substring(host.getText()));
         });
@@ -156,7 +147,8 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
                 </BorderPane>
                 """);
 
-        assertEquals("{\"nested\": true}", payloadFragment().getText());
+        assertEquals("{\"nested\": true}",
+                ReadAction.compute(() -> FORM.payloadFile(getFixture()).getText()));
     }
 
     /** A declaration with no content separator leaves the markup as one fragment. */
@@ -188,7 +180,7 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
                 <BorderPane/>
                 """);
 
-        var entries = ReadAction.compute(() -> Fxml2ResourceModel.of((XmlFile)markupFragment()).entries());
+        var entries = ReadAction.compute(() -> Fxml2ResourceModel.of(FORM.markupFile(getFixture())).entries());
 
         assertEquals(1, entries.size());
         assertEquals("styles.css", entries.getFirst().name().value());
@@ -225,39 +217,7 @@ class Fxml2EmbeddedResourceInjectionTest extends Fxml2TestBase {
                 .count());
     }
 
-    private PsiFile markupFragment() {
-        return ReadAction.compute(() -> injectedFragments().stream()
-                .map(fragment -> (PsiFile)fragment.getFirst())
-                .filter(XmlFile.class::isInstance)
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("no markup fragment was injected")));
-    }
-
-    private PsiFile payloadFragment() {
-        return ReadAction.compute(() -> injectedFragments().stream()
-                .map(fragment -> (PsiFile)fragment.getFirst())
-                .filter(fragment -> !(fragment instanceof XmlFile))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("no payload fragment was injected")));
-    }
-
     private List<Pair<PsiElement, TextRange>> injectedFragments() {
-        return ReadAction.compute(() -> {
-            PsiLanguageInjectionHost host = findHost();
-            assertNotNull(host, "the annotation value is an injection host");
-
-            List<Pair<PsiElement, TextRange>> injected =
-                    InjectedLanguageManager.getInstance(host.getProject()).getInjectedPsiFiles(host);
-            assertNotNull(injected, "markup is injected into the annotation value");
-            return injected;
-        });
-    }
-
-    private PsiLanguageInjectionHost findHost() {
-        return PsiTreeUtil.findChildrenOfType(getFixture().getFile(), PsiLiteralExpression.class).stream()
-                .map(PsiLanguageInjectionHost.class::cast)
-                .filter(PsiLanguageInjectionHost::isValidHost)
-                .findFirst()
-                .orElse(null);
+        return FORM.injectedFragments(getFixture());
     }
 }

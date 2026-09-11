@@ -136,8 +136,4 @@ public enum Fxml2ResourcePayloadLanguage {
         return language != null ? language : PlainTextLanguage.INSTANCE;
     }
 
-    /** Returns {@code true} when this IDE can edit a payload in this language. */
-    public boolean isAvailable() {
-        return language() != null;
-    }
 }

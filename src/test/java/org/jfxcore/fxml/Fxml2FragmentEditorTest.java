@@ -63,16 +63,8 @@ class Fxml2FragmentEditorTest extends Fxml2TestBase {
     private Disposable ruleDisposable;
 
     @BeforeAll
-    void addMarkupAnnotation() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+    void addTestClasses() {
+        installComponentViewAnnotation();
     }
 
     /**

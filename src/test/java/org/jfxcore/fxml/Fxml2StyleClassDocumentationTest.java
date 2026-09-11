@@ -24,16 +24,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class Fxml2StyleClassDocumentationTest extends Fxml2TestBase {
 
     @BeforeAll
-    void addMarkupAnnotation() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+    void addTestClasses() {
+        installComponentViewAnnotation();
     }
 
     /** Returns the documentation HTML shown at the caret, or {@code null} when there is none. */
