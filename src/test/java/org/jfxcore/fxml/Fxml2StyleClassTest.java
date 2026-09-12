@@ -1,8 +1,6 @@
 package org.jfxcore.fxml;
 
 import com.intellij.codeInsight.navigation.impl.GTDActionData;
-import com.intellij.find.findUsages.FindUsagesHandler;
-import com.intellij.find.findUsages.FindUsagesOptions;
 import com.intellij.codeInsight.navigation.impl.NavigationActionResult;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.util.TextRange;
@@ -18,7 +16,6 @@ import com.intellij.psi.xml.XmlAttributeValue;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.annotator.Fxml2StyleClassInspection;
 import org.jfxcore.fxml.lang.CssSelectorElement;
-import org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2StyleClassReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +26,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import com.intellij.usageView.UsageInfo;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -457,22 +453,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         PsiElement selectorElement = injectedElementAtLocalStyleSelector();
         assertNotNull(selectorElement, "Expected an injected payload element at the selector");
 
-        Fxml2StyleClassFindUsagesHandlerFactory factory = new Fxml2StyleClassFindUsagesHandlerFactory();
-        FindUsagesHandler handler = ReadAction.compute(
-                () -> factory.createFindUsagesHandler(selectorElement, false));
-        assertNotNull(handler, "Expected the embedded selector to start Find Usages");
-
-        List<UsageInfo> usages = new ArrayList<>();
-        ReadAction.run(() -> {
-            FindUsagesOptions options = handler.getFindUsagesOptions();
-            options.searchScope = GlobalSearchScope.projectScope(getFixture().getProject());
-            for (PsiElement primary : handler.getPrimaryElements()) {
-                handler.processElementUsages(primary, usage -> {
-                    usages.add(usage);
-                    return true;
-                }, options);
-            }
-        });
+        Collection<UsageInfo> usages = ReadAction.compute(() -> getFixture().findUsages(selectorElement));
 
         assertTrue(ReadAction.compute(() -> usages.stream().anyMatch(usage ->
                         usage.getReference() instanceof Fxml2StyleClassReference)),
@@ -529,22 +510,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         PsiElement selectorElement = injectedElementAtLocalStyleSelector();
         assertNotNull(selectorElement, "Expected an injected payload element at the selector");
 
-        Fxml2StyleClassFindUsagesHandlerFactory factory = new Fxml2StyleClassFindUsagesHandlerFactory();
-        assertTrue(ReadAction.compute(() -> factory.canFindUsages(selectorElement)),
-                "The embedded selector must be a Find Usages target");
-
-        FindUsagesHandler handler = ReadAction.compute(
-                () -> factory.createFindUsagesHandler(selectorElement, /* forHighlightUsages= */ false));
-        assertNotNull(handler);
-
-        List<UsageInfo> usages = new ArrayList<>();
-        ReadAction.run(() -> {
-            FindUsagesOptions options = handler.getFindUsagesOptions();
-            options.searchScope = GlobalSearchScope.projectScope(getFixture().getProject());
-            for (PsiElement primary : handler.getPrimaryElements()) {
-                handler.processElementUsages(primary, usage -> { usages.add(usage); return true; }, options);
-            }
-        });
+        Collection<UsageInfo> usages = ReadAction.compute(() -> getFixture().findUsages(selectorElement));
 
         List<Integer> offsets = ReadAction.compute(() -> usages.stream()
                 .map(UsageInfo::getNavigationOffset).toList());
