@@ -4,8 +4,12 @@
 package org.jfxcore.fxml;
 
 import com.intellij.application.options.CodeStyle;
+import com.intellij.lang.Language;
 import com.intellij.lang.xml.XMLLanguage;
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +18,7 @@ import org.junit.jupiter.api.Timeout;
 
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -26,17 +31,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
 
+    private Disposable directoryRule;
+
     @BeforeAll
     void addMarkupAnnotation() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+        installComponentViewAnnotation();
     }
 
     /** Set XML indent to 2 and ensure Java indent stays at the default 4. */
@@ -48,6 +47,14 @@ class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
             xmlOpts.INDENT_SIZE = 2;
         }
         // Java indent size is left at its default value of 4.
+    }
+
+    @AfterEach
+    void removeDirectoryRule() {
+        if (directoryRule != null) {
+            Disposer.dispose(directoryRule);
+            directoryRule = null;
+        }
     }
 
     /**
@@ -92,7 +99,7 @@ class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
         // Inspect the resulting document text.
         String text = getFixture().getEditor().getDocument().getText();
 
-        // With Fxml2EmbeddedIndentOptionsProvider in place the caret line must now
+        // With the shared fragment indent provider in place the caret line must now
         // contain exactly 2 spaces (XML indent=2).
         // Without the fix TabAction would use JavaFileType's indent (4 spaces).
         boolean hasTwoSpaceIndent  = text.contains("\n  \n");
@@ -104,6 +111,35 @@ class Fxml2EmbeddedIndentOptionsTest extends Fxml2TestBase {
                         ? "4 spaces were inserted instead - the Java indent was used.\n"
                         : "") +
                 "Document text:\n" + text);
+    }
+
+    /** Tab inside a payload uses the payload language's indentation step. */
+    @Test
+    void tabInEmbeddedPayloadUsesPayloadIndent() {
+        Language json = Language.findLanguageByID("JSON");
+        assertNotNull(json);
+        var jsonOptions = CodeStyle.getSettings(getFixture().getProject())
+                .getCommonSettings(json).getIndentOptions();
+        assertNotNull(jsonOptions);
+        jsonOptions.INDENT_SIZE = 4;
+        directoryRule = Fxml2DirectoryCodeStyleRule.install(3, java.util.List.of(json));
+
+        getFixture().configureByText("TestView.java", """
+                package test;
+                import org.jfxcore.markup.ComponentView;
+                @ComponentView(\"""
+                    <?resource data.json application/json:
+                <caret>{}
+                    ?>
+                    <BorderPane/>
+                \""")
+                public class TestView {}
+                """);
+
+        getFixture().doHighlighting();
+        getFixture().performEditorAction("EditorTab");
+
+        assertTrue(getFixture().getEditor().getDocument().getText().contains("\n   {}\n"));
     }
 
     /**

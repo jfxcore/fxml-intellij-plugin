@@ -7,7 +7,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.search.FilenameIndex;
@@ -245,22 +244,17 @@ public final class Fxml2CssUtil {
     public static @Nullable CssSelectorElement embeddedSelectorAt(@NotNull PsiElement element) {
         PsiFile injectedFile = element.getContainingFile();
         if (injectedFile == null) return null;
-
-        // The host of the fragment identifies it before the element itself is read, so that an
-        // element of an ordinary file is rejected without loading its syntax tree.
-        InjectedLanguageManager injectedLanguageManager =
-                InjectedLanguageManager.getInstance(element.getProject());
-        if (!injectedLanguageManager.isInjectedFragment(injectedFile)) return null;
-
-        PsiLanguageInjectionHost host = injectedLanguageManager.getInjectionHost(injectedFile);
-        if (!(host instanceof Fxml2ResourceProcessingInstruction)) return null;
-        if (!(host.getContainingFile() instanceof XmlFile xmlFile)) return null;
+        if (!InjectedLanguageManager.getInstance(element.getProject())
+                .isInjectedFragment(injectedFile)) return null;
 
         TextRange elementRange = element.getTextRange();
         if (elementRange == null) return null;
+        Fxml2ResourcePayloadContext context = Fxml2ResourcePayloadContext.find(
+                injectedFile, elementRange.getStartOffset());
+        if (context == null) return null;
 
         return findEmbeddedSelectorAt(
-                xmlFile, injectedLanguageManager.injectedToHost(element, elementRange));
+                context.markupFile(), context.toHostRange(injectedFile, elementRange));
     }
 
     /**

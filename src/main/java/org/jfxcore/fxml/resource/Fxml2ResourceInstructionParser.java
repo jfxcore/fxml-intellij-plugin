@@ -92,6 +92,30 @@ public final class Fxml2ResourceInstructionParser {
         return results;
     }
 
+    /**
+     * Parses the resource instruction containing {@code offset}, including an instruction whose
+     * terminator has not been typed yet.
+     */
+    public static @Nullable Fxml2ResourceParseResult parseContaining(@NotNull String source, int offset) {
+        int cursor = 0;
+        while (cursor <= offset) {
+            int start = source.indexOf(INSTRUCTION_START, cursor);
+            if (start < 0 || start > offset) return null;
+
+            int terminator = source.indexOf(INSTRUCTION_END, start + INSTRUCTION_START.length());
+            if (terminator >= 0) {
+                int end = terminator + INSTRUCTION_END.length();
+                if (offset <= end) return parseAt(source, start, end);
+                cursor = end;
+                continue;
+            }
+
+            String completed = source + INSTRUCTION_END;
+            return parseAt(completed, start, completed.length());
+        }
+        return null;
+    }
+
     // -----------------------------------------------------------------------
     // Scanning
     // -----------------------------------------------------------------------

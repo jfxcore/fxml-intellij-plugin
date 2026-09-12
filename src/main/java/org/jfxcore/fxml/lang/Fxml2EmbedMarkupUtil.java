@@ -414,21 +414,6 @@ public final class Fxml2EmbedMarkupUtil {
     }
 
     /**
-     * Returns the effective XML indent size for FXML files in the directory of
-     * {@code hostVirtualFile}, which is the step markup nests in there.
-     *
-     * @param project         the current project
-     * @param hostVirtualFile the {@code .java} / {@code .kt} file that owns the
-     *                        {@code @ComponentView} annotation; may be {@code null}
-     * @return the resolved XML indent size (positive integer, typically 2 or 4)
-     */
-    static int getEffectiveXmlIndentSize(
-            @NotNull Project project, @Nullable VirtualFile hostVirtualFile) {
-
-        return Fxml2EffectiveIndent.ofMarkup(project, hostVirtualFile).width();
-    }
-
-    /**
      * Returns the leading-space count of the first non-blank line that represents the
      * root XML element, skipping processing instructions and XML comments.
      *

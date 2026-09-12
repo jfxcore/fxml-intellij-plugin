@@ -48,7 +48,7 @@ public final class Fxml2ResourcePayloadFormattingService implements FormattingSe
 
     @Override
     public boolean canFormat(@NotNull PsiFile file) {
-        return Fxml2ResourcePayloadFragment.isPayloadFragment(file);
+        return Fxml2ResourcePayloadMarker.of(file) != null;
     }
 
     @Override
@@ -81,7 +81,10 @@ public final class Fxml2ResourcePayloadFormattingService implements FormattingSe
     /** Reformats the file {@code fragment} is injected into, which is where the declaration is. */
     private static void formatDocumentOf(@NotNull PsiFile fragment) {
         Project project = fragment.getProject();
-        PsiFile hostFile = InjectedLanguageManager.getInstance(project).getTopLevelFile(fragment);
+        Fxml2ResourcePayloadContext context = Fxml2ResourcePayloadContext.find(fragment, 0);
+        PsiFile hostFile = context != null
+                ? context.topLevelFile()
+                : InjectedLanguageManager.getInstance(project).getTopLevelFile(fragment);
         if (hostFile == fragment) return;
 
         CodeStyleManager.getInstance(project).reformatText(hostFile, 0, hostFile.getTextLength());

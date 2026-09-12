@@ -53,10 +53,8 @@ final class Fxml2EmbeddedMarkupInjection {
         }
         registrar.doneInjecting();
 
-        for (Fxml2ResourceInjectionPlan.Fxml2PayloadInjection payload : plan.payloads()) {
-            registrar.startInjecting(payload.language())
-                    .addPlace(payload.prefix(), payload.suffix(), host, payload.range())
-                    .doneInjecting();
+        for (Fxml2ResourcePayloadInjection payload : plan.payloads()) {
+            payload.inject(registrar, host);
         }
     }
 }

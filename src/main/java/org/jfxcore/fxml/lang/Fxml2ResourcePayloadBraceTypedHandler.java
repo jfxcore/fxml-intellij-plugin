@@ -11,7 +11,6 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.highlighter.HighlighterIterator;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -87,7 +86,10 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
 
     private static PayloadEditorContext payloadContext(@NotNull Editor editor, @NotNull PsiFile file) {
         int closingOffset = editor.getCaretModel().getOffset() - 1;
-        if (Fxml2ResourcePayloadFragment.isPayloadFragment(file)) {
+        Fxml2ResourcePayloadContext payload = Fxml2ResourcePayloadContext.find(file, closingOffset);
+        if (payload == null) return null;
+
+        if (payload.isPayloadFile(file)) {
             if (editor instanceof EditorWindow window) {
                 return new PayloadEditorContext(file, editor, window.getDocument().getDelegate(), closingOffset,
                         true, window.getDocument());
@@ -96,16 +98,10 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
             return new PayloadEditorContext(file, editor, editor.getDocument(), closingOffset, true, null);
         }
 
-        if (!(editor instanceof EditorWindow window) || !Fxml2EmbeddedUtil.isEmbeddedFxml2(file)) {
-            return null;
-        }
+        if (!(editor instanceof EditorWindow window)) return null;
 
         Editor hostEditor = window.getDelegate();
         int hostClosingOffset = hostEditor.getCaretModel().getOffset() - 1;
-        String prefix = hostEditor.getDocument().getText(new TextRange(0, hostClosingOffset));
-        int declarationStart = prefix.lastIndexOf("<?resource");
-        if (declarationStart < 0 || prefix.lastIndexOf("?>") >= declarationStart) return null;
-
         return new PayloadEditorContext(
                 file, hostEditor, hostEditor.getDocument(), hostClosingOffset, false, null);
     }

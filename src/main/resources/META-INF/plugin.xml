@@ -139,7 +139,8 @@
             belongs to is written in.
         -->
         <fileIndentOptionsProvider
-                implementation="org.jfxcore.fxml.lang.Fxml2FragmentIndentOptionsProvider"/>
+                implementation="org.jfxcore.fxml.lang.Fxml2FragmentIndentOptionsProvider"
+                order="first"/>
 
         <!--
             InjectedFileChangesHandlerProvider: what a fragment editor ("Edit CSS fragment" and
@@ -183,23 +184,19 @@
         <!--
             Tab / Shift+Tab / Enter indent handlers for embedded FXML markup.
 
-            All three are implemented as nested classes of Fxml2EmbeddedIndentHandlers so
-            that the shared logic (detecting the FXML injection context, resolving the XML
-            indent size) lives in one place.
-
             IndentOptionsProvider (Tab):
               TabAction has setInjectedContext(true), so it runs in the injected editor
               and calls CodeStyleSettings.getIndentOptionsByDocument() on the injected
               DocumentWindow.  The injected VirtualFileWindow has getParent() == null, so
               EditorConfig's built-in provider cannot locate the .editorconfig hierarchy.
-              This provider intercepts the lookup for Fxml2EmbeddedXmlLanguage files and
-              returns correctly resolved XML indent options.
+              The shared fragment indent provider intercepts this lookup for markup and
+              resource payload fragments and returns their effective indent options.
 
             UnindentHandler (Shift+Tab):
               UnindentSelectionAction does NOT set setInjectedContext(true), so it always
               runs against the host editor and uses the Java indent size.  This handler
               detects when the caret is inside an embedded FXML fragment and applies
-              Fxml2EmbedMarkupUtil.getEffectiveXmlIndentSize() as the unindent step,
+              the effective markup indent as the unindent step,
               matching Tab and Ctrl+Alt+L formatting.
 
             EnterHandler (Enter):
@@ -212,9 +209,6 @@
               This handler intercepts Enter between XML tag attributes and directly inserts
               the correct "\n" + spaces alignment.
         -->
-        <fileIndentOptionsProvider
-                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers$IndentOptionsProvider"
-                order="first"/>
         <editorActionHandler
                 action="EditorUnindentSelection"
                 implementationClass="org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers$UnindentHandler"

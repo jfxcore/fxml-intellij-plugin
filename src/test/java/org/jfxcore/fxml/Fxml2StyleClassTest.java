@@ -22,7 +22,6 @@ import org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2StyleClassReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -437,7 +436,6 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         assertFindUsagesFromEmbeddedResourceSelector(form);
     }
 
-    @Disabled("CSS payload selectors in component views must be recognized as Find Usages targets")
     @ParameterizedTest
     @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
     void findUsagesFromComponentViewResourceSelectorFindsStyleClassUsage(Fxml2DocumentForm form) {
@@ -459,14 +457,26 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         PsiElement selectorElement = injectedElementAtLocalStyleSelector();
         assertNotNull(selectorElement, "Expected an injected payload element at the selector");
 
-        Collection<PsiReference> refs = ReadAction.compute(() ->
-                ReferencesSearch.search(selectorElement,
-                        GlobalSearchScope.projectScope(getFixture().getProject())).findAll());
+        Fxml2StyleClassFindUsagesHandlerFactory factory = new Fxml2StyleClassFindUsagesHandlerFactory();
+        FindUsagesHandler handler = ReadAction.compute(
+                () -> factory.createFindUsagesHandler(selectorElement, false));
+        assertNotNull(handler, "Expected the embedded selector to start Find Usages");
 
-        assertTrue(refs.stream().anyMatch(r -> r instanceof Fxml2StyleClassReference),
-                "Expected the styleClass usage in Find Usages results. Found "
-                + refs.size() + " refs of types: "
-                + refs.stream().map(r -> r.getClass().getSimpleName()).toList());
+        List<UsageInfo> usages = new ArrayList<>();
+        ReadAction.run(() -> {
+            FindUsagesOptions options = handler.getFindUsagesOptions();
+            options.searchScope = GlobalSearchScope.projectScope(getFixture().getProject());
+            for (PsiElement primary : handler.getPrimaryElements()) {
+                handler.processElementUsages(primary, usage -> {
+                    usages.add(usage);
+                    return true;
+                }, options);
+            }
+        });
+
+        assertTrue(ReadAction.compute(() -> usages.stream().anyMatch(usage ->
+                        usage.getReference() instanceof Fxml2StyleClassReference)),
+                "Expected the styleClass usage in Find Usages results: " + usages.size());
     }
 
     /**

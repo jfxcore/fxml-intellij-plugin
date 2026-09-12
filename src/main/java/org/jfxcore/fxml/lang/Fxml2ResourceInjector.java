@@ -1,14 +1,11 @@
 package org.jfxcore.fxml.lang;
 
-import com.intellij.lang.Language;
 import com.intellij.lang.injection.MultiHostInjector;
 import com.intellij.lang.injection.MultiHostRegistrar;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
-import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
 import java.util.List;
 
@@ -45,14 +42,6 @@ public final class Fxml2ResourceInjector implements MultiHostInjector {
         Fxml2ResourceDeclaration declaration = directive.declaration();
         if (declaration.payload().isEmpty()) return;
 
-        Language language = Fxml2ResourcePayloadLanguage.of(declaration).languageOrPlainText();
-        TextRange rawPayload = declaration.payloadSpan().toTextRange();
-        TextRange payload = declaration.injectionSpan(text).toTextRange();
-        String prefix = text.substring(rawPayload.getStartOffset(), payload.getStartOffset());
-        String suffix = text.substring(payload.getEndOffset(), rawPayload.getEndOffset());
-
-        registrar.startInjecting(language)
-                .addPlace(prefix, suffix, instruction, payload)
-                .doneInjecting();
+        Fxml2ResourcePayloadInjection.of(text, declaration).inject(registrar, instruction);
     }
 }

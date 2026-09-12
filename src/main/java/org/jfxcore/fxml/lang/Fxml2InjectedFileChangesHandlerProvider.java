@@ -64,6 +64,6 @@ public final class Fxml2InjectedFileChangesHandlerProvider implements InjectedFi
     /** Returns whether {@code injectedFile} is a fragment this plugin injects. */
     private static boolean isFxml2Fragment(@NotNull PsiFile injectedFile) {
         return Fxml2EmbeddedUtil.isEmbeddedFxml2(injectedFile)
-                || Fxml2ResourcePayloadFragment.isPayloadFragment(injectedFile);
+                || Fxml2ResourcePayloadMarker.of(injectedFile) != null;
     }
 }

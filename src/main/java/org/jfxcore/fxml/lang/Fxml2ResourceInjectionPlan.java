@@ -1,12 +1,10 @@
 package org.jfxcore.fxml.lang;
 
-import com.intellij.lang.Language;
 import com.intellij.openapi.util.TextRange;
 import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
 import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
-import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +38,7 @@ import java.util.List;
  * @param payloads     the payload fragments to inject, in order
  */
 public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
-                                         @NotNull List<Fxml2PayloadInjection> payloads) {
+                                         @NotNull List<Fxml2ResourcePayloadInjection> payloads) {
 
     public Fxml2ResourceInjectionPlan {
         markupRanges = List.copyOf(markupRanges);
@@ -54,7 +52,7 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
      * @param valueRange the range of {@code hostText} that holds the markup
      */
     public static @NotNull Fxml2ResourceInjectionPlan of(@NotNull String hostText, @NotNull TextRange valueRange) {
-        List<Fxml2PayloadInjection> payloads = new ArrayList<>();
+        List<Fxml2ResourcePayloadInjection> payloads = new ArrayList<>();
 
         for (Fxml2ResourceParseResult directive : Fxml2ResourceInstructionParser.parseAll(hostText)) {
             if (!valueRange.contains(directive.instructionSpan().toTextRange())) continue;
@@ -67,14 +65,7 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
             }
             if (declaration.payload().isEmpty()) continue;
 
-            TextRange rawPayload = declaration.payloadSpan().toTextRange();
-            TextRange injectionRange = declaration.injectionSpan(hostText).toTextRange();
-            payloads.add(new Fxml2PayloadInjection(
-                    injectionRange,
-                    rawPayload,
-                    hostText.substring(rawPayload.getStartOffset(), injectionRange.getStartOffset()),
-                    hostText.substring(injectionRange.getEndOffset(), rawPayload.getEndOffset()),
-                    Fxml2ResourcePayloadLanguage.of(declaration)));
+            payloads.add(Fxml2ResourcePayloadInjection.of(hostText, declaration));
         }
 
         return payloads.isEmpty()
@@ -91,11 +82,11 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
      * left for the markup fragment.
      */
     private static @NotNull List<TextRange> markupRangesAround(@NotNull TextRange valueRange,
-                                                               @NotNull List<Fxml2PayloadInjection> payloads) {
+                                                               @NotNull List<Fxml2ResourcePayloadInjection> payloads) {
         List<TextRange> ranges = new ArrayList<>();
         int cursor = valueRange.getStartOffset();
 
-        for (Fxml2PayloadInjection payload : payloads) {
+        for (Fxml2ResourcePayloadInjection payload : payloads) {
             if (payload.range().getStartOffset() > cursor) {
                 ranges.add(TextRange.create(cursor, payload.range().getStartOffset()));
             }
@@ -109,25 +100,4 @@ public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
         return ranges.isEmpty() ? List.of(valueRange) : ranges;
     }
 
-    /**
-     * One payload fragment: the range of the host it occupies, and the language it is edited in.
-     *
-     * @param range           the editor-facing resource range in the host text: complete resource
-     *                        lines and only resource characters on mixed declaration lines
-     * @param rawRange        the colon-to-terminator payload range including declaration layout
-     * @param prefix          opening declaration layout retained in the injected virtual file
-     * @param suffix          closing declaration layout retained in the injected virtual file
-     * @param payloadLanguage the language the media type of the declaration names
-     */
-    public record Fxml2PayloadInjection(@NotNull TextRange range,
-                                        @NotNull TextRange rawRange,
-                                        @NotNull String prefix,
-                                        @NotNull String suffix,
-                                        @NotNull Fxml2ResourcePayloadLanguage payloadLanguage) {
-
-        /** Returns the platform language to inject, which is plain text when the IDE lacks it. */
-        public @NotNull Language language() {
-            return payloadLanguage.languageOrPlainText();
-        }
-    }
 }
