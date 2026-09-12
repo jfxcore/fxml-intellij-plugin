@@ -3,8 +3,8 @@
 
 package org.jfxcore.fxml;
 
-import com.intellij.codeInsight.highlighting.HighlightUsagesHandlerBase;
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationOrUsageHandler2;
+import com.intellij.codeInsight.highlighting.HighlightUsagesHandler;
 import com.intellij.find.usages.api.SearchTarget;
 import com.intellij.find.usages.api.UsageSearchParameters;
 import com.intellij.lang.injection.InjectedLanguageManager;
@@ -25,13 +25,11 @@ import org.jfxcore.fxml.lang.Fxml2NamespaceUrlReference;
 import org.jfxcore.fxml.lang.Fxml2ResourceDeclarationElement;
 import org.jfxcore.fxml.lang.Fxml2ResourceDeclarationProvider;
 import org.jfxcore.fxml.lang.Fxml2ResourceFindUsagesHandlerFactory;
-import org.jfxcore.fxml.lang.Fxml2ResourceHighlightUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2ResourceNameReference;
-import org.jfxcore.fxml.lang.Fxml2ResourceUsageSearcher;
+import org.jfxcore.fxml.lang.Fxml2UsageSearcher;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
@@ -229,12 +227,17 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
         });
     }
 
-    /** Identifier highlighting links a declaration name with its use site in either direction. */
+    /** Identifier highlighting from a declaration includes its use site. */
     @Test
-    void identifierHighlightingLinksDeclarationAndUsage() {
+    void identifierHighlightingFromDeclarationIncludesUsage() {
         assertResourceIdentifierHighlights(Fxml2DocumentForm.STANDALONE, "styles.css", """
                 <?resource sty<caret>les.css text/css:.root { -fx-base: black; }?>
                 """);
+    }
+
+    /** Identifier highlighting from a use site includes its declaration. */
+    @Test
+    void identifierHighlightingFromUsageIncludesDeclaration() {
         assertResourceIdentifierHighlights(Fxml2DocumentForm.STANDALONE, "styles.css", """
                 <?resource styles.css text/css:.root { -fx-base: black; }?>
                 """);
@@ -365,7 +368,6 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
         assertResourceHighlightsAtCurrentCaret("fallback.txt");
     }
 
-    @Disabled("renaming a component-view resource usage must also rename its declaration")
     @ParameterizedTest
     @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
     void renamingAnEmbeddedUsageUpdatesItsDeclaration(Fxml2DocumentForm form) {
@@ -380,11 +382,10 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
         String text = ReadAction.compute(() -> InjectedLanguageManager
                 .getInstance(getFixture().getProject())
                 .getTopLevelFile(getFixture().getFile()).getText());
-        assertTrue(text.contains("<?resource theme.css text/css:"));
-        assertTrue(text.contains("stylesheets=\"@theme.css\""));
+        assertTrue(text.contains("<?resource theme.css text/css:"), text);
+        assertTrue(text.contains("stylesheets=\"@theme.css\""), text);
     }
 
-    @Disabled("component-view resource declarations must start Find Usages")
     @ParameterizedTest
     @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
     void findUsagesStartsAtAnEmbeddedDeclaration(Fxml2DocumentForm form) {
@@ -398,7 +399,6 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
                 .canFindUsages(elementAtCaret())));
     }
 
-    @Disabled("component-view resource declarations and usages must highlight each other")
     @ParameterizedTest
     @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
     void identifierHighlightingLinksEmbeddedDeclarationAndUsage(Fxml2DocumentForm form) {
@@ -514,7 +514,7 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
             assertEquals(1, declarations.size(), "'" + name + "' is a declaration site");
 
             var symbol = (SearchTarget)declarations.iterator().next().getSymbol();
-            return new Fxml2ResourceUsageSearcher()
+            return new Fxml2UsageSearcher()
                     .collectImmediateResults(new TestUsageSearchParameters(
                             symbol, getFixture().getProject(),
                             new LocalSearchScope(getFixture().getFile())))
@@ -550,21 +550,22 @@ class Fxml2ResourceReferenceTest extends Fxml2TestBase {
     }
 
     private void assertResourceHighlightsAtCurrentCaret(String expectedName) {
-        getFixture().doHighlighting();
-        java.util.List<String> highlighted = ReadAction.compute(() -> {
-            var handler = new Fxml2ResourceHighlightUsagesHandlerFactory()
-                    .createHighlightUsagesHandler(getFixture().getEditor(), getFixture().getFile());
-            assertNotNull(handler);
-            computeUsages(handler);
-            return handler.getReadUsages().stream()
-                    .map(range -> getFixture().getEditor().getDocument().getText(range))
-                    .toList();
+        String topLevelText = ReadAction.compute(() -> InjectedLanguageManager
+                .getInstance(getFixture().getProject()).getTopLevelFile(getFixture().getFile()).getText());
+        EdtTestUtil.runInEdtAndWait(() -> {
+            getFixture().getEditor().getMarkupModel().removeAllHighlighters();
+            HighlightUsagesHandler.invoke(
+                    getFixture().getProject(), getFixture().getEditor(), getFixture().getFile());
         });
-        assertEquals(java.util.List.of(expectedName, expectedName), highlighted);
-    }
-
-    private static <T extends PsiElement> void computeUsages(HighlightUsagesHandlerBase<T> handler) {
-        handler.computeUsages(handler.getTargets());
+        java.util.List<String> highlighted = java.util.Arrays.stream(
+                        getFixture().getEditor().getMarkupModel().getAllHighlighters())
+                .map(highlighter -> new com.intellij.openapi.util.TextRange(
+                        highlighter.getStartOffset(), highlighter.getEndOffset()))
+                .filter(range -> range.getEndOffset() <= topLevelText.length())
+                .map(range -> range.substring(topLevelText))
+                .filter(expectedName::equals)
+                .toList();
+        assertEquals(java.util.List.of(expectedName, expectedName), highlighted, topLevelText);
     }
 
     private PsiElement elementAtCaret() {

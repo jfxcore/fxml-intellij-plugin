@@ -77,8 +77,8 @@ public final class Fxml2ResourceModel {
      */
     public static @NotNull Fxml2ResourceModel of(@NotNull PsiElement element) {
         PsiFile file = element.getContainingFile();
-        return file instanceof XmlFile xmlFile && Fxml2FileType.isFxml2(xmlFile)
-                ? of(xmlFile)
+        XmlFile xmlFile = Fxml2FileType.asFxml2(file);
+        return xmlFile != null ? of(xmlFile)
                 : new Fxml2ResourceModel(List.of());
     }
 

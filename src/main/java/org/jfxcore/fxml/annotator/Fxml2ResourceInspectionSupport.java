@@ -9,7 +9,6 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
@@ -39,7 +38,7 @@ final class Fxml2ResourceInspectionSupport {
      */
     static @NotNull PsiElementVisitor visitDeclarations(@NotNull ProblemsHolder holder,
                                                         @NotNull Consumer<Fxml2ResourceEntry> report) {
-        XmlFile file = fxml2FileOf(holder.getFile());
+        XmlFile file = Fxml2FileType.asFxml2(holder.getFile());
         if (file == null) return PsiElementVisitor.EMPTY_VISITOR;
 
         return new PsiElementVisitor() {
@@ -53,11 +52,6 @@ final class Fxml2ResourceInspectionSupport {
                 Fxml2ResourceModel.of(file).entries().forEach(report);
             }
         };
-    }
-
-    /** Returns {@code file} as an FXML/2 document, or {@code null} when it is not one. */
-    static @Nullable XmlFile fxml2FileOf(@NotNull PsiFile file) {
-        return file instanceof XmlFile xmlFile && Fxml2FileType.isFxml2(xmlFile) ? xmlFile : null;
     }
 
     /** Reports {@code problem} as an error on the element that carries {@code entry}'s declaration. */

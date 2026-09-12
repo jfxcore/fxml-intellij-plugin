@@ -1,9 +1,11 @@
 package org.jfxcore.fxml.resource;
 
 import com.intellij.openapi.util.TextRange;
+import com.intellij.injected.editor.DocumentWindow;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2TextSpan;
 
 import java.util.List;
@@ -57,6 +59,17 @@ public record Fxml2ResourceEntry(@NotNull Fxml2ResourceParseResult result, @NotN
     /** Returns the range of the resource name in the declaring file, excluding any quotes. */
     public @NotNull TextRange nameRange() {
         return fileRangeOf(declaration().nameSpan());
+    }
+
+    /** Returns the name range in {@code file}'s coordinate space, when it contains this document. */
+    public @Nullable TextRange nameRangeIn(@NotNull PsiFile file) {
+        if (file.equals(declaringFile())) return nameRange();
+        if (!(file.getViewProvider().getDocument() instanceof DocumentWindow window)) return null;
+
+        TextRange hostRange = nameRange();
+        int start = window.hostToInjected(hostRange.getStartOffset());
+        int end = window.hostToInjected(hostRange.getEndOffset());
+        return start < 0 || end < start ? null : new TextRange(start, end);
     }
 
     /** Returns {@code true} when this entry has no diagnostics. */

@@ -2,14 +2,12 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.model.Pointer;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.platform.backend.documentation.DocumentationResult;
 import com.intellij.platform.backend.documentation.DocumentationTarget;
 import com.intellij.platform.backend.documentation.DocumentationTargetProvider;
 import com.intellij.platform.backend.presentation.TargetPresentation;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiReference;
 import com.intellij.psi.ResolveResult;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
@@ -61,17 +59,9 @@ public final class Fxml2StyleClassDocumentationTargetProvider implements Documen
         if (!(attributeValue.getParent() instanceof XmlAttribute attribute)) return List.of();
         if (!Fxml2CssUtil.isStyleClassAttribute(attribute)) return List.of();
 
-        int offsetInAttributeValue = position.offsetInAttributeValue();
         List<CssSelectorElement> selectors = new ArrayList<>();
-        for (PsiReference reference : attributeValue.getReferences()) {
-            if (!(reference instanceof Fxml2StyleClassReference styleClassReference)) continue;
-
-            // Only the class name under the cursor is documented, so that hovering over one name
-            // of a list of style classes does not show the rules of its neighbors.
-            TextRange nameRange = styleClassReference.getRangeInElement();
-            if (offsetInAttributeValue < nameRange.getStartOffset()
-                    || offsetInAttributeValue > nameRange.getEndOffset()) continue;
-
+        for (Fxml2StyleClassReference styleClassReference :
+                position.referencesAt(Fxml2StyleClassReference.class)) {
             for (ResolveResult result : styleClassReference.multiResolve(false)) {
                 PsiElement resolved = result.getElement();
                 if (resolved instanceof CssSelectorElement selector) selectors.add(selector);

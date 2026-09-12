@@ -8,10 +8,8 @@ import com.intellij.platform.backend.documentation.DocumentationResult;
 import com.intellij.platform.backend.documentation.DocumentationTarget;
 import com.intellij.platform.backend.documentation.DocumentationTargetProvider;
 import com.intellij.platform.backend.presentation.TargetPresentation;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiReference;
 import com.intellij.psi.ResolveResult;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
@@ -66,22 +64,12 @@ public final class Fxml2ResourceKeyDocumentationTargetProvider implements Docume
         Fxml2AttributeValueAtOffset position = Fxml2AttributeValueAtOffset.find(file, offset);
         if (position == null) return null;
 
-        XmlAttributeValue attrVal = position.attributeValue();
-        int offsetInAttrVal = position.offsetInAttributeValue();
-
         // Use multiResolve() because resolve() returns null when multiple targets exist
         // (e.g. the same key present in multiple bundle locales / languages).
-        for (PsiReference ref : attrVal.getReferences()) {
-            if (ref instanceof PropertyReferenceBase propRef) {
-                // Only show resource-key docs when the cursor is actually over the key token.
-                TextRange keyRange = propRef.getRangeInElement();
-                if (offsetInAttrVal < keyRange.getStartOffset()
-                        || offsetInAttrVal > keyRange.getEndOffset()) continue;
-
-                for (ResolveResult result : propRef.multiResolve(false)) {
-                    PsiElement resolved = result.getElement();
-                    if (resolved instanceof IProperty prop) return prop;
-                }
+        for (PropertyReferenceBase propertyReference : position.referencesAt(PropertyReferenceBase.class)) {
+            for (ResolveResult result : propertyReference.multiResolve(false)) {
+                PsiElement resolved = result.getElement();
+                if (resolved instanceof IProperty property) return property;
             }
         }
         return null;

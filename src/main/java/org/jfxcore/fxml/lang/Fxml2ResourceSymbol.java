@@ -5,6 +5,8 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.find.usages.api.SearchTarget;
 import com.intellij.find.usages.api.UsageHandler;
+import com.intellij.find.usages.api.PsiUsage;
+import com.intellij.find.usages.api.Usage;
 import com.intellij.model.Pointer;
 import com.intellij.navigation.NavigatableSymbol;
 import com.intellij.navigation.SymbolNavigationService;
@@ -14,6 +16,9 @@ import com.intellij.platform.backend.presentation.TargetPresentation;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.psi.xml.XmlFile;
+import com.intellij.psi.PsiReference;
+import com.intellij.psi.search.SearchScope;
+import com.intellij.psi.search.searches.ReferencesSearch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
@@ -22,6 +27,7 @@ import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * The symbol an embedded resource declaration declares.
@@ -32,11 +38,11 @@ import java.util.Objects;
  * the declaration text, which also keeps it valid while the declaration is being edited.
  *
  * <p>Implementing {@link SearchTarget} is what lets the Ctrl+click gesture on a declaration open
- * the Show Usages popup, with {@link Fxml2ResourceUsageSearcher} collecting the use sites.
+ * the Show Usages popup, with {@link Fxml2UsageSearcher} collecting the use sites.
  * {@link NavigatableSymbol} covers the other direction, from the popup back to the declaration.
  */
 @SuppressWarnings("UnstableApiUsage")
-final class Fxml2ResourceSymbol implements NavigatableSymbol, SearchTarget {
+final class Fxml2ResourceSymbol implements NavigatableSymbol, Fxml2UsageSearchTarget {
 
     private final @NotNull SmartPsiElementPointer<XmlFile> documentPointer;
     private final @NotNull String name;
@@ -93,6 +99,16 @@ final class Fxml2ResourceSymbol implements NavigatableSymbol, SearchTarget {
     @Override
     public @NotNull UsageHandler getUsageHandler() {
         return UsageHandler.createEmptyUsageHandler(name);
+    }
+
+    @Override
+    public void collectUsages(@NotNull SearchScope scope, @NotNull Consumer<? super Usage> consumer) {
+        Fxml2ResourceDeclarationElement declaration = getDeclaration();
+        if (declaration == null) return;
+
+        for (PsiReference reference : ReferencesSearch.search(declaration, scope).findAll()) {
+            consumer.accept(PsiUsage.textUsage(reference.getElement(), reference.getRangeInElement()));
+        }
     }
 
     // -----------------------------------------------------------------------

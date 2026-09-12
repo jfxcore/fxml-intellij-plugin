@@ -74,15 +74,6 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourceInjector"/>
 
         <!--
-            RenamePsiElementProcessor for embedded resources.  A <?resource ?> declaration is
-            not ordinary PSI in either document form, so it is represented by a synthetic
-            Fxml2ResourceDeclarationElement; this processor routes a rename to it and rewrites
-            every @name / {ClassPathResource name} usage in the declaring document.
-        -->
-        <renamePsiElementProcessor
-                implementation="org.jfxcore.fxml.codeinsight.Fxml2ResourceRenameProcessor"/>
-
-        <!--
             ParserDefinition for Fxml2EmbeddedXmlLanguage: used when the @ComponentView
             injectors inject Fxml2EmbeddedXmlLanguage (a dialect of XML).
             The sole purpose is to produce Fxml2EmbeddedXmlFile instances whose
@@ -539,7 +530,6 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory"/>
         <highlightUsagesHandlerFactory
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourceHighlightUsagesHandlerFactory"/>
-
         <!--
             UsageSearcher: when IntelliJ's symbol-native "Show Usages" path is triggered for
             an FxIdSymbol (e.g. Ctrl+click on an fx:id declaration), this searcher collects
@@ -548,15 +538,7 @@
             used by Fxml2FxIdFindUsagesHandlerFactory so both paths return identical results.
         -->
         <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
-                  implementationClass="org.jfxcore.fxml.lang.Fxml2FxIdUsageSearcher"/>
-
-        <!--
-            UsageSearcher: collects the use sites of an embedded resource when the symbol-native
-            "Show Usages" path is triggered for an Fxml2ResourceSymbol, which is what Ctrl+click
-            on a <?resource ?> declaration name leads to.
-        -->
-        <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
-                  implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceUsageSearcher"/>
+                  implementationClass="org.jfxcore.fxml.lang.Fxml2UsageSearcher"/>
 
         <!--
             RenameHandler: makes Shift+F6 available when the caret is on a property attribute

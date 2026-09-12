@@ -9,6 +9,7 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlProcessingInstruction;
 import org.jetbrains.annotations.NotNull;
+import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.lang.Fxml2ProcessingInstructionTarget;
 
 /**
@@ -28,7 +29,7 @@ public final class Fxml2ProcessingInstructionPlacementInspection extends LocalIn
     public @NotNull PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder,
                                                    boolean isOnTheFly,
                                                    @NotNull LocalInspectionToolSession session) {
-        XmlFile file = Fxml2ResourceInspectionSupport.fxml2FileOf(holder.getFile());
+        XmlFile file = Fxml2FileType.asFxml2(holder.getFile());
         if (file == null) return PsiElementVisitor.EMPTY_VISITOR;
 
         return new PsiElementVisitor() {

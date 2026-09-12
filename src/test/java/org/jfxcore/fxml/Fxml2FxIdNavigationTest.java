@@ -27,7 +27,7 @@ import org.jfxcore.fxml.lang.Fxml2FxIdCodeBehindGotoHandler;
 import org.jfxcore.fxml.lang.Fxml2FxIdDeclarationProvider;
 import org.jfxcore.fxml.lang.Fxml2FxIdFindUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2FxIdReference;
-import org.jfxcore.fxml.lang.Fxml2FxIdUsageSearcher;
+import org.jfxcore.fxml.lang.Fxml2UsageSearcher;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -309,7 +309,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
     }
 
     /**
-     * The symbol-based usage searcher ({@link Fxml2FxIdUsageSearcher}) must find all three
+     * The symbol-based usage searcher ({@link Fxml2UsageSearcher}) must find all three
      * entries when invoked on the {@code fx:id} declaration symbol:
      * the FXML binding use site, the Java code-behind use site, and the compiler-generated
      * field declaration.
@@ -348,7 +348,7 @@ class Fxml2FxIdNavigationTest extends Fxml2TestBase {
 
         // Run the searcher.
         Collection<? extends Usage> usages = ReadAction.compute(
-                () -> new Fxml2FxIdUsageSearcher().collectImmediateResults(params));
+                () -> new Fxml2UsageSearcher().collectImmediateResults(params));
 
         ReadAction.run(() -> {
             String dump = usages.stream()
