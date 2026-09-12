@@ -3,7 +3,6 @@
 
 package org.jfxcore.fxml;
 
-import com.intellij.lang.Language;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
@@ -16,11 +15,16 @@ import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import org.jfxcore.fxml.lang.Fxml2ResourceProcessingInstruction;
+import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -43,6 +47,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 class Fxml2ResourceInjectionTest extends Fxml2TestBase {
 
+    @BeforeAll
+    void addTestClasses() {
+        installComponentViewAnnotation();
+    }
+
     /** A resource declaration with a payload is an injection host. */
     @Test
     void resourceDeclarationIsAnInjectionHost() {
@@ -54,11 +63,12 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
     }
 
     /** The injected fragment is the raw payload, exactly as written. */
-    @Test
-    void injectedFragmentIsTheRawPayload() {
-        configure("<?resource styles.css text/css:.root { -fx-base: black; }?>");
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void injectedFragmentIsTheRawPayload(Fxml2DocumentForm form) {
+        configure(form, "<?resource styles.css text/css:.root { -fx-base: black; }?>", "");
 
-        assertEquals(".root { -fx-base: black; }", injectedText());
+        assertEquals(".root { -fx-base: black; }", ReadAction.compute(() -> form.payloadFile(getFixture()).getText()));
     }
 
     /** A multi-line payload retains its layout as generated virtual-file text. */
@@ -125,27 +135,33 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
      * assertion is that the fragment is CSS where CSS exists and plain text where it does not,
      * which is exactly the degradation the feature promises.
      */
-    @Test
-    void mediaTypeSelectsTheInjectedLanguage() {
-        configure("<?resource data.json application/json:{}?>");
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void mediaTypeSelectsTheInjectedLanguage(Fxml2DocumentForm form) {
+        configure(form, "<?resource data.json application/json:{}?>", "");
 
-        assertSame(Fxml2ResourcePayloadLanguage.JSON.languageOrPlainText(), injectedLanguage());
+        assertSame(Fxml2ResourcePayloadLanguage.JSON.languageOrPlainText(),
+                ReadAction.compute(() -> form.payloadFile(getFixture()).getLanguage()));
     }
 
     /** With no media type, the resource name's extension selects the language. */
-    @Test
-    void extensionSelectsTheLanguageWhenTheMediaTypeIsOmitted() {
-        configure("<?resource data.json:{}?>");
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void extensionSelectsTheLanguageWhenTheMediaTypeIsOmitted(Fxml2DocumentForm form) {
+        configure(form, "<?resource data.json:{}?>", "");
 
-        assertSame(Fxml2ResourcePayloadLanguage.JSON.languageOrPlainText(), injectedLanguage());
+        assertSame(Fxml2ResourcePayloadLanguage.JSON.languageOrPlainText(),
+                ReadAction.compute(() -> form.payloadFile(getFixture()).getLanguage()));
     }
 
     /** An unmapped media type and an unmapped extension both fall back to plain text. */
-    @Test
-    void unmappedPayloadFallsBackToPlainText() {
-        configure("<?resource notes.unknown application/x-unknown:body?>");
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void unmappedPayloadFallsBackToPlainText(Fxml2DocumentForm form) {
+        configure(form, "<?resource notes.unknown application/x-unknown:body?>", "");
 
-        assertSame(PlainTextLanguage.INSTANCE, injectedLanguage());
+        assertSame(PlainTextLanguage.INSTANCE,
+                ReadAction.compute(() -> form.payloadFile(getFixture()).getLanguage()));
     }
 
     /** Each declaration of a document gets its own fragment. */
@@ -195,6 +211,94 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
                 "the document carries the replaced declaration");
     }
 
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void embeddedResourceProducesMarkupAndPayloadFragments(Fxml2DocumentForm form) {
+        configure(form, "<?resource styles.css text/css:.root {}?>\n", "");
+
+        assertEquals(2, injectedFileCount(form));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void embeddedMarkupCarriesTheDeclarationWithoutItsPayload(Fxml2DocumentForm form) {
+        configure(form, "<?resource styles.css text/css:.root { -fx-font-size: 1.1em; }?>\n", "");
+
+        String markup = ReadAction.compute(() -> form.markupFile(getFixture()).getText());
+        assertTrue(markup.contains("<?resource styles.css text/css:?>"), markup);
+        assertFalse(markup.contains("-fx-font-size"), markup);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void embeddedMultilinePayloadRangeCoversCompleteLines(Fxml2DocumentForm form) {
+        configure(form, """
+                <?resource data.json application/json:%s
+                    {
+                        "key": 1
+                    }
+                  ?>
+                """.formatted("   "), "");
+
+        Pair<PsiElement, TextRange> payload = payloadFragment(form);
+        ReadAction.run(() -> assertEquals(
+                "        {\n            \"key\": 1\n        }\n",
+                payload.second.substring(form.host(getFixture()).getText())));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void embeddedDeclarationsProduceNonOverlappingFragments(Fxml2DocumentForm form) {
+        configure(form, """
+                <?resource a.json application/json:{"a": 1}?>
+                <?resource b.json application/json:{"b": 2}?>
+                """, "");
+
+        List<TextRange> ranges = ReadAction.compute(() -> form.injectedFragments(getFixture()).stream()
+                .map(fragment -> fragment.second)
+                .sorted(Comparator.comparingInt(TextRange::getStartOffset))
+                .toList());
+        assertEquals(3, injectedFileCount(form));
+        for (int index = 1; index < ranges.size(); ++index) {
+            assertTrue(ranges.get(index - 1).getEndOffset() <= ranges.get(index).getStartOffset(), ranges.toString());
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void resourceInsideEmbeddedElementIsCarvedOut(Fxml2DocumentForm form) {
+        configure(form, "", "<?resource nested.json application/json:{\"nested\": true}?>\n");
+
+        assertEquals("{\"nested\": true}", ReadAction.compute(() -> form.payloadFile(getFixture()).getText()));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void malformedEmbeddedDeclarationLeavesOneMarkupFragment(Fxml2DocumentForm form) {
+        configure(form, "<?resource styles.css text/css?>\n", "");
+
+        assertEquals(1, injectedFileCount(form));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void embeddedMarkupWithoutResourcesIsOneFragment(Fxml2DocumentForm form) {
+        configure(form, "", "");
+
+        assertEquals(1, injectedFileCount(form));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void embeddedResourceModelReadsPayloadFromHost(Fxml2DocumentForm form) {
+        configure(form, "<?resource styles.css text/css:.root { -fx-font-size: 1.1em; }?>\n", "");
+
+        var entries = ReadAction.compute(() -> Fxml2ResourceModel.of(form.markupFile(getFixture())).entries());
+        assertEquals(1, entries.size());
+        assertEquals("styles.css", entries.getFirst().name().value());
+        assertEquals(".root { -fx-font-size: 1.1em; }", entries.getFirst().declaration().content());
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
@@ -210,19 +314,15 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
                 """.formatted(declarations));
     }
 
+    private void configure(Fxml2DocumentForm form, String declarations, String body) {
+        form.configure(getFixture(), declarations, body);
+    }
+
     private String injectedText() {
         return ReadAction.compute(() -> {
             Fxml2ResourceProcessingInstruction host = findResourceInstruction();
             assertNotNull(host);
             return injectedTextOf(host);
-        });
-    }
-
-    private Language injectedLanguage() {
-        return ReadAction.compute(() -> {
-            Fxml2ResourceProcessingInstruction host = findResourceInstruction();
-            assertNotNull(host);
-            return injectedFileOf(host).getLanguage();
         });
     }
 
@@ -249,6 +349,20 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
         assertNotNull(injected, "the payload is injected");
         assertEquals(1, injected.size(), "one fragment per declaration");
         return (PsiFile)injected.getFirst().first;
+    }
+
+    private Pair<PsiElement, TextRange> payloadFragment(Fxml2DocumentForm form) {
+        return ReadAction.compute(() -> form.injectedFragments(getFixture()).stream()
+                .filter(fragment -> !(fragment.first instanceof XmlFile))
+                .findFirst()
+                .orElseThrow());
+    }
+
+    private long injectedFileCount(Fxml2DocumentForm form) {
+        return ReadAction.compute(() -> form.injectedFragments(getFixture()).stream()
+                .map(fragment -> fragment.first)
+                .distinct()
+                .count());
     }
 
     private Fxml2ResourceProcessingInstruction findResourceInstruction() {

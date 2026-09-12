@@ -2,6 +2,8 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.lang.injection.MultiHostRegistrar;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.psi.ElementManipulators;
+import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiLanguageInjectionHost;
 import org.jetbrains.annotations.NotNull;
 
@@ -25,22 +27,22 @@ final class Fxml2EmbeddedMarkupInjection {
 
     private Fxml2EmbeddedMarkupInjection() {}
 
-    /**
-     * Injects the markup occupying {@code valueRange} of {@code host}, carving out any resource
-     * payloads and injecting each of those in its own language.
-     *
-     * @param registrar  the registrar to register with
-     * @param host       the injection host holding the markup
-     * @param valueRange the range of the host's text that holds the markup
-     * @param prefix     the text prepended to the markup fragment
-     * @param suffix     the text appended to the markup fragment
-     */
+    /** Injects the markup held by a Java or Kotlin {@code @ComponentView} value. */
     static void inject(@NotNull MultiHostRegistrar registrar,
                        @NotNull PsiLanguageInjectionHost host,
-                       @NotNull TextRange valueRange,
-                       @NotNull String prefix,
-                       @NotNull String suffix) {
+                       @NotNull PsiClass hostClass) {
+        String hostFqn = hostClass.getQualifiedName();
+        if (hostFqn == null) return;
+
+        TextRange valueRange = ElementManipulators.getValueTextRange(host);
         Fxml2ResourceInjectionPlan plan = Fxml2ResourceInjectionPlan.of(host.getText(), valueRange);
+        String prefix = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                        '<' + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_LOCAL +
+                        " xmlns=\"http://javafx.com/javafx\"" +
+                        " xmlns:fx=\"http://jfxcore.org/fxml/2.0\"" +
+                        " xmlns:fxml2=\"" + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_NS + '"' +
+                        " fx:subclass=\"" + hostFqn + "\">\n";
+        String suffix = "\n</" + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_LOCAL + ">";
 
         registrar.startInjecting(Fxml2EmbeddedXmlLanguage.INSTANCE);
         List<TextRange> ranges = plan.markupRanges();

@@ -1,7 +1,6 @@
 package org.jfxcore.fxml.lang;
 
 import com.intellij.lang.injection.InjectedLanguageManager;
-import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -12,8 +11,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
-
-import java.util.List;
 
 /** Finds resource declarations across host-file and injected-file coordinate spaces. */
 final class Fxml2ResourceDeclarations {
@@ -64,15 +61,6 @@ final class Fxml2ResourceDeclarations {
                 : PsiTreeUtil.getParentOfType(element, PsiLanguageInjectionHost.class, false);
         if (host == null) return null;
 
-        List<Pair<PsiElement, TextRange>> fragments = InjectedLanguageManager
-                .getInstance(element.getProject()).getInjectedPsiFiles(host);
-        if (fragments == null) return null;
-        return fragments.stream()
-                .map(fragment -> fragment.first)
-                .filter(XmlFile.class::isInstance)
-                .map(XmlFile.class::cast)
-                .filter(Fxml2FileType::isFxml2)
-                .findFirst()
-                .orElse(null);
+        return Fxml2EmbeddedUtil.embeddedXmlFileOf(host);
     }
 }
