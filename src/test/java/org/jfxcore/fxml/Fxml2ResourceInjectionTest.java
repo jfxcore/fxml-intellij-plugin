@@ -14,7 +14,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
-import org.jfxcore.fxml.lang.Fxml2ResourceProcessingInstruction;
+import org.jfxcore.fxml.lang.Fxml2ProcessingInstruction;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 import org.junit.jupiter.api.BeforeAll;
@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Verifies that the payload of a {@code <?resource ?>} declaration in a standalone FXML/2 document
  * is an editable fragment of the language its media type names.
  *
- * <p>Implementation under test: {@link Fxml2ResourceProcessingInstruction}, the injection host the
+ * <p>Implementation under test: {@link Fxml2ProcessingInstruction}, the injection host the
  * FXML/2 parser definition substitutes for the standard XML processing instruction, and
  * {@link org.jfxcore.fxml.lang.Fxml2ResourceInjector}.
  */
@@ -57,7 +57,7 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
     void resourceDeclarationIsAnInjectionHost() {
         configure("<?resource styles.css text/css:.root { -fx-base: black; }?>");
 
-        Fxml2ResourceProcessingInstruction host = ReadAction.compute(this::findResourceInstruction);
+        Fxml2ProcessingInstruction host = ReadAction.compute(this::findResourceInstruction);
         assertNotNull(host, "the resource declaration is substituted with an injection host");
         assertTrue(ReadAction.compute(host::isValidHost));
     }
@@ -100,7 +100,7 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
                   ?>""".formatted("   "));
 
         ReadAction.run(() -> {
-            Fxml2ResourceProcessingInstruction host = findResourceInstruction();
+            Fxml2ProcessingInstruction host = findResourceInstruction();
             assertNotNull(host);
             List<Pair<PsiElement, TextRange>> injected =
                     InjectedLanguageManager.getInstance(host.getProject()).getInjectedPsiFiles(host);
@@ -190,7 +190,7 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
     void declarationWithoutAContentSeparatorIsNotAHost() {
         configure("<?resource styles.css text/css?>");
 
-        Fxml2ResourceProcessingInstruction host = ReadAction.compute(this::findResourceInstruction);
+        Fxml2ProcessingInstruction host = ReadAction.compute(this::findResourceInstruction);
         assertNotNull(host);
         assertFalse(ReadAction.compute(host::isValidHost));
     }
@@ -202,7 +202,7 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
 
         String replacement = "<?resource styles.css text/css:.root { -fx-base: white; }?>";
         WriteCommandAction.runWriteCommandAction(getFixture().getProject(), () -> {
-            Fxml2ResourceProcessingInstruction host = findResourceInstruction();
+            Fxml2ProcessingInstruction host = findResourceInstruction();
             assertNotNull(host);
             assertEquals(replacement, host.updateText(replacement).getText());
         });
@@ -320,7 +320,7 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
 
     private String injectedText() {
         return ReadAction.compute(() -> {
-            Fxml2ResourceProcessingInstruction host = findResourceInstruction();
+            Fxml2ProcessingInstruction host = findResourceInstruction();
             assertNotNull(host);
             return injectedTextOf(host);
         });
@@ -328,7 +328,7 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
 
     private String injectionRangeText() {
         return ReadAction.compute(() -> {
-            Fxml2ResourceProcessingInstruction host = findResourceInstruction();
+            Fxml2ProcessingInstruction host = findResourceInstruction();
             assertNotNull(host);
             List<Pair<PsiElement, TextRange>> injected =
                     InjectedLanguageManager.getInstance(host.getProject()).getInjectedPsiFiles(host);
@@ -338,11 +338,11 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
         });
     }
 
-    private static String injectedTextOf(Fxml2ResourceProcessingInstruction host) {
+    private static String injectedTextOf(Fxml2ProcessingInstruction host) {
         return injectedFileOf(host).getText();
     }
 
-    private static PsiFile injectedFileOf(Fxml2ResourceProcessingInstruction host) {
+    private static PsiFile injectedFileOf(Fxml2ProcessingInstruction host) {
         List<Pair<PsiElement, TextRange>> injected =
                 InjectedLanguageManager.getInstance(host.getProject()).getInjectedPsiFiles(host);
 
@@ -365,20 +365,20 @@ class Fxml2ResourceInjectionTest extends Fxml2TestBase {
                 .count());
     }
 
-    private Fxml2ResourceProcessingInstruction findResourceInstruction() {
+    private Fxml2ProcessingInstruction findResourceInstruction() {
         return allResourceInstructions().stream().findFirst().orElse(null);
     }
 
-    private List<Fxml2ResourceProcessingInstruction> allResourceInstructions() {
+    private List<Fxml2ProcessingInstruction> allResourceInstructions() {
         return allProcessingInstructions().stream()
                 .filter(instruction -> instruction.getText().startsWith("<?resource"))
                 .toList();
     }
 
-    private List<Fxml2ResourceProcessingInstruction> allProcessingInstructions() {
+    private List<Fxml2ProcessingInstruction> allProcessingInstructions() {
         PsiFile file = getFixture().getFile();
         assertInstanceOf(XmlFile.class, file);
 
-        return List.copyOf(PsiTreeUtil.findChildrenOfType(file, Fxml2ResourceProcessingInstruction.class));
+        return List.copyOf(PsiTreeUtil.findChildrenOfType(file, Fxml2ProcessingInstruction.class));
     }
 }

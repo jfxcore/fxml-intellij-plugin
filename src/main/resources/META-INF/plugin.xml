@@ -67,7 +67,7 @@
         <!--
             Injects the payload language into a <?resource ?> declaration of a standalone
             FXML/2 document, so that e.g. a text/css payload is edited as a stylesheet.
-            Registered for Fxml2ResourceProcessingInstruction, a host class only FXML/2
+            Registered for Fxml2ProcessingInstruction, a host class only FXML/2
             documents produce, so no other injector competes for it.
         -->
         <multiHostInjector
@@ -99,7 +99,7 @@
         <!--
             Folds the payload of a multi-line <?resource ?> declaration away, leaving the name
             and media type visible.  Registered for FXML2 only: the fold regions are anchored
-            on Fxml2ResourceProcessingInstruction, which only FXML/2 documents produce.
+            on Fxml2ProcessingInstruction, which only FXML/2 documents produce.
         -->
         <lang.foldingBuilder language="FXML2"
                              implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceFoldingBuilder"/>

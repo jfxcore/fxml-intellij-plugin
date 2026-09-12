@@ -38,8 +38,8 @@ public final class Fxml2ResourceFoldingBuilder extends FoldingBuilderEx {
                                                           boolean quick) {
         List<FoldingDescriptor> descriptors = new ArrayList<>();
 
-        for (Fxml2ResourceProcessingInstruction instruction :
-                PsiTreeUtil.findChildrenOfType(root, Fxml2ResourceProcessingInstruction.class)) {
+        for (Fxml2ProcessingInstruction instruction :
+                PsiTreeUtil.findChildrenOfType(root, Fxml2ProcessingInstruction.class)) {
             FoldingDescriptor descriptor = foldPayloadOf(instruction);
             if (descriptor != null) descriptors.add(descriptor);
         }
@@ -49,7 +49,7 @@ public final class Fxml2ResourceFoldingBuilder extends FoldingBuilderEx {
 
     /** Returns the fold region for {@code instruction}'s payload, or {@code null} when it has none to fold. */
     private static @Nullable FoldingDescriptor foldPayloadOf(
-            @NotNull Fxml2ResourceProcessingInstruction instruction) {
+            @NotNull Fxml2ProcessingInstruction instruction) {
         Fxml2ResourceParseResult directive = instruction.resourceDirective();
         if (directive == null) return null;
 

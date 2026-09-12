@@ -93,8 +93,8 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
         Fxml2IndentSteps steps = stepsOf(file, contextFile);
         List<Fxml2DocumentEdit> rewrites = new ArrayList<>();
 
-        for (Fxml2ResourceProcessingInstruction instruction :
-                PsiTreeUtil.findChildrenOfType(file, Fxml2ResourceProcessingInstruction.class)) {
+        for (Fxml2ProcessingInstruction instruction :
+                PsiTreeUtil.findChildrenOfType(file, Fxml2ProcessingInstruction.class)) {
 
             Fxml2ResourceParseResult directive = instruction.resourceDirective();
             if (directive == null) continue;

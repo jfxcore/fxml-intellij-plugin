@@ -13,8 +13,8 @@ import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 
 /**
- * A {@code <?resource ?>} processing instruction in a standalone FXML/2 document, which is also an
- * injection host so that the payload can be edited in the language its media type names.
+ * A processing instruction in a standalone FXML/2 document. Resource declarations can use it as
+ * an injection host so their payload is editable in the language its media type names.
  *
  * <p>The platform's {@code XmlProcessingInstructionImpl} is not a
  * {@link PsiLanguageInjectionHost}, and no extension point can make it one: the XML processing
@@ -24,7 +24,7 @@ import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
  * {@link Fxml2ParserDefinition} substitute this class for the standard one.  Because the
  * substitution goes through the parser definition, it applies only to documents parsed as FXML/2.
  */
-public final class Fxml2ResourceProcessingInstruction
+public final class Fxml2ProcessingInstruction
         extends XmlProcessingInstructionImpl
         implements PsiLanguageInjectionHost {
 
@@ -78,7 +78,7 @@ public final class Fxml2ResourceProcessingInstruction
      * escape sequences: its text is its value.
      */
     @Override
-    public @NotNull LiteralTextEscaper<Fxml2ResourceProcessingInstruction> createLiteralTextEscaper() {
+    public @NotNull LiteralTextEscaper<Fxml2ProcessingInstruction> createLiteralTextEscaper() {
         return LiteralTextEscaper.createSimple(this);
     }
 
