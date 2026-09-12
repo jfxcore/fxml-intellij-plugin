@@ -86,15 +86,15 @@ public final class Fxml2ResourceDeclarationElement extends FakePsiElement implem
             throw new IncorrectOperationException("'" + newName + "' is not a portable resource name");
         }
 
-        Fxml2ResourceEntry entry = Fxml2ResourceDeclarationEditor.findDeclaration(file, name);
+        Fxml2ResourceEntry entry = Fxml2ResourceDeclarationEditor.findDeclaration(
+                file, new Fxml2ResourceName(name));
         if (entry == null) return this;
 
-        Fxml2ResourceDeclarationEditor.replace(
-                file.getProject(), entry,
-                entry.declaration().quotedNameSpan(),
-                Fxml2ResourceName.write(newName));
+        Fxml2ResourceDeclarationEditor.rename(
+                file.getProject(), entry, new Fxml2ResourceName(newName));
 
-        Fxml2ResourceEntry renamed = Fxml2ResourceDeclarationEditor.findDeclaration(file, newName);
+        Fxml2ResourceEntry renamed = Fxml2ResourceDeclarationEditor.findDeclaration(
+                file, new Fxml2ResourceName(newName));
         return renamed != null ? new Fxml2ResourceDeclarationElement(renamed) : this;
     }
 

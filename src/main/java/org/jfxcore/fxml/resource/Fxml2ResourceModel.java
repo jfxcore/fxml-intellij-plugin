@@ -1,5 +1,7 @@
 package org.jfxcore.fxml.resource;
 
+import com.intellij.openapi.util.text.LineColumn;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -194,33 +196,15 @@ public final class Fxml2ResourceModel {
 
     private static @NotNull Fxml2ResourceProblem duplicateProblem(@NotNull Fxml2ResourceEntry entry,
                                                                   @NotNull Fxml2ResourceEntry previous) {
-        LineColumn position = positionOf(previous);
+        CharSequence text = previous.declaringFile().getViewProvider().getContents();
+        int offset = Math.min(previous.nameRange().getStartOffset(), text.length());
+        LineColumn position = StringUtil.offsetToLineColumn(text, offset);
 
         return Fxml2ResourceProblem.of(
                 Fxml2ResourceProblemKind.DUPLICATE_DECLARATION,
                 entry.declaration().nameSpan(),
                 entry.name().value(),
-                position.line(),
-                position.column());
+                position.line + 1,
+                position.column + 1);
     }
-
-    /** Returns the one-based position of {@code entry}'s name in the file it is declared in. */
-    private static @NotNull LineColumn positionOf(@NotNull Fxml2ResourceEntry entry) {
-        CharSequence text = entry.declaringFile().getViewProvider().getContents();
-        int offset = Math.min(entry.nameRange().getStartOffset(), text.length());
-
-        int line = 1;
-        int lineStart = 0;
-        for (int i = 0; i < offset; ++i) {
-            if (text.charAt(i) == '\n') {
-                ++line;
-                lineStart = i + 1;
-            }
-        }
-
-        return new LineColumn(line, offset - lineStart + 1);
-    }
-
-    /** A one-based position in a source file. */
-    private record LineColumn(int line, int column) {}
 }

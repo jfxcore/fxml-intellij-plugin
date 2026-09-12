@@ -14,6 +14,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jfxcore.fxml.resource.Fxml2ResourceSyntax;
 
 /** Aligns a payload closing brace with the line carrying its matching opening brace. */
 public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDelegate {
@@ -33,7 +34,7 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
         int closingLine = matchingDocument.getLineNumber(matchingClosingOffset);
         int closingLineStart = matchingDocument.getLineStartOffset(closingLine);
         CharSequence matchingText = matchingDocument.getImmutableCharSequence();
-        if (containsNonWhitespace(matchingText, closingLineStart, matchingClosingOffset)) {
+        if (!Fxml2ResourceSyntax.isWhitespace(matchingText, closingLineStart, matchingClosingOffset)) {
             return Result.CONTINUE;
         }
 
@@ -55,7 +56,7 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
         int targetClosingLine = document.getLineNumber(targetClosingOffset);
         int targetClosingLineStart = document.getLineStartOffset(targetClosingLine);
         CharSequence text = document.getImmutableCharSequence();
-        if (containsNonWhitespace(text, targetClosingLineStart, targetClosingOffset)) {
+        if (!Fxml2ResourceSyntax.isWhitespace(text, targetClosingLineStart, targetClosingOffset)) {
             return Result.CONTINUE;
         }
 
@@ -104,13 +105,6 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
         int hostClosingOffset = hostEditor.getCaretModel().getOffset() - 1;
         return new PayloadEditorContext(
                 file, hostEditor, hostEditor.getDocument(), hostClosingOffset, false, null);
-    }
-
-    private static boolean containsNonWhitespace(@NotNull CharSequence text, int start, int end) {
-        for (int i = start; i < end; i++) {
-            if (!Character.isWhitespace(text.charAt(i))) return true;
-        }
-        return false;
     }
 
     /** Finds the opener when the active editor has no brace matcher for the payload language. */

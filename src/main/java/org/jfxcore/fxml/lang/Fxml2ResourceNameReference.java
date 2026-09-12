@@ -63,9 +63,7 @@ public final class Fxml2ResourceNameReference extends PsiReferenceBase<XmlAttrib
     @Override
     public @NotNull PsiElement handleElementRename(@NotNull String newElementName)
             throws IncorrectOperationException {
-        String written = Fxml2ResourceName.needsQuoting(newElementName)
-                ? "'" + newElementName + "'"
-                : newElementName;
+        String written = new Fxml2ResourceName(newElementName).writeUsage();
 
         return ElementManipulators.handleContentChange(getElement(), getRangeInElement(), written);
     }

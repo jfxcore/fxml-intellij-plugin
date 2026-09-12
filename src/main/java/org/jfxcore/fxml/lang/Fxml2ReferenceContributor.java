@@ -54,6 +54,7 @@ import org.jfxcore.fxml.resolve.Fxml2TagResolver;
 import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 import org.jfxcore.fxml.resolve.Fxml2ValueSequenceParser;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
+import org.jfxcore.fxml.resource.Fxml2ResourceName;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -577,13 +578,9 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                     && !pse.defaultArg().isEmpty()) {
                 String path = pse.defaultArg();
                 int pathStart = base + pse.defaultArgOffset();
-                // Strip enclosing single quotes for quoted paths (@'path with spaces/img.png').
-                if (path.length() >= 2
-                        && path.charAt(0) == '\''
-                        && path.charAt(path.length() - 1) == '\'') {
-                    path = path.substring(1, path.length() - 1);
-                    pathStart++; // skip the opening single quote
-                }
+                Fxml2ResourceName usageName = Fxml2ResourceName.fromUsage(path);
+                if (usageName.value().length() != path.length()) pathStart++;
+                path = usageName.value();
                 // Embedded resources come first, mirroring the runtime lookup order: a simple
                 // relative name names an embedded resource when the document declares one, and
                 // an external file otherwise.  A name that is absolute or contains a path
@@ -622,18 +619,9 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                                                   @NotNull XmlFile xmlFile) {
         if (name.isEmpty()) return false;
 
-        int start = nameStart;
-        String logicalName = name;
-        if (logicalName.length() >= 2
-                && logicalName.charAt(0) == '\''
-                && logicalName.charAt(logicalName.length() - 1) == '\'') {
-            logicalName = logicalName.substring(1, logicalName.length() - 1);
-            start++;
-        }
-
-        TextRange range = new TextRange(start, start + logicalName.length());
+        TextRange range = new TextRange(nameStart, nameStart + name.length());
         Fxml2ResourceNameReference reference =
-                new Fxml2ResourceNameReference(attrVal, range, logicalName, xmlFile);
+                new Fxml2ResourceNameReference(attrVal, range, name, xmlFile);
         if (!reference.isDeclared()) return false;
 
         refs.add(reference);

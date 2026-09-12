@@ -6,8 +6,7 @@ import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.PsiElementVisitor;
 import org.jetbrains.annotations.NotNull;
-import org.jfxcore.fxml.codeinsight.Fxml2MakeResourceNamePortableFix;
-import org.jfxcore.fxml.codeinsight.Fxml2RemoveDuplicateMediaTypeParameterFix;
+import org.jfxcore.fxml.codeinsight.Fxml2ResourceDeclarationFix;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceProblem;
 
@@ -57,14 +56,14 @@ public final class Fxml2ResourceDeclarationInspection extends LocalInspectionToo
     private static @NotNull LocalQuickFix @NotNull [] fixesFor(@NotNull Fxml2ResourceEntry entry,
                                                                @NotNull Fxml2ResourceProblem problem) {
         return switch (problem.kind()) {
-            case INVALID_NAME -> Fxml2MakeResourceNamePortableFix.isApplicable(entry)
-                    ? new LocalQuickFix[] {new Fxml2MakeResourceNamePortableFix(entry.name().value())}
+            case INVALID_NAME -> !entry.name().toPortable().equals(entry.name())
+                    ? new LocalQuickFix[] {Fxml2ResourceDeclarationFix.makePortable(entry.name())}
                     : LocalQuickFix.EMPTY_ARRAY;
 
             case DUPLICATE_MEDIA_TYPE_PARAMETER -> problem.duplicateParameter() == null
                     ? LocalQuickFix.EMPTY_ARRAY
-                    : new LocalQuickFix[] {new Fxml2RemoveDuplicateMediaTypeParameterFix(
-                            entry.name().value(), problem.duplicateParameter().name())};
+                    : new LocalQuickFix[] {Fxml2ResourceDeclarationFix.removeParameter(
+                            entry.name(), problem.duplicateParameter().name())};
 
             default -> LocalQuickFix.EMPTY_ARRAY;
         };

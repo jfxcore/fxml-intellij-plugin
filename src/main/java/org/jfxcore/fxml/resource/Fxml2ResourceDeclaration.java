@@ -31,6 +31,7 @@ public record Fxml2ResourceDeclaration(@NotNull Fxml2ResourceName name,
                                        @NotNull Fxml2TextSpan mediaTypeSpan,
                                        @NotNull Fxml2TextSpan payloadSpan,
                                        @NotNull Fxml2ResourcePayload payload,
+                                       @NotNull Fxml2ResourcePayloadLayout payloadLayout,
                                        boolean hasContentSeparator) {
 
     /**
@@ -74,27 +75,7 @@ public record Fxml2ResourceDeclaration(@NotNull Fxml2ResourceName name,
      */
     public @NotNull Fxml2TextSpan injectionSpan(@NotNull String source) {
         String rawPayload = payloadSpan.textOf(source);
-        Fxml2ResourcePayloadLayout layout = Fxml2ResourcePayloadLayout.of(rawPayload);
-
-        int startInPayload = layout.startsOnOwnLine()
-                ? rawPayload.indexOf('\n') + 1
-                : layout.separator().length();
-        int endInPayload = layout.endsOnOwnLine()
-                ? rawPayload.lastIndexOf('\n') + 1
-                : trimHorizontalWhitespace(rawPayload, startInPayload, rawPayload.length());
-
-        return new Fxml2TextSpan(payloadSpan.start() + startInPayload, payloadSpan.start() + endInPayload);
-    }
-
-    private static int trimHorizontalWhitespace(@NotNull String source, int start, int end) {
-        while (end > start && isHorizontalWhitespace(source.charAt(end - 1))) {
-            --end;
-        }
-        return end;
-    }
-
-    private static boolean isHorizontalWhitespace(char character) {
-        return character == ' ' || character == '\t';
+        return payloadLayout.injectionSpan(payloadSpan, rawPayload);
     }
 
 }

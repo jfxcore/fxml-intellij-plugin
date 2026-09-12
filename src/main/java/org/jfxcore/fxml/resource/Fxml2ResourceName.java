@@ -27,6 +27,8 @@ import java.util.Set;
  */
 public record Fxml2ResourceName(@NotNull String value) {
 
+    private static final String FALLBACK_NAME = "resource";
+
     private static final Set<String> RESERVED_DEVICE_NAMES = Set.of(
             "CON", "PRN", "AUX", "NUL",
             "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
@@ -42,6 +44,23 @@ public record Fxml2ResourceName(@NotNull String value) {
         return quote + name + quote;
     }
 
+    /** Returns this name written in the least intrusive declaration spelling. */
+    public @NotNull String write() {
+        return write(value);
+    }
+
+    /** Returns this name written after the {@code @} usage prefix. */
+    public @NotNull String writeUsage() {
+        return needsQuoting(value) ? "'" + value + "'" : value;
+    }
+
+    /** Removes the optional single quotes used around an {@code @} resource name. */
+    public static @NotNull Fxml2ResourceName fromUsage(@NotNull String text) {
+        return text.length() >= 2 && text.charAt(0) == '\'' && text.charAt(text.length() - 1) == '\''
+                ? new Fxml2ResourceName(text.substring(1, text.length() - 1))
+                : new Fxml2ResourceName(text);
+    }
+
     /**
      * Returns {@code true} when {@code name} cannot be written without quotes, which is the case
      * for an empty name and for any name containing XML whitespace or the content separator.
@@ -50,7 +69,7 @@ public record Fxml2ResourceName(@NotNull String value) {
         if (name.isEmpty()) return true;
         for (int i = 0; i < name.length(); ++i) {
             char ch = name.charAt(i);
-            if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == ':') return true;
+            if (Fxml2ResourceSyntax.isXmlWhitespace(ch) || ch == ':') return true;
         }
         return false;
     }
@@ -78,6 +97,28 @@ public record Fxml2ResourceName(@NotNull String value) {
     /** Returns {@code true} when this name satisfies every portability rule. */
     public boolean isPortable() {
         return isPortable(value);
+    }
+
+    /** Returns the nearest portable spelling of this name. */
+    public @NotNull Fxml2ResourceName toPortable() {
+        StringBuilder result = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); ++i) {
+            char character = value.charAt(i);
+            if (character > 0x1f && character != 0x7f && ILLEGAL_CHARACTERS.indexOf(character) < 0) {
+                result.append(character);
+            }
+        }
+
+        while (!result.isEmpty()) {
+            char last = result.charAt(result.length() - 1);
+            if (last != ' ' && last != '.') break;
+            result.setLength(result.length() - 1);
+        }
+
+        if (result.isEmpty()) return new Fxml2ResourceName(FALLBACK_NAME);
+
+        Fxml2ResourceName candidate = new Fxml2ResourceName(result.toString());
+        return candidate.isPortable() ? candidate : new Fxml2ResourceName("_" + candidate.value);
     }
 
     /**

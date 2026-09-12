@@ -159,7 +159,7 @@ public final class Fxml2ResourceInstructionParser {
         if (targetEnd > bodyEnd || !text.startsWith(TARGET, targetStart)) return null;
 
         // The target must be a whole word: "<?resources ...?>" is a different instruction.
-        if (targetEnd < bodyEnd && !isXmlWhitespace(text.charAt(targetEnd))) return null;
+        if (targetEnd < bodyEnd && !Fxml2ResourceSyntax.isXmlWhitespace(text.charAt(targetEnd))) return null;
 
         return new Instruction(
                 new Fxml2TextSpan(start, end),
@@ -200,11 +200,6 @@ public final class Fxml2ResourceInstructionParser {
         return -1;
     }
 
-    /** Returns {@code true} when {@code character} is whitespace as XML defines it. */
-    private static boolean isXmlWhitespace(char character) {
-        return character == ' ' || character == '\t' || character == '\n' || character == '\r';
-    }
-
     // -----------------------------------------------------------------------
     // Parsing
     // -----------------------------------------------------------------------
@@ -213,7 +208,7 @@ public final class Fxml2ResourceInstructionParser {
         int bodyStart = instruction.body().start();
         int bodyEnd = instruction.body().end();
 
-        if (bodyStart < bodyEnd && !isXmlWhitespace(source.charAt(bodyStart))) {
+        if (bodyStart < bodyEnd && !Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(bodyStart))) {
             report(Fxml2ResourceProblemKind.INVALID_DECLARATION, new Fxml2TextSpan(bodyStart, bodyStart + 1));
             return nameless(bodyEnd);
         }
@@ -246,14 +241,14 @@ public final class Fxml2ResourceInstructionParser {
 
             if (cursor < bodyEnd
                     && source.charAt(cursor) != ':'
-                    && !isXmlWhitespace(source.charAt(cursor))) {
+                    && !Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(cursor))) {
                 report(Fxml2ResourceProblemKind.INVALID_DECLARATION, new Fxml2TextSpan(cursor, cursor + 1));
             }
         } else {
             nameStart = cursor;
             while (cursor < bodyEnd
                     && source.charAt(cursor) != ':'
-                    && !isXmlWhitespace(source.charAt(cursor))) {
+                    && !Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(cursor))) {
                 ++cursor;
             }
 
@@ -283,7 +278,7 @@ public final class Fxml2ResourceInstructionParser {
         }
 
         int mediaEnd = colon;
-        while (mediaEnd > cursor && isXmlWhitespace(source.charAt(mediaEnd - 1))) {
+        while (mediaEnd > cursor && Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(mediaEnd - 1))) {
             --mediaEnd;
         }
 
@@ -307,11 +302,13 @@ public final class Fxml2ResourceInstructionParser {
                                                           @NotNull Fxml2TextSpan mediaTypeSpan,
                                                           @NotNull Fxml2TextSpan payloadSpan,
                                                           boolean hasContentSeparator) {
-        Fxml2ResourcePayload payload =
-                Fxml2ResourcePayloadNormalizer.normalize(source, payloadSpan.start(), payloadSpan.end());
+        String rawPayload = payloadSpan.textOf(source);
+        Fxml2ResourcePayloadLayout layout = Fxml2ResourcePayloadLayout.of(rawPayload);
+        Fxml2ResourcePayload payload = Fxml2ResourcePayloadNormalizer.normalize(
+                source, payloadSpan.start(), payloadSpan.end(), layout);
 
         return new Fxml2ResourceDeclaration(
-                name, nameSpan, quotedNameSpan, mediaType, mediaTypeSpan, payloadSpan, payload,
+                name, nameSpan, quotedNameSpan, mediaType, mediaTypeSpan, payloadSpan, payload, layout,
                 hasContentSeparator);
     }
 
@@ -357,7 +354,7 @@ public final class Fxml2ResourceInstructionParser {
     // -----------------------------------------------------------------------
 
     private int skipXmlWhitespace(int offset, int end) {
-        while (offset < end && isXmlWhitespace(source.charAt(offset))) {
+        while (offset < end && Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(offset))) {
             ++offset;
         }
         return offset;

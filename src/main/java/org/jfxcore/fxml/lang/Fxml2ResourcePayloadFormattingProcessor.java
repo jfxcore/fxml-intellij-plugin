@@ -121,7 +121,7 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
             if (!rangeToReformat.intersects(payloadRange)) continue;
 
             String rawPayload = declaration.payloadSpan().textOf(text);
-            Fxml2ResourcePayloadLayout layout = Fxml2ResourcePayloadLayout.of(rawPayload);
+            Fxml2ResourcePayloadLayout layout = declaration.payloadLayout();
             String content = layout.withoutSeparator(declaration.content());
 
             Fxml2ResourcePayloadLanguage payloadLanguage = Fxml2ResourcePayloadLanguage.of(declaration);

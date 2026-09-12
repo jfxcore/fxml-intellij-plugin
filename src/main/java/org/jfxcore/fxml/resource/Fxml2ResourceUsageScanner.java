@@ -79,7 +79,7 @@ public final class Fxml2ResourceUsageScanner {
 
         // "{ClassPathResource name}" and "@import name": the preceding word decides.
         int wordEnd = before;
-        while (wordEnd > 0 && isHorizontalWhitespace(text.charAt(wordEnd - 1))) --wordEnd;
+        while (wordEnd > 0 && Fxml2ResourceSyntax.isHorizontalWhitespace(text.charAt(wordEnd - 1))) --wordEnd;
         int wordStart = wordEnd;
         while (wordStart > 0 && Character.isLetterOrDigit(text.charAt(wordStart - 1))) --wordStart;
         if (wordStart == wordEnd) return false;
@@ -93,7 +93,4 @@ public final class Fxml2ResourceUsageScanner {
         return character == '\'' || character == '"';
     }
 
-    private static boolean isHorizontalWhitespace(char character) {
-        return character == ' ' || character == '\t';
-    }
 }

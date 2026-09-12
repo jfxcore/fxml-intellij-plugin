@@ -44,22 +44,18 @@ public final class Fxml2ResourcePayloadNormalizer {
      * @param end    the offset after the last one of the raw payload, immediately before {@code ?>}
      * @return the resource content, mapped back onto {@code source}
      */
-    public static @NotNull Fxml2ResourcePayload normalize(@NotNull String source, int start, int end) {
+    public static @NotNull Fxml2ResourcePayload normalize(@NotNull String source, int start, int end,
+                                                           @NotNull Fxml2ResourcePayloadLayout layout) {
         MappedText payload = new MappedText(source, start, end);
 
-        int opening = 0;
-        boolean removedOpeningLine = false;
-        while (opening < payload.length() && isHorizontalWhitespace(payload.charAt(opening))) {
-            ++opening;
-        }
-
-        if (opening < payload.length() && payload.charAt(opening) == '\n') {
+        boolean removedOpeningLine = layout.startsOnOwnLine();
+        if (removedOpeningLine) {
+            int opening = source.indexOf('\n', start) - start;
             payload.remove(0, opening + 1);
-            removedOpeningLine = true;
         }
 
         int lastLineBreak = payload.lastLineBreak();
-        if (lastLineBreak >= 0 && isHorizontalWhitespace(payload, lastLineBreak + 1, payload.length())) {
+        if (layout.endsOnOwnLine() && lastLineBreak >= 0) {
             payload.remove(lastLineBreak, payload.length());
         }
 
@@ -90,7 +86,7 @@ public final class Fxml2ResourcePayloadNormalizer {
 
     /** Returns the number of characters normalization removes from {@code line}. */
     private static int strippableLength(@NotNull MappedText text, @NotNull Line line, @NotNull String commonIndent) {
-        if (!isHorizontalWhitespace(text, line.start(), line.end())) {
+        if (!Fxml2ResourceSyntax.isHorizontalWhitespace(text, line.start(), line.end())) {
             return commonIndent.length();
         }
 
@@ -109,10 +105,10 @@ public final class Fxml2ResourcePayloadNormalizer {
         String commonIndent = null;
 
         for (Line line : lines) {
-            if (isHorizontalWhitespace(text, line.start(), line.end())) continue;
+            if (Fxml2ResourceSyntax.isHorizontalWhitespace(text, line.start(), line.end())) continue;
 
             int indentEnd = line.start();
-            while (indentEnd < line.end() && isHorizontalWhitespace(text.charAt(indentEnd))) {
+            while (indentEnd < line.end() && Fxml2ResourceSyntax.isHorizontalWhitespace(text.charAt(indentEnd))) {
                 ++indentEnd;
             }
 
@@ -148,17 +144,6 @@ public final class Fxml2ResourcePayloadNormalizer {
         return left.substring(0, index);
     }
 
-    private static boolean isHorizontalWhitespace(char character) {
-        return character == ' ' || character == '\t';
-    }
-
-    private static boolean isHorizontalWhitespace(@NotNull MappedText text, int start, int end) {
-        for (int i = start; i < end; ++i) {
-            if (!isHorizontalWhitespace(text.charAt(i))) return false;
-        }
-        return true;
-    }
-
     /** A line of the payload, in the coordinates of the text it was split from. */
     private record Line(int start, int end) {}
 
@@ -167,7 +152,7 @@ public final class Fxml2ResourcePayloadNormalizer {
      * offset that character has in the source.  Removing a range is the only mutation, which is
      * all normalization needs.
      */
-    private static final class MappedText {
+    private static final class MappedText implements CharSequence {
 
         private final char[] characters;
         private final int[] sourceOffsets;
@@ -184,12 +169,24 @@ public final class Fxml2ResourcePayloadNormalizer {
             sourceOffsets[length] = end;
         }
 
-        int length() {
+        @Override
+        public int length() {
             return length;
         }
 
-        char charAt(int index) {
+        @Override
+        public char charAt(int index) {
             return characters[index];
+        }
+
+        @Override
+        public @NotNull CharSequence subSequence(int start, int end) {
+            return substring(start, end);
+        }
+
+        @Override
+        public @NotNull String toString() {
+            return substring(0, length);
         }
 
         @NotNull String substring(int start, int end) {
