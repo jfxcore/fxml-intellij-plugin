@@ -17,8 +17,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Set;
 
 /**
- * Answers a reformat requested from inside the payload of a {@code <?resource ?>} declaration by
- * reformatting the document the declaration is written in.
+ * Answers a reformat requested from an FXML/2 injected fragment by reformatting its owning
+ * document.
  *
  * <p>A payload is an editable fragment of the language its media type names, so the caret can sit
  * in it when the user reformats.  The fragment alone cannot answer that request: the content of a
@@ -27,17 +27,16 @@ import java.util.Set;
  * fragment sees.  Formatting the fragment in isolation therefore indents the payload against
  * nothing, and leaves the terminator of the declaration behind at a column of its own.
  *
- * <p>Handing the request to the enclosing document is what makes the caret position irrelevant:
- * reformatting from inside a payload produces exactly what reformatting from anywhere else in the
- * file produces, in a standalone document as well as in markup embedded in an annotation value.
- * The document is formatted as a whole to fulfill the user's request. A reformat with the payload
- * as its subject is conceptually a reformat of the declaration that carries it.
+ * <p>Handing the request to the enclosing document gives the host formatter the structure needed
+ * to answer it. A payload request reformats the document as a whole because the payload belongs to
+ * its declaration. An embedded-markup request preserves the host editor's selected range, when
+ * present, so invoking reformat from an injected editor behaves like invoking it from the host.
  *
  * <p>The service is consulted only for an explicit reformat.  Formatting that happens while typing
  * is left to the fragment, where {@link Fxml2ResourcePayloadEnterHandler} places new lines by the
  * same rules without rewriting the document around them.
  */
-public final class Fxml2ResourcePayloadFormattingService implements FormattingService {
+public final class Fxml2FragmentFormattingService implements FormattingService {
 
     @Override
     public @NotNull Set<Feature> getFeatures() {
@@ -48,7 +47,7 @@ public final class Fxml2ResourcePayloadFormattingService implements FormattingSe
 
     @Override
     public boolean canFormat(@NotNull PsiFile file) {
-        return Fxml2ResourcePayloadMarker.of(file) != null;
+        return Fxml2ResourcePayloadMarker.of(file) != null || Fxml2EmbeddedUtil.isEmbeddedFxml2(file);
     }
 
     @Override
@@ -87,6 +86,10 @@ public final class Fxml2ResourcePayloadFormattingService implements FormattingSe
                 : InjectedLanguageManager.getInstance(project).getTopLevelFile(fragment);
         if (hostFile == fragment) return;
 
-        CodeStyleManager.getInstance(project).reformatText(hostFile, 0, hostFile.getTextLength());
+        Fxml2ReformatSnapshotTracker.FormatSnapshot snapshot = Fxml2ReformatSnapshotTracker.getSnapshot();
+        TextRange selection = snapshot == null ? null : snapshot.originalSelection();
+        TextRange range = selection != null ? selection : TextRange.create(0, hostFile.getTextLength());
+        CodeStyleManager.getInstance(project).reformatText(
+                hostFile, range.getStartOffset(), range.getEndOffset());
     }
 }

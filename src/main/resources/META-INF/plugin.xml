@@ -144,23 +144,9 @@
         <editor.injectedFileChangesHandlerProvider language="FXML2" order="first"
                 implementationClass="org.jfxcore.fxml.lang.Fxml2InjectedFileChangesHandlerProvider"/>
 
-        <!--
-            FormattingService: a reformat requested from inside a <?resource ?> payload is
-            answered by reformatting the document the declaration is written in.  The payload
-            fragment cannot answer it: it sees neither the declaration that places it nor the
-            markup that decides the indentation the declaration sits at.
-        -->
+        <!-- Reformat an injected markup or resource fragment through its owning document. -->
         <formattingService
-                implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadFormattingService"/>
-
-        <!--
-            InjectedFormattingOptionsProvider: when the user reformats from inside an
-            injected FXML editor fragment, this delegates the request back to the
-            Java/Kotlin host file.  The host formatter then runs as normal, and the
-            PostFormatProcessor below applies correct XML indentation.
-        -->
-        <formatting.injectedOptions
-                implementation="org.jfxcore.fxml.lang.Fxml2InjectedFormattingOptionsProvider"/>
+                implementation="org.jfxcore.fxml.lang.Fxml2FragmentFormattingService"/>
 
         <!--
             PostFormatProcessor: after the Java (or Kotlin) formatter finishes, this
