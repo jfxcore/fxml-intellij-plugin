@@ -47,7 +47,7 @@ class Fxml2XmlBlock extends XmlBlock {
 
     /** Returns whether {@code node} is a resource declaration that carries a payload. */
     private static boolean isResourceDeclaration(@NotNull ASTNode node) {
-        return node.getPsi() instanceof Fxml2ResourceProcessingInstruction instruction
+        return node.getPsi() instanceof Fxml2ProcessingInstruction instruction
                 && instruction.isValidHost();
     }
 

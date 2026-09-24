@@ -1,8 +1,6 @@
 package org.jfxcore.fxml;
 
 import com.intellij.codeInsight.navigation.impl.GTDActionData;
-import com.intellij.find.findUsages.FindUsagesHandler;
-import com.intellij.find.findUsages.FindUsagesOptions;
 import com.intellij.codeInsight.navigation.impl.NavigationActionResult;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.util.TextRange;
@@ -18,16 +16,16 @@ import com.intellij.psi.xml.XmlAttributeValue;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.annotator.Fxml2StyleClassInspection;
 import org.jfxcore.fxml.lang.CssSelectorElement;
-import org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory;
 import org.jfxcore.fxml.lang.Fxml2StyleClassReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import com.intellij.usageView.UsageInfo;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -64,16 +62,8 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
             """;
 
     @BeforeAll
-    void addMarkupAnnotation() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+    void addTestClasses() {
+        installComponentViewAnnotation();
     }
 
     @BeforeEach
@@ -100,41 +90,18 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         assertEquals("mystyle1", ((CssSelectorElement) resolved).getName());
     }
 
-    @Test
-    void styleClassResolvesToSelectorInStandaloneEmbeddedResource() {
-        getFixture().configureByText("TestView.fxml", fxml(
-                "javafx.scene.control.Label",
-                """
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void styleClassResolvesToSelectorInEmbeddedResource(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
+                <?import javafx.scene.control.Label?>
+                """, """
                   <?resource styles.css text/css:
                       .local-style {
                         -fx-font-size: 16px;
                       }
                   ?>
                   <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
-                """
-        ));
-
-        CssSelectorElement selector = assertInstanceOf(
-                CssSelectorElement.class, resolveStyleClassAtCaret());
-        assertNotNull(selector);
-        assertEquals("local-style", selector.getName());
-        assertEquals(".local-style", selector.getContainingFile().getText().substring(
-                selector.getTextRange().getStartOffset(), selector.getTextRange().getEndOffset()));
-    }
-
-    @Test
-    void styleClassResolvesToSelectorInComponentViewEmbeddedResource() {
-        getFixture().configureByText("TestView.java", """
-                package test;
-                import org.jfxcore.markup.ComponentView;
-                import javafx.scene.control.Label;
-                @ComponentView(\"""
-                    <?resource styles.css text/css:
-                        .local-style { -fx-font-size: 16px; }
-                    ?>
-                    <Label styleClass="local-<caret>style" stylesheets="@styles.css"/>
-                    \""")
-                public class TestView extends Label {}
                 """);
 
         CssSelectorElement selector = assertInstanceOf(
@@ -459,31 +426,38 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
      * payload must find the {@code styleClass} usage in the same document.  The selector is
      * the declaration site, so its use sites are what navigation from it has to produce.
      */
-    @Test
-    void findUsagesFromEmbeddedResourceSelectorFindsStyleClassUsage() {
-        getFixture().configureByText("TestView.fxml", fxml(
-                "javafx.scene.control.Label",
-                """
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = "STANDALONE")
+    void findUsagesFromEmbeddedResourceSelectorFindsStyleClassUsage(Fxml2DocumentForm form) {
+        assertFindUsagesFromEmbeddedResourceSelector(form);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void findUsagesFromComponentViewResourceSelectorFindsStyleClassUsage(Fxml2DocumentForm form) {
+        assertFindUsagesFromEmbeddedResourceSelector(form);
+    }
+
+    private void assertFindUsagesFromEmbeddedResourceSelector(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
+                <?import javafx.scene.control.Label?>
+                """, """
                   <?resource styles.css text/css:
                       .local-style {
                         -fx-font-size: 16px;
                       }
                   ?>
                   <Label styleClass="local-style" stylesheets="@styles.css"/>
-                """
-        ));
+                """);
 
         PsiElement selectorElement = injectedElementAtLocalStyleSelector();
         assertNotNull(selectorElement, "Expected an injected payload element at the selector");
 
-        Collection<PsiReference> refs = ReadAction.compute(() ->
-                ReferencesSearch.search(selectorElement,
-                        GlobalSearchScope.projectScope(getFixture().getProject())).findAll());
+        Collection<UsageInfo> usages = ReadAction.compute(() -> getFixture().findUsages(selectorElement));
 
-        assertTrue(refs.stream().anyMatch(r -> r instanceof Fxml2StyleClassReference),
-                "Expected the styleClass usage in Find Usages results. Found "
-                + refs.size() + " refs of types: "
-                + refs.stream().map(r -> r.getClass().getSimpleName()).toList());
+        assertTrue(ReadAction.compute(() -> usages.stream().anyMatch(usage ->
+                        usage.getReference() instanceof Fxml2StyleClassReference)),
+                "Expected the styleClass usage in Find Usages results: " + usages.size());
     }
 
     /**
@@ -536,22 +510,7 @@ class Fxml2StyleClassTest extends Fxml2TestBase {
         PsiElement selectorElement = injectedElementAtLocalStyleSelector();
         assertNotNull(selectorElement, "Expected an injected payload element at the selector");
 
-        Fxml2StyleClassFindUsagesHandlerFactory factory = new Fxml2StyleClassFindUsagesHandlerFactory();
-        assertTrue(ReadAction.compute(() -> factory.canFindUsages(selectorElement)),
-                "The embedded selector must be a Find Usages target");
-
-        FindUsagesHandler handler = ReadAction.compute(
-                () -> factory.createFindUsagesHandler(selectorElement, /* forHighlightUsages= */ false));
-        assertNotNull(handler);
-
-        List<UsageInfo> usages = new ArrayList<>();
-        ReadAction.run(() -> {
-            FindUsagesOptions options = handler.getFindUsagesOptions();
-            options.searchScope = GlobalSearchScope.projectScope(getFixture().getProject());
-            for (PsiElement primary : handler.getPrimaryElements()) {
-                handler.processElementUsages(primary, usage -> { usages.add(usage); return true; }, options);
-            }
-        });
+        Collection<UsageInfo> usages = ReadAction.compute(() -> getFixture().findUsages(selectorElement));
 
         List<Integer> offsets = ReadAction.compute(() -> usages.stream()
                 .map(UsageInfo::getNavigationOffset).toList());

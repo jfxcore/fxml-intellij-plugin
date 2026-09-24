@@ -1,15 +1,11 @@
 package org.jfxcore.fxml.lang;
 
-import com.intellij.lang.Language;
 import com.intellij.lang.injection.MultiHostInjector;
 import com.intellij.lang.injection.MultiHostRegistrar;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
-import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
 import java.util.List;
 
@@ -18,7 +14,7 @@ import java.util.List;
  * document, so that a {@code text/css} payload is edited with the same highlighting, completion,
  * folding, commenting and reformatting a standalone stylesheet would get.
  *
- * <p>The injector is registered for {@link Fxml2ResourceProcessingInstruction} alone, which is a
+ * <p>The injector is registered for {@link Fxml2ProcessingInstruction} alone, which is a
  * class only FXML/2 documents produce.  Nothing else competes for the host: the platform stops
  * asking injectors as soon as one produces a result, so keeping the host class exclusive is what
  * keeps this injection and any other injection from shadowing each other.
@@ -31,29 +27,21 @@ public final class Fxml2ResourceInjector implements MultiHostInjector {
 
     @Override
     public @NotNull List<? extends Class<? extends PsiElement>> elementsToInjectIn() {
-        return List.of(Fxml2ResourceProcessingInstruction.class);
+        return List.of(Fxml2ProcessingInstruction.class);
     }
 
     @Override
     public void getLanguagesToInject(@NotNull MultiHostRegistrar registrar, @NotNull PsiElement context) {
-        if (!(context instanceof Fxml2ResourceProcessingInstruction instruction)) return;
+        if (!(context instanceof Fxml2ProcessingInstruction instruction)) return;
         if (!instruction.isValidHost()) return;
 
+        Fxml2ResourceParseResult directive = instruction.resourceDirective();
+        if (directive == null) return;
+
         String text = instruction.getText();
-        Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parseAt(text, 0, text.length());
-        if (result == null) return;
+        Fxml2ResourceDeclaration declaration = directive.declaration();
+        if (declaration.payload().isEmpty()) return;
 
-        Fxml2ResourceDeclaration declaration = result.declaration();
-        if (declaration == null || declaration.payload().isEmpty()) return;
-
-        Language language = Fxml2ResourcePayloadLanguage.of(declaration).languageOrPlainText();
-        TextRange rawPayload = declaration.payloadSpan().toTextRange();
-        TextRange payload = declaration.injectionSpan(text).toTextRange();
-        String prefix = text.substring(rawPayload.getStartOffset(), payload.getStartOffset());
-        String suffix = text.substring(payload.getEndOffset(), rawPayload.getEndOffset());
-
-        registrar.startInjecting(language)
-                .addPlace(prefix, suffix, instruction, payload)
-                .doneInjecting();
+        Fxml2ResourcePayloadInjection.of(text, declaration).inject(registrar, instruction);
     }
 }

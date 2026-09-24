@@ -14,7 +14,6 @@ import com.intellij.psi.codeStyle.FileIndentOptionsProvider;
 import com.intellij.testFramework.LightVirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
 /**
  * Gives a fragment editor of FXML/2 markup the indentation step of the document the fragment
@@ -39,8 +38,15 @@ public final class Fxml2FragmentIndentOptionsProvider extends FileIndentOptionsP
                                                     @NotNull CodeStyleSettings settings,
                                                     @NotNull VirtualFile file) {
 
-        if (!(file instanceof LightVirtualFile copy)) return null;
-        if (!(copy.getOriginalFile() instanceof VirtualFileWindow window)) return null;
+        VirtualFileWindow window;
+        if (file instanceof VirtualFileWindow directWindow) {
+            window = directWindow;
+        } else if (file instanceof LightVirtualFile copy
+                && copy.getOriginalFile() instanceof VirtualFileWindow originalWindow) {
+            window = originalWindow;
+        } else {
+            return null;
+        }
 
         VirtualFile injected = (VirtualFile)window;
         PsiFile injectedFile = PsiManager.getInstance(project).findFile(injected);
@@ -52,14 +58,15 @@ public final class Fxml2FragmentIndentOptionsProvider extends FileIndentOptionsP
             step = Fxml2EffectiveIndent.ofMarkup(project, hostFile);
         }
         else {
-            Fxml2ResourcePayloadLanguage payloadLanguage = Fxml2ResourcePayloadFragment.languageOf(injectedFile);
-            if (payloadLanguage == null) return null;
-            step = Fxml2EffectiveIndent.ofPayload(project, hostFile, payloadLanguage);
+            Fxml2ResourcePayloadMarker marker = Fxml2ResourcePayloadMarker.of(injectedFile);
+            if (marker == null) return null;
+            step = Fxml2EffectiveIndent.ofPayload(project, hostFile, marker.language());
         }
 
         IndentOptions options = new IndentOptions();
         options.copyFrom(settings.getCommonSettings(injectedFile.getLanguage()).getIndentOptions());
         options.INDENT_SIZE = step.width();
+        options.TAB_SIZE = step.width();
         return options;
     }
 }

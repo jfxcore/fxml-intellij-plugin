@@ -75,15 +75,7 @@ class Fxml2ProcessingInstructionCompletionTest extends Fxml2TestBase {
     /** Markup embedded in a {@code @ComponentView} annotation value completes the same way. */
     @Test
     void targetIsCompletedInEmbeddedMarkup() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+        installComponentViewAnnotation();
         getFixture().configureByText("EmbeddedView.java", """
                 import org.jfxcore.markup.ComponentView;
 

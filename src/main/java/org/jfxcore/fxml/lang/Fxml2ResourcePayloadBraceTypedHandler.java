@@ -11,10 +11,10 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.highlighter.HighlighterIterator;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jfxcore.fxml.resource.Fxml2ResourceSyntax;
 
 /** Aligns a payload closing brace with the line carrying its matching opening brace. */
 public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDelegate {
@@ -34,7 +34,7 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
         int closingLine = matchingDocument.getLineNumber(matchingClosingOffset);
         int closingLineStart = matchingDocument.getLineStartOffset(closingLine);
         CharSequence matchingText = matchingDocument.getImmutableCharSequence();
-        if (containsNonWhitespace(matchingText, closingLineStart, matchingClosingOffset)) {
+        if (!Fxml2ResourceSyntax.isWhitespace(matchingText, closingLineStart, matchingClosingOffset)) {
             return Result.CONTINUE;
         }
 
@@ -56,7 +56,7 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
         int targetClosingLine = document.getLineNumber(targetClosingOffset);
         int targetClosingLineStart = document.getLineStartOffset(targetClosingLine);
         CharSequence text = document.getImmutableCharSequence();
-        if (containsNonWhitespace(text, targetClosingLineStart, targetClosingOffset)) {
+        if (!Fxml2ResourceSyntax.isWhitespace(text, targetClosingLineStart, targetClosingOffset)) {
             return Result.CONTINUE;
         }
 
@@ -87,7 +87,10 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
 
     private static PayloadEditorContext payloadContext(@NotNull Editor editor, @NotNull PsiFile file) {
         int closingOffset = editor.getCaretModel().getOffset() - 1;
-        if (Fxml2ResourcePayloadFragment.isPayloadFragment(file)) {
+        Fxml2ResourcePayloadContext payload = Fxml2ResourcePayloadContext.find(file, closingOffset);
+        if (payload == null) return null;
+
+        if (payload.isPayloadFile(file)) {
             if (editor instanceof EditorWindow window) {
                 return new PayloadEditorContext(file, editor, window.getDocument().getDelegate(), closingOffset,
                         true, window.getDocument());
@@ -96,25 +99,12 @@ public final class Fxml2ResourcePayloadBraceTypedHandler extends TypedHandlerDel
             return new PayloadEditorContext(file, editor, editor.getDocument(), closingOffset, true, null);
         }
 
-        if (!(editor instanceof EditorWindow window) || !Fxml2EmbeddedUtil.isEmbeddedFxml2(file)) {
-            return null;
-        }
+        if (!(editor instanceof EditorWindow window)) return null;
 
         Editor hostEditor = window.getDelegate();
         int hostClosingOffset = hostEditor.getCaretModel().getOffset() - 1;
-        String prefix = hostEditor.getDocument().getText(new TextRange(0, hostClosingOffset));
-        int declarationStart = prefix.lastIndexOf("<?resource");
-        if (declarationStart < 0 || prefix.lastIndexOf("?>") >= declarationStart) return null;
-
         return new PayloadEditorContext(
                 file, hostEditor, hostEditor.getDocument(), hostClosingOffset, false, null);
-    }
-
-    private static boolean containsNonWhitespace(@NotNull CharSequence text, int start, int end) {
-        for (int i = start; i < end; i++) {
-            if (!Character.isWhitespace(text.charAt(i))) return true;
-        }
-        return false;
     }
 
     /** Finds the opener when the active editor has no brace matcher for the payload language. */

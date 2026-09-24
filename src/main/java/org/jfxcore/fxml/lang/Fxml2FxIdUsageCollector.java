@@ -21,7 +21,7 @@ import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
  * Shared utility that collects all usages of an {@code fx:id} declaration.
  *
  * <p>Both the PSI find-usages handler ({@link Fxml2FxIdFindUsagesHandlerFactory})
- * and the symbol-based usage searcher ({@link Fxml2FxIdUsageSearcher}) delegate here
+ * and the symbol-based usage target ({@link FxIdSymbol}) delegate here
  * so that the two paths always return identical results.
  *
  * <p>The collected usages are:

@@ -106,6 +106,7 @@ class Fxml2ResourcePayloadLayoutTest {
         String content = ".rule {\n  a: b;\n}";
         String payload = Fxml2ResourcePayloadLayout.ON_OWN_LINES.write(content, "    ", "    ");
 
-        assertEquals(content, Fxml2ResourcePayloadNormalizer.normalize(payload, 0, payload.length()).text());
+        assertEquals(content, Fxml2ResourcePayloadNormalizer.normalize(
+                payload, 0, payload.length(), Fxml2ResourcePayloadLayout.ON_OWN_LINES).text());
     }
 }

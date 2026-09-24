@@ -16,7 +16,6 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLayout;
@@ -66,20 +65,10 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
         Document document = documentManager.getDocument(source);
         if (document == null) return rangeToReformat;
 
-        List<Rewrite> rewrites = collect(source, document, rangeToReformat);
+        List<Fxml2DocumentEdit> rewrites = collect(source, document, rangeToReformat);
         if (rewrites.isEmpty()) return rangeToReformat;
 
-        documentManager.doPostponedOperationsAndUnblockDocument(document);
-
-        int delta = 0;
-        // Back to front, so that the offsets of the rewrites still to come stay valid.
-        for (int index = rewrites.size() - 1; index >= 0; --index) {
-            Rewrite rewrite = rewrites.get(index);
-            document.replaceString(rewrite.range().getStartOffset(), rewrite.range().getEndOffset(), rewrite.payload());
-            delta += rewrite.payload().length() - rewrite.range().getLength();
-        }
-
-        documentManager.commitDocument(document);
+        int delta = Fxml2DocumentEdit.apply(document, documentManager, rewrites);
         return TextRange.create(rangeToReformat.getStartOffset(),
                                 Math.min(rangeToReformat.getEndOffset() + delta, document.getTextLength()));
     }
@@ -93,36 +82,33 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
         return true;
     }
 
-    /** One payload to replace, in the coordinates of the document it is written in. */
-    private record Rewrite(@NotNull TextRange range, @NotNull String payload) {}
-
     /** Collects the payloads of {@code file} that reformatting changes, in document order. */
-    private static @NotNull List<Rewrite> collect(@NotNull PsiFile file,
-                                                  @NotNull Document document,
-                                                  @NotNull TextRange rangeToReformat) {
+    private static @NotNull List<Fxml2DocumentEdit> collect(@NotNull PsiFile file,
+                                                            @NotNull Document document,
+                                                            @NotNull TextRange rangeToReformat) {
 
         Project project = file.getProject();
         VirtualFile contextFile = file.getVirtualFile();
         VirtualFile directory = contextFile != null ? contextFile.getParent() : null;
         Fxml2IndentSteps steps = stepsOf(file, contextFile);
-        List<Rewrite> rewrites = new ArrayList<>();
+        List<Fxml2DocumentEdit> rewrites = new ArrayList<>();
 
-        for (Fxml2ResourceProcessingInstruction instruction :
-                PsiTreeUtil.findChildrenOfType(file, Fxml2ResourceProcessingInstruction.class)) {
+        for (Fxml2ProcessingInstruction instruction :
+                PsiTreeUtil.findChildrenOfType(file, Fxml2ProcessingInstruction.class)) {
+
+            Fxml2ResourceParseResult directive = instruction.resourceDirective();
+            if (directive == null) continue;
 
             String text = instruction.getText();
-            Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parseAt(text, 0, text.length());
-            if (result == null) continue;
-
-            Fxml2ResourceDeclaration declaration = result.declaration();
-            if (declaration == null || declaration.payloadSpan().isEmpty()) continue;
+            Fxml2ResourceDeclaration declaration = directive.declaration();
+            if (declaration.payloadSpan().isEmpty()) continue;
 
             int instructionStart = instruction.getTextRange().getStartOffset();
             TextRange payloadRange = declaration.payloadSpan().toTextRange().shiftRight(instructionStart);
             if (!rangeToReformat.intersects(payloadRange)) continue;
 
             String rawPayload = declaration.payloadSpan().textOf(text);
-            Fxml2ResourcePayloadLayout layout = Fxml2ResourcePayloadLayout.of(rawPayload);
+            Fxml2ResourcePayloadLayout layout = declaration.payloadLayout();
             String content = layout.withoutSeparator(declaration.content());
 
             Fxml2ResourcePayloadLanguage payloadLanguage = Fxml2ResourcePayloadLanguage.of(declaration);
@@ -135,7 +121,7 @@ public final class Fxml2ResourcePayloadFormattingProcessor implements PostFormat
             String payload = layout.write(formatted, declarationIndent,
                                           declarationIndent + steps.markup().text());
             if (!payload.equals(rawPayload)) {
-                rewrites.add(new Rewrite(payloadRange, payload));
+                rewrites.add(new Fxml2DocumentEdit(payloadRange, payload));
             }
         }
 

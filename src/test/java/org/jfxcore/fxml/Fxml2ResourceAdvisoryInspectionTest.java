@@ -32,16 +32,8 @@ class Fxml2ResourceAdvisoryInspectionTest extends Fxml2TestBase {
 
     /** The markup extension the {@code @} prefix notation is shorthand for. */
     @BeforeAll
-    void addClassPathResource() {
-        getFixture().addClass("""
-                package org.jfxcore.markup.resource;
-                import javafx.beans.DefaultProperty;
-                import javafx.beans.NamedArg;
-                @DefaultProperty("value")
-                public final class ClassPathResource {
-                    public ClassPathResource(@NamedArg("value") String value) {}
-                }
-                """);
+    void addTestClasses() {
+        addResourceMarkupExtensions();
     }
 
     @BeforeEach
@@ -152,7 +144,7 @@ class Fxml2ResourceAdvisoryInspectionTest extends Fxml2TestBase {
         getFixture().launchAction(getFixture().findSingleIntention("Set media type to 'text/css'"));
 
         String text = ReadAction.compute(() -> getFixture().getFile().getText());
-        assertTrue(text.contains("<?resource styles.css text/css;charset=UTF-16LE:"),
+        assertTrue(text.contains("<?resource styles.css text/css; charset=UTF-16LE:"),
                 "the charset parameter survives: " + text);
     }
 

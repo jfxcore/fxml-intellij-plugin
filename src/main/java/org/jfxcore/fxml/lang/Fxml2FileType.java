@@ -7,6 +7,8 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import com.intellij.psi.xml.XmlFile;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 
 import javax.swing.Icon;
@@ -80,5 +82,10 @@ public final class Fxml2FileType extends XmlLikeFileType {
         String name = vf.getName();
         if (!name.endsWith(".fxml") && !name.endsWith(".fxmlx")) return false;
         return isFxml2(file.getViewProvider().getContents());
+    }
+
+    /** Returns {@code file} as an FXML/2 XML document, or {@code null} otherwise. */
+    public static @Nullable XmlFile asFxml2(@NotNull PsiFile file) {
+        return file instanceof XmlFile xmlFile && isFxml2(xmlFile) ? xmlFile : null;
     }
 }

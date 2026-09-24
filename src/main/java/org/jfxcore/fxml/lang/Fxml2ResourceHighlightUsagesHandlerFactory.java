@@ -1,6 +1,3 @@
-// Copyright (c) 2026, JFXcore. All rights reserved.
-// Use of this source code is governed by the BSD-3-Clause license.
-
 package org.jfxcore.fxml.lang;
 
 import com.intellij.codeInsight.highlighting.HighlightUsagesHandlerBase;
@@ -11,12 +8,8 @@ import com.intellij.openapi.util.ProperTextRange;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiReference;
 import com.intellij.psi.search.LocalSearchScope;
 import com.intellij.psi.search.searches.ReferencesSearch;
-import com.intellij.psi.util.PsiTreeUtil;
-import com.intellij.psi.xml.XmlAttributeValue;
-import com.intellij.psi.xml.XmlFile;
 import com.intellij.util.Consumer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,8 +20,7 @@ import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import java.util.List;
 
 /** Highlights an embedded-resource declaration and all its use sites under either caret. */
-public final class Fxml2ResourceHighlightUsagesHandlerFactory
-        implements HighlightUsagesHandlerFactory {
+public final class Fxml2ResourceHighlightUsagesHandlerFactory implements HighlightUsagesHandlerFactory {
 
     @Override
     public @Nullable HighlightUsagesHandlerBase<?> createHighlightUsagesHandler(
@@ -44,50 +36,43 @@ public final class Fxml2ResourceHighlightUsagesHandlerFactory
 
     private static @Nullable HighlightUsagesHandlerBase<?> create(
             @NotNull Editor editor, @NotNull PsiFile file) {
-        if (!(file instanceof XmlFile xmlFile) || !Fxml2FileType.isFxml2(xmlFile)) return null;
-
         int offset = editor.getCaretModel().getOffset();
-        Fxml2ResourceDeclarationElement declaration = declarationAt(xmlFile, offset);
-        if (declaration == null) declaration = declarationFromReference(xmlFile, offset);
-        return declaration == null ? null : new Handler(editor, file, declaration);
-    }
+        Fxml2ResourceEntry entry = Fxml2ResourceDeclarations.at(file, offset);
+        Fxml2ResourceDeclarationElement declaration = entry == null
+                ? declarationFromReference(file, offset)
+                : new Fxml2ResourceDeclarationElement(entry);
+        if (declaration == null) return null;
 
-    private static @Nullable Fxml2ResourceDeclarationElement declarationAt(
-            @NotNull XmlFile file, int offset) {
-        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(file).entries()) {
-            if (entry.nameRange().containsOffset(offset)) {
-                return new Fxml2ResourceDeclarationElement(entry);
-            }
+        if (entry == null) {
+            var markupFile = Fxml2ResourceDeclarations.markupFileAt(file, offset);
+            entry = markupFile == null ? null : Fxml2ResourceModel.of(markupFile).resolve(declaration.getName());
         }
-        return null;
+        TextRange declarationRange = entry == null ? null : entry.nameRangeIn(file);
+        return declarationRange == null ? null : new Handler(editor, file, declaration, declarationRange);
     }
 
     private static @Nullable Fxml2ResourceDeclarationElement declarationFromReference(
-            @NotNull XmlFile file, int offset) {
-        XmlAttributeValue value = PsiTreeUtil.findElementOfClassAtOffset(
-                file, offset, XmlAttributeValue.class, false);
-        if (value == null) return null;
-
-        int relativeOffset = offset - value.getTextRange().getStartOffset();
-        for (PsiReference reference : value.getReferences()) {
-            if (reference instanceof Fxml2ResourceNameReference resourceReference
-                    && reference.getRangeInElement().containsOffset(relativeOffset)
-                    && resourceReference.resolve() instanceof Fxml2ResourceDeclarationElement declaration) {
-                return declaration;
-            }
-        }
-        return null;
+            @NotNull PsiFile file, int offset) {
+        Fxml2AttributeValueAtOffset position = Fxml2AttributeValueAtOffset.find(file, offset);
+        if (position == null) return null;
+        return position.referencesAt(Fxml2ResourceNameReference.class).stream()
+                .map(Fxml2ResourceNameReference::resolve)
+                .filter(Fxml2ResourceDeclarationElement.class::isInstance)
+                .map(Fxml2ResourceDeclarationElement.class::cast)
+                .findFirst()
+                .orElse(null);
     }
 
-    private static final class Handler
-            extends HighlightUsagesHandlerBase<Fxml2ResourceDeclarationElement> {
-
+    private static final class Handler extends HighlightUsagesHandlerBase<Fxml2ResourceDeclarationElement> {
         private final Fxml2ResourceDeclarationElement declaration;
+        private final TextRange declarationRange;
 
         private Handler(@NotNull Editor editor, @NotNull PsiFile file,
-                        @NotNull Fxml2ResourceDeclarationElement declaration) {
+                        @NotNull Fxml2ResourceDeclarationElement declaration,
+                        @NotNull TextRange declarationRange) {
             super(editor, file);
             this.declaration = declaration;
+            this.declarationRange = declarationRange;
         }
 
         @Override
@@ -103,15 +88,14 @@ public final class Fxml2ResourceHighlightUsagesHandlerFactory
         }
 
         @Override
-        public void computeUsages(
-                @NotNull List<? extends Fxml2ResourceDeclarationElement> targets) {
-            myReadUsages.add(declaration.getTextRange());
+        public void computeUsages(@NotNull List<? extends Fxml2ResourceDeclarationElement> targets) {
+            myReadUsages.add(declarationRange);
             ReferencesSearch.search(declaration, new LocalSearchScope(myFile)).forEach(reference -> {
                 PsiElement element = reference.getElement();
-                TextRange range = reference.getRangeInElement()
-                        .shiftRight(element.getTextRange().getStartOffset());
-                myReadUsages.add(InjectedLanguageManager.getInstance(element.getProject())
-                        .injectedToHost(element, range));
+                TextRange range = reference.getRangeInElement().shiftRight(element.getTextRange().getStartOffset());
+                InjectedLanguageManager manager = InjectedLanguageManager.getInstance(element.getProject());
+                myReadUsages.add(element.getContainingFile().equals(myFile)
+                        ? range : manager.injectedToHost(element, range));
                 return true;
             });
             buildStatusText(declaration.getName(), myReadUsages.size() - 1);

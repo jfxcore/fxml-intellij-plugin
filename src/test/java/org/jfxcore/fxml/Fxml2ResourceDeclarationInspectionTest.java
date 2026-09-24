@@ -57,6 +57,18 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
         getFixture().checkHighlighting(false, false, true);
     }
 
+    /**
+     * A declaration that names no resource is reported on the whole instruction, because the span
+     * the name would have occupied is empty and the platform cannot highlight nothing.
+     */
+    @Test
+    void missingNameIsReported() {
+        configure("""
+                <error descr="Missing resource name"><?resource ?></error>
+                """, "");
+        getFixture().checkHighlighting(false, false, true);
+    }
+
     /** A malformed media type is reported. */
     @Test
     void malformedMediaTypeIsReported() {
@@ -81,6 +93,17 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
         configure("""
                 <?resource Foo.txt:first?>
                 <?resource <error descr="Duplicate resource declaration 'foo.txt'; a resource with this name is already declared at line 3, column 12">foo.txt</error>:second?>
+                """, "");
+        getFixture().checkHighlighting(false, false, true);
+    }
+
+    /** Declaration grammar validation can run without duplicate-name validation. */
+    @Test
+    void duplicateInspectionCanBeDisabledIndependently() {
+        getFixture().disableInspections(new Fxml2DuplicateResourceInspection());
+        configure("""
+                <?resource Foo.txt:first?>
+                <?resource foo.txt:second?>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
     }

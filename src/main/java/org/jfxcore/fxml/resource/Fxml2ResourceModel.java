@@ -1,5 +1,7 @@
 package org.jfxcore.fxml.resource;
 
+import com.intellij.openapi.util.text.LineColumn;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -53,7 +55,9 @@ public final class Fxml2ResourceModel {
 
         Map<String, Fxml2ResourceEntry> index = new LinkedHashMap<>();
         for (Fxml2ResourceEntry entry : entries) {
-            index.putIfAbsent(entry.name().value(), entry);
+            if (entry.declaration().hasName()) {
+                index.putIfAbsent(entry.name().value(), entry);
+            }
         }
         this.byName = Map.copyOf(index);
     }
@@ -73,19 +77,20 @@ public final class Fxml2ResourceModel {
      */
     public static @NotNull Fxml2ResourceModel of(@NotNull PsiElement element) {
         PsiFile file = element.getContainingFile();
-        return file instanceof XmlFile xmlFile && Fxml2FileType.isFxml2(xmlFile)
-                ? of(xmlFile)
+        XmlFile xmlFile = Fxml2FileType.asFxml2(file);
+        return xmlFile != null ? of(xmlFile)
                 : new Fxml2ResourceModel(List.of());
     }
 
-    /** Returns every declaration of the document, in declaration order. */
+    /**
+     * Returns every {@code <?resource ?>} directive of the document, in declaration order.
+     *
+     * <p>A directive no name could be read from is included, because it still carries the
+     * diagnostics that say so.  It resolves nothing: {@link #resolve} only ever returns a
+     * directive that declares a name.
+     */
     public @NotNull List<Fxml2ResourceEntry> entries() {
         return entries;
-    }
-
-    /** Returns {@code true} when the document declares no embedded resource. */
-    public boolean isEmpty() {
-        return entries.isEmpty();
     }
 
     /**
@@ -115,70 +120,47 @@ public final class Fxml2ResourceModel {
                 && reference.indexOf('\\') < 0;
     }
 
-    /** Returns every diagnostic of the document's declarations, in declaration order. */
-    public @NotNull List<Fxml2ResourceProblem> problems() {
-        return entries.stream().flatMap(entry -> entry.problems().stream()).toList();
-    }
-
     // -----------------------------------------------------------------------
     // Building
     // -----------------------------------------------------------------------
 
     private static @NotNull Fxml2ResourceModel build(@NotNull XmlFile file) {
-        List<Fxml2ResourceEntry> entries = Fxml2EmbeddedUtil.isEmbeddedFxml2(file)
-                ? readFromInjectionHost(file)
-                : readFromProcessingInstructions(file);
-
-        return new Fxml2ResourceModel(withDuplicateProblems(entries));
+        return new Fxml2ResourceModel(withDuplicateProblems(read(file)));
     }
 
     /**
-     * Reads the declarations of a standalone document from its processing instructions.
+     * Reads the declarations of {@code file} from the raw text of the elements that carry them.
      *
-     * <p>Each instruction is parsed from its own text, so the spans of a declaration are relative
-     * to the instruction that carries it.
+     * <p>In a standalone document that is each {@code <?resource ?>} processing instruction; in
+     * markup embedded in a {@code @ComponentView} annotation value it is the injection host, which
+     * is the only place the payloads still exist in full.  The injected XML fragment has them
+     * carved out, so that the payload's own language can be injected into the hole instead, and
+     * reading a payload out of injected XML PSI would read that hole.
+     *
+     * <p>Scanning raw text also means a declaration that is currently malformed still yields
+     * whatever could be read of it, which keeps navigation and completion working while a
+     * declaration is being typed.
      */
-    private static @NotNull List<Fxml2ResourceEntry> readFromProcessingInstructions(@NotNull XmlFile file) {
+    private static @NotNull List<Fxml2ResourceEntry> read(@NotNull XmlFile file) {
         List<Fxml2ResourceEntry> entries = new ArrayList<>();
 
-        Collection<XmlProcessingInstruction> instructions =
-                PsiTreeUtil.findChildrenOfType(file, XmlProcessingInstruction.class);
-
-        for (XmlProcessingInstruction instruction : instructions) {
-            String text = instruction.getText();
-            Fxml2ResourceParseResult result =
-                    Fxml2ResourceInstructionParser.parseAt(text, 0, text.length());
-            if (result == null || result.declaration() == null) continue;
-
-            entries.add(new Fxml2ResourceEntry(result.declaration(), result.problems(), instruction));
+        for (PsiElement anchor : anchorsOf(file)) {
+            for (Fxml2ResourceParseResult result : Fxml2ResourceInstructionParser.parseAll(anchor.getText())) {
+                entries.add(new Fxml2ResourceEntry(result, anchor));
+            }
         }
 
         return entries;
     }
 
-    /**
-     * Reads the declarations of embedded markup from the raw text of its injection host.
-     *
-     * <p>The host text is the only place the payloads still exist in full: the injected XML
-     * fragment has them carved out.  Scanning raw text also means a declaration that is currently
-     * malformed still yields whatever could be read of it, which keeps navigation and completion
-     * working while a declaration is being typed.
-     */
-    private static @NotNull List<Fxml2ResourceEntry> readFromInjectionHost(@NotNull XmlFile file) {
+    /** Returns the elements of {@code file} whose text can carry a resource declaration. */
+    private static @NotNull Collection<? extends PsiElement> anchorsOf(@NotNull XmlFile file) {
+        if (!Fxml2EmbeddedUtil.isEmbeddedFxml2(file)) {
+            return PsiTreeUtil.findChildrenOfType(file, XmlProcessingInstruction.class);
+        }
+
         PsiLanguageInjectionHost host = Fxml2EmbeddedUtil.getInjectionHost(file);
-        if (host == null) return List.of();
-
-        List<Fxml2ResourceEntry> entries = new ArrayList<>();
-        String text = host.getText();
-
-        for (Fxml2ResourceInstruction instruction : Fxml2ResourceScanner.scanAll(text)) {
-            Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parse(text, instruction);
-            if (result.declaration() == null) continue;
-
-            entries.add(new Fxml2ResourceEntry(result.declaration(), result.problems(), host));
-        }
-
-        return entries;
+        return host == null ? List.of() : List.of(host);
     }
 
     /**
@@ -194,7 +176,9 @@ public final class Fxml2ResourceModel {
         List<Fxml2ResourceEntry> result = new ArrayList<>(entries.size());
 
         for (Fxml2ResourceEntry entry : entries) {
-            Fxml2ResourceEntry previous = seen.putIfAbsent(entry.name().value(), entry);
+            Fxml2ResourceEntry previous = entry.declaration().hasName()
+                    ? seen.putIfAbsent(entry.name().value(), entry)
+                    : null;
             if (previous == null) {
                 result.add(entry);
                 continue;
@@ -202,7 +186,9 @@ public final class Fxml2ResourceModel {
 
             List<Fxml2ResourceProblem> problems = new ArrayList<>(entry.problems());
             problems.add(duplicateProblem(entry, previous));
-            result.add(new Fxml2ResourceEntry(entry.declaration(), problems, entry.anchor()));
+            result.add(new Fxml2ResourceEntry(
+                    new Fxml2ResourceParseResult(entry.instructionSpan(), entry.declaration(), problems),
+                    entry.anchor()));
         }
 
         return result;
@@ -210,33 +196,15 @@ public final class Fxml2ResourceModel {
 
     private static @NotNull Fxml2ResourceProblem duplicateProblem(@NotNull Fxml2ResourceEntry entry,
                                                                   @NotNull Fxml2ResourceEntry previous) {
-        LineColumn position = positionOf(previous);
+        CharSequence text = previous.declaringFile().getViewProvider().getContents();
+        int offset = Math.min(previous.nameRange().getStartOffset(), text.length());
+        LineColumn position = StringUtil.offsetToLineColumn(text, offset);
 
         return Fxml2ResourceProblem.of(
                 Fxml2ResourceProblemKind.DUPLICATE_DECLARATION,
                 entry.declaration().nameSpan(),
                 entry.name().value(),
-                position.line(),
-                position.column());
+                position.line + 1,
+                position.column + 1);
     }
-
-    /** Returns the one-based position of {@code entry}'s name in the file it is declared in. */
-    private static @NotNull LineColumn positionOf(@NotNull Fxml2ResourceEntry entry) {
-        CharSequence text = entry.declaringFile().getViewProvider().getContents();
-        int offset = Math.min(entry.nameRange().getStartOffset(), text.length());
-
-        int line = 1;
-        int lineStart = 0;
-        for (int i = 0; i < offset; ++i) {
-            if (text.charAt(i) == '\n') {
-                ++line;
-                lineStart = i + 1;
-            }
-        }
-
-        return new LineColumn(line, offset - lineStart + 1);
-    }
-
-    /** A one-based position in a source file. */
-    private record LineColumn(int line, int column) {}
 }

@@ -7,7 +7,7 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.PsiElementVisitor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jfxcore.fxml.codeinsight.Fxml2SetResourceMediaTypeFix;
+import org.jfxcore.fxml.codeinsight.Fxml2ResourceDeclarationFix;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLanguage;
 
@@ -48,7 +48,7 @@ public final class Fxml2ResourceMediaTypeInspection extends LocalInspectionTool 
                             : entry.declaration().nameSpan().toTextRange(),
                     message,
                     ProblemHighlightType.WEAK_WARNING,
-                    new Fxml2SetResourceMediaTypeFix(entry.name().value(), implied.canonicalMediaType()));
+                    Fxml2ResourceDeclarationFix.setMediaType(entry.name(), implied.canonicalMediaType()));
         });
     }
 
@@ -62,7 +62,7 @@ public final class Fxml2ResourceMediaTypeInspection extends LocalInspectionTool 
 
         if (!entry.declaration().hasExplicitMediaType()) {
             return "Resource '" + name + "' has no media type; its name implies "
-                    + implied.canonicalMediaType();
+                    + implied.canonicalMediaType().essence();
         }
 
         Fxml2ResourcePayloadLanguage declared =
@@ -70,6 +70,6 @@ public final class Fxml2ResourceMediaTypeInspection extends LocalInspectionTool 
         if (declared == implied) return null;
 
         return "Media type of resource '" + name + "' does not match its file extension, which implies "
-                + implied.canonicalMediaType();
+                + implied.canonicalMediaType().essence();
     }
 }

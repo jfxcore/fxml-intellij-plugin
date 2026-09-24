@@ -67,20 +67,11 @@
         <!--
             Injects the payload language into a <?resource ?> declaration of a standalone
             FXML/2 document, so that e.g. a text/css payload is edited as a stylesheet.
-            Registered for Fxml2ResourceProcessingInstruction, a host class only FXML/2
+            Registered for Fxml2ProcessingInstruction, a host class only FXML/2
             documents produce, so no other injector competes for it.
         -->
         <multiHostInjector
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourceInjector"/>
-
-        <!--
-            RenamePsiElementProcessor for embedded resources.  A <?resource ?> declaration is
-            not ordinary PSI in either document form, so it is represented by a synthetic
-            Fxml2ResourceDeclarationElement; this processor routes a rename to it and rewrites
-            every @name / {ClassPathResource name} usage in the declaring document.
-        -->
-        <renamePsiElementProcessor
-                implementation="org.jfxcore.fxml.codeinsight.Fxml2ResourceRenameProcessor"/>
 
         <!--
             ParserDefinition for Fxml2EmbeddedXmlLanguage: used when the @ComponentView
@@ -108,7 +99,7 @@
         <!--
             Folds the payload of a multi-line <?resource ?> declaration away, leaving the name
             and media type visible.  Registered for FXML2 only: the fold regions are anchored
-            on Fxml2ResourceProcessingInstruction, which only FXML/2 documents produce.
+            on Fxml2ProcessingInstruction, which only FXML/2 documents produce.
         -->
         <lang.foldingBuilder language="FXML2"
                              implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceFoldingBuilder"/>
@@ -139,36 +130,18 @@
             belongs to is written in.
         -->
         <fileIndentOptionsProvider
-                implementation="org.jfxcore.fxml.lang.Fxml2FragmentIndentOptionsProvider"/>
+                implementation="org.jfxcore.fxml.lang.Fxml2FragmentIndentOptionsProvider"
+                order="first"/>
 
-        <!--
-            InjectedFileChangesHandlerProvider: what a fragment editor ("Edit CSS fragment" and
-            friends) writes back when it is closed.  An FXML/2 fragment is injected over the text
-            of its host exactly as written, so it is spliced back unchanged; every other fragment
-            of these languages keeps the handler the platform chooses for it.
-        -->
+        <!-- Preserve the exact source layout when a fragment editor writes back to FXML/2. -->
         <editor.injectedFileChangesHandlerProvider language="JAVA" order="first"
                 implementationClass="org.jfxcore.fxml.lang.Fxml2InjectedFileChangesHandlerProvider"/>
         <editor.injectedFileChangesHandlerProvider language="FXML2" order="first"
                 implementationClass="org.jfxcore.fxml.lang.Fxml2InjectedFileChangesHandlerProvider"/>
 
-        <!--
-            FormattingService: a reformat requested from inside a <?resource ?> payload is
-            answered by reformatting the document the declaration is written in.  The payload
-            fragment cannot answer it: it sees neither the declaration that places it nor the
-            markup that decides the indentation the declaration sits at.
-        -->
+        <!-- Reformat an injected markup or resource fragment through its owning document. -->
         <formattingService
-                implementation="org.jfxcore.fxml.lang.Fxml2ResourcePayloadFormattingService"/>
-
-        <!--
-            InjectedFormattingOptionsProvider: when the user reformats from inside an
-            injected FXML editor fragment, this delegates the request back to the
-            Java/Kotlin host file.  The host formatter then runs as normal, and the
-            PostFormatProcessor below applies correct XML indentation.
-        -->
-        <formatting.injectedOptions
-                implementation="org.jfxcore.fxml.lang.Fxml2InjectedFormattingOptionsProvider"/>
+                implementation="org.jfxcore.fxml.lang.Fxml2FragmentFormattingService"/>
 
         <!--
             PostFormatProcessor: after the Java (or Kotlin) formatter finishes, this
@@ -183,23 +156,19 @@
         <!--
             Tab / Shift+Tab / Enter indent handlers for embedded FXML markup.
 
-            All three are implemented as nested classes of Fxml2EmbeddedIndentHandlers so
-            that the shared logic (detecting the FXML injection context, resolving the XML
-            indent size) lives in one place.
-
             IndentOptionsProvider (Tab):
               TabAction has setInjectedContext(true), so it runs in the injected editor
               and calls CodeStyleSettings.getIndentOptionsByDocument() on the injected
               DocumentWindow.  The injected VirtualFileWindow has getParent() == null, so
               EditorConfig's built-in provider cannot locate the .editorconfig hierarchy.
-              This provider intercepts the lookup for Fxml2EmbeddedXmlLanguage files and
-              returns correctly resolved XML indent options.
+              The shared fragment indent provider intercepts this lookup for markup and
+              resource payload fragments and returns their effective indent options.
 
             UnindentHandler (Shift+Tab):
               UnindentSelectionAction does NOT set setInjectedContext(true), so it always
               runs against the host editor and uses the Java indent size.  This handler
               detects when the caret is inside an embedded FXML fragment and applies
-              Fxml2EmbedMarkupUtil.getEffectiveXmlIndentSize() as the unindent step,
+              the effective markup indent as the unindent step,
               matching Tab and Ctrl+Alt+L formatting.
 
             EnterHandler (Enter):
@@ -212,9 +181,6 @@
               This handler intercepts Enter between XML tag attributes and directly inserts
               the correct "\n" + spaces alignment.
         -->
-        <fileIndentOptionsProvider
-                implementation="org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers$IndentOptionsProvider"
-                order="first"/>
         <editorActionHandler
                 action="EditorUnindentSelection"
                 implementationClass="org.jfxcore.fxml.lang.Fxml2EmbeddedIndentHandlers$UnindentHandler"
@@ -545,7 +511,6 @@
                 implementation="org.jfxcore.fxml.lang.Fxml2StyleClassFindUsagesHandlerFactory"/>
         <highlightUsagesHandlerFactory
                 implementation="org.jfxcore.fxml.lang.Fxml2ResourceHighlightUsagesHandlerFactory"/>
-
         <!--
             UsageSearcher: when IntelliJ's symbol-native "Show Usages" path is triggered for
             an FxIdSymbol (e.g. Ctrl+click on an fx:id declaration), this searcher collects
@@ -554,15 +519,7 @@
             used by Fxml2FxIdFindUsagesHandlerFactory so both paths return identical results.
         -->
         <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
-                  implementationClass="org.jfxcore.fxml.lang.Fxml2FxIdUsageSearcher"/>
-
-        <!--
-            UsageSearcher: collects the use sites of an embedded resource when the symbol-native
-            "Show Usages" path is triggered for an Fxml2ResourceSymbol, which is what Ctrl+click
-            on a <?resource ?> declaration name leads to.
-        -->
-        <searcher forClass="com.intellij.find.usages.api.UsageSearchParameters"
-                  implementationClass="org.jfxcore.fxml.lang.Fxml2ResourceUsageSearcher"/>
+                  implementationClass="org.jfxcore.fxml.lang.Fxml2UsageSearcher"/>
 
         <!--
             RenameHandler: makes Shift+F6 available when the caret is on a property attribute

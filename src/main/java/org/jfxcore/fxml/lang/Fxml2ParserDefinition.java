@@ -91,7 +91,7 @@ public final class Fxml2ParserDefinition extends ASTFactory implements ParserDef
     }
 
     /**
-     * Substitutes {@link Fxml2ResourceProcessingInstruction} for XML processing instructions, so
+     * Substitutes {@link Fxml2ProcessingInstruction} for XML processing instructions, so
      * that a {@code <?resource ?>} declaration can host the injected payload language.
      *
      * <p>Every other node type returns {@code null}, letting the platform factory create the
@@ -100,7 +100,7 @@ public final class Fxml2ParserDefinition extends ASTFactory implements ParserDef
     @Override
     public @Nullable CompositeElement createComposite(@NotNull IElementType type) {
         return type == XmlElementType.XML_PROCESSING_INSTRUCTION
-                ? new Fxml2ResourceProcessingInstruction()
+                ? new Fxml2ProcessingInstruction()
                 : null;
     }
 }

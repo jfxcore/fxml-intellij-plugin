@@ -5,13 +5,10 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.find.findUsages.FindUsagesHandler;
 import com.intellij.find.findUsages.FindUsagesHandlerFactory;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
-import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 
 /** Starts Find Usages from the name in an embedded-resource declaration. */
 public final class Fxml2ResourceFindUsagesHandlerFactory extends FindUsagesHandlerFactory {
@@ -36,15 +33,6 @@ public final class Fxml2ResourceFindUsagesHandlerFactory extends FindUsagesHandl
      * range in it, so an element without a range declares nothing.
      */
     private static @Nullable Fxml2ResourceEntry declarationAt(@NotNull PsiElement element) {
-        if (!(element.getContainingFile() instanceof XmlFile xmlFile)) return null;
-        if (!Fxml2FileType.isFxml2(xmlFile)) return null;
-
-        TextRange elementRange = element.getTextRange();
-        if (elementRange == null) return null;
-
-        for (Fxml2ResourceEntry entry : Fxml2ResourceModel.of(xmlFile).entries()) {
-            if (elementRange.contains(entry.nameRange())) return entry;
-        }
-        return null;
+        return Fxml2ResourceDeclarations.within(element);
     }
 }

@@ -39,11 +39,17 @@ import java.util.Set;
  */
 public final class Fxml2ResourceInstructionParser {
 
+    /** The processing-instruction target that declares an embedded resource. */
+    public static final String TARGET = "resource";
+
+    private static final String INSTRUCTION_START = "<?";
+    private static final String INSTRUCTION_END = "?>";
+
     private final String source;
-    private final Fxml2ResourceInstruction instruction;
+    private final Instruction instruction;
     private final List<Fxml2ResourceProblem> problems = new ArrayList<>();
 
-    private Fxml2ResourceInstructionParser(@NotNull String source, @NotNull Fxml2ResourceInstruction instruction) {
+    private Fxml2ResourceInstructionParser(@NotNull String source, @NotNull Instruction instruction) {
         this.source = source;
         this.instruction = instruction;
     }
@@ -55,14 +61,143 @@ public final class Fxml2ResourceInstructionParser {
      *         instruction at all
      */
     public static @Nullable Fxml2ResourceParseResult parseAt(@NotNull String source, int start, int end) {
-        Fxml2ResourceInstruction instruction = Fxml2ResourceScanner.scanAt(source, start, end);
-        return instruction == null ? null : parse(source, instruction);
+        Instruction instruction = scanAt(source, start, end);
+        return instruction == null ? null : new Fxml2ResourceInstructionParser(source, instruction).parse();
     }
 
-    /** Parses the already scanned resource processing instruction {@code instruction}. */
-    public static @NotNull Fxml2ResourceParseResult parse(@NotNull String source,
-                                                          @NotNull Fxml2ResourceInstruction instruction) {
-        return new Fxml2ResourceInstructionParser(source, instruction).parse();
+    /**
+     * Parses every resource processing instruction in {@code source}, in document order.
+     *
+     * <p>Instructions with a different target are skipped, as are unterminated ones.
+     */
+    public static @NotNull List<Fxml2ResourceParseResult> parseAll(@NotNull String source) {
+        List<Fxml2ResourceParseResult> results = new ArrayList<>();
+        int cursor = 0;
+
+        while (true) {
+            int start = source.indexOf(INSTRUCTION_START, cursor);
+            if (start < 0) break;
+
+            int end = source.indexOf(INSTRUCTION_END, start + INSTRUCTION_START.length());
+            if (end < 0) break;
+
+            cursor = end + INSTRUCTION_END.length();
+
+            Fxml2ResourceParseResult result = parseAt(source, start, cursor);
+            if (result != null) {
+                results.add(result);
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Parses the resource instruction containing {@code offset}, including an instruction whose
+     * terminator has not been typed yet.
+     */
+    public static @Nullable Fxml2ResourceParseResult parseContaining(@NotNull String source, int offset) {
+        int cursor = 0;
+        while (cursor <= offset) {
+            int start = source.indexOf(INSTRUCTION_START, cursor);
+            if (start < 0 || start > offset) return null;
+
+            int terminator = source.indexOf(INSTRUCTION_END, start + INSTRUCTION_START.length());
+            if (terminator >= 0) {
+                int end = terminator + INSTRUCTION_END.length();
+                if (offset <= end) return parseAt(source, start, end);
+                cursor = end;
+                continue;
+            }
+
+            String completed = source + INSTRUCTION_END;
+            return parseAt(completed, start, completed.length());
+        }
+        return null;
+    }
+
+    // -----------------------------------------------------------------------
+    // Scanning
+    // -----------------------------------------------------------------------
+
+    /**
+     * The lexical structure of one {@code <?resource ?>} processing instruction: where the parts
+     * are, not whether they are valid.
+     *
+     * @param instruction the span of the whole instruction, from {@code <?} to {@code ?>} inclusive
+     * @param body        the span between the target and the {@code ?>} terminator
+     * @param colonOffset the offset of the colon separating the declaration from the content,
+     *                    or {@code -1} when the body contains none
+     */
+    private record Instruction(@NotNull Fxml2TextSpan instruction,
+                               @NotNull Fxml2TextSpan body,
+                               int colonOffset) {}
+
+    /**
+     * Scans the single processing instruction occupying {@code [start, end)} of {@code text}.
+     *
+     * <p>Scanning is deliberately tolerant: an instruction that is malformed or still being typed
+     * yields no payload rather than an exception, which lets the injectors fall back to leaving
+     * the document alone instead of breaking the XML view of the surrounding markup.
+     *
+     * @return the scanned instruction, or {@code null} when the range is not a resource
+     *         processing instruction
+     */
+    private static @Nullable Instruction scanAt(@NotNull String text, int start, int end) {
+        if (start < 0 || end > text.length()
+                || end - start < INSTRUCTION_START.length() + INSTRUCTION_END.length()) {
+            return null;
+        }
+        if (!text.startsWith(INSTRUCTION_START, start)
+                || !text.startsWith(INSTRUCTION_END, end - INSTRUCTION_END.length())) {
+            return null;
+        }
+
+        int targetStart = start + INSTRUCTION_START.length();
+        int targetEnd = targetStart + TARGET.length();
+        int bodyEnd = end - INSTRUCTION_END.length();
+        if (targetEnd > bodyEnd || !text.startsWith(TARGET, targetStart)) return null;
+
+        // The target must be a whole word: "<?resources ...?>" is a different instruction.
+        if (targetEnd < bodyEnd && !Fxml2ResourceSyntax.isXmlWhitespace(text.charAt(targetEnd))) return null;
+
+        return new Instruction(
+                new Fxml2TextSpan(start, end),
+                new Fxml2TextSpan(targetEnd, bodyEnd),
+                findContentSeparator(text, targetEnd, bodyEnd));
+    }
+
+    /**
+     * Returns the offset of the colon that separates the declaration from the content, or
+     * {@code -1} when {@code [start, end)} contains none.
+     *
+     * <p>The scan honors quotes and backslash escapes, so a colon inside a quoted media-type
+     * parameter value does not terminate the declaration.  An unterminated quote consumes the
+     * rest of the range, which is what makes a half-typed declaration report no payload.
+     */
+    private static int findContentSeparator(@NotNull String text, int start, int end) {
+        char quote = 0;
+        boolean escaped = false;
+
+        for (int i = start; i < end; ++i) {
+            char character = text.charAt(i);
+
+            if (quote != 0) {
+                if (escaped) {
+                    escaped = false;
+                } else if (character == '\\') {
+                    escaped = true;
+                } else if (character == quote) {
+                    quote = 0;
+                }
+            } else if (character == '\'' || character == '"') {
+                quote = character;
+            } else if (character == ':') {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     // -----------------------------------------------------------------------
@@ -73,33 +208,32 @@ public final class Fxml2ResourceInstructionParser {
         int bodyStart = instruction.body().start();
         int bodyEnd = instruction.body().end();
 
-        if (bodyStart >= bodyEnd) {
-            return failed(Fxml2ResourceProblemKind.MISSING_NAME, emptySpanAt(bodyEnd));
-        }
-
-        if (!Fxml2ResourceScanner.isXmlWhitespace(source.charAt(bodyStart))) {
-            return failed(Fxml2ResourceProblemKind.INVALID_DECLARATION, new Fxml2TextSpan(bodyStart, bodyStart + 1));
+        if (bodyStart < bodyEnd && !Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(bodyStart))) {
+            report(Fxml2ResourceProblemKind.INVALID_DECLARATION, new Fxml2TextSpan(bodyStart, bodyStart + 1));
+            return nameless(bodyEnd);
         }
 
         int cursor = skipXmlWhitespace(bodyStart, bodyEnd);
         if (cursor == bodyEnd) {
-            return failed(Fxml2ResourceProblemKind.MISSING_NAME, emptySpanAt(bodyEnd));
+            report(Fxml2ResourceProblemKind.MISSING_NAME, emptySpanAt(bodyEnd));
+            return nameless(bodyEnd);
         }
 
-        Fxml2ResourceQuoting quoting = Fxml2ResourceQuoting.of(source.charAt(cursor));
+        char quote = source.charAt(cursor);
+        boolean quoted = quote == '\'' || quote == '"';
         int nameStart;
         int nameEnd;
 
-        if (quoting != null) {
-            char quote = source.charAt(cursor);
+        if (quoted) {
             nameStart = ++cursor;
             while (cursor < bodyEnd && source.charAt(cursor) != quote) {
                 ++cursor;
             }
 
             if (cursor == bodyEnd) {
-                return failed(Fxml2ResourceProblemKind.INVALID_DECLARATION,
+                report(Fxml2ResourceProblemKind.INVALID_DECLARATION,
                         new Fxml2TextSpan(nameStart - 1, bodyEnd));
+                return nameless(bodyEnd);
             }
 
             nameEnd = cursor;
@@ -107,26 +241,30 @@ public final class Fxml2ResourceInstructionParser {
 
             if (cursor < bodyEnd
                     && source.charAt(cursor) != ':'
-                    && !Fxml2ResourceScanner.isXmlWhitespace(source.charAt(cursor))) {
+                    && !Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(cursor))) {
                 report(Fxml2ResourceProblemKind.INVALID_DECLARATION, new Fxml2TextSpan(cursor, cursor + 1));
             }
         } else {
-            quoting = Fxml2ResourceQuoting.UNQUOTED;
             nameStart = cursor;
             while (cursor < bodyEnd
                     && source.charAt(cursor) != ':'
-                    && !Fxml2ResourceScanner.isXmlWhitespace(source.charAt(cursor))) {
+                    && !Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(cursor))) {
                 ++cursor;
             }
 
             nameEnd = cursor;
             if (nameStart == nameEnd) {
-                return failed(Fxml2ResourceProblemKind.MISSING_NAME, emptySpanAt(cursor));
+                report(Fxml2ResourceProblemKind.MISSING_NAME, emptySpanAt(cursor));
+                return nameless(bodyEnd);
             }
         }
 
         Fxml2TextSpan nameSpan = new Fxml2TextSpan(nameStart, nameEnd);
-        Fxml2ResourceName name = new Fxml2ResourceName(nameSpan.textOf(source), quoting);
+        Fxml2TextSpan quotedNameSpan = quoted
+                ? new Fxml2TextSpan(nameStart - 1, nameEnd + 1)
+                : nameSpan;
+
+        Fxml2ResourceName name = new Fxml2ResourceName(nameSpan.textOf(source));
         if (!name.isPortable()) {
             report(Fxml2ResourceProblemKind.INVALID_NAME, nameSpan, name.value());
         }
@@ -135,13 +273,12 @@ public final class Fxml2ResourceInstructionParser {
         int colon = instruction.colonOffset();
         if (colon < 0) {
             report(Fxml2ResourceProblemKind.INVALID_DECLARATION, emptySpanAt(bodyEnd));
-            return new Fxml2ResourceParseResult(
-                    declaration(name, nameSpan, null, emptySpanAt(bodyEnd), emptySpanAt(bodyEnd)),
-                    problems);
+            return result(declaration(name, nameSpan, quotedNameSpan, null,
+                                      emptySpanAt(bodyEnd), emptySpanAt(bodyEnd), false));
         }
 
         int mediaEnd = colon;
-        while (mediaEnd > cursor && Fxml2ResourceScanner.isXmlWhitespace(source.charAt(mediaEnd - 1))) {
+        while (mediaEnd > cursor && Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(mediaEnd - 1))) {
             --mediaEnd;
         }
 
@@ -151,22 +288,28 @@ public final class Fxml2ResourceInstructionParser {
                 : new MediaTypeScanner(name.value(), mediaTypeSpan).parse();
 
         Fxml2TextSpan payloadSpan = new Fxml2TextSpan(colon + 1, bodyEnd);
-        Fxml2ResourceDeclaration declaration = declaration(name, nameSpan, mediaType, mediaTypeSpan, payloadSpan);
+        Fxml2ResourceDeclaration declaration =
+                declaration(name, nameSpan, quotedNameSpan, mediaType, mediaTypeSpan, payloadSpan, true);
         verifyEncodable(declaration);
 
-        return new Fxml2ResourceParseResult(declaration, problems);
+        return result(declaration);
     }
 
     private @NotNull Fxml2ResourceDeclaration declaration(@NotNull Fxml2ResourceName name,
                                                           @NotNull Fxml2TextSpan nameSpan,
+                                                          @NotNull Fxml2TextSpan quotedNameSpan,
                                                           @Nullable Fxml2ResourceMediaType mediaType,
                                                           @NotNull Fxml2TextSpan mediaTypeSpan,
-                                                          @NotNull Fxml2TextSpan payloadSpan) {
-        Fxml2ResourcePayload payload =
-                Fxml2ResourcePayloadNormalizer.normalize(source, payloadSpan.start(), payloadSpan.end());
+                                                          @NotNull Fxml2TextSpan payloadSpan,
+                                                          boolean hasContentSeparator) {
+        String rawPayload = payloadSpan.textOf(source);
+        Fxml2ResourcePayloadLayout layout = Fxml2ResourcePayloadLayout.of(rawPayload);
+        Fxml2ResourcePayload payload = Fxml2ResourcePayloadNormalizer.normalize(
+                source, payloadSpan.start(), payloadSpan.end(), layout);
 
         return new Fxml2ResourceDeclaration(
-                name, nameSpan, mediaType, mediaTypeSpan, payloadSpan, payload, instruction);
+                name, nameSpan, quotedNameSpan, mediaType, mediaTypeSpan, payloadSpan, payload, layout,
+                hasContentSeparator);
     }
 
     /**
@@ -211,7 +354,7 @@ public final class Fxml2ResourceInstructionParser {
     // -----------------------------------------------------------------------
 
     private int skipXmlWhitespace(int offset, int end) {
-        while (offset < end && Fxml2ResourceScanner.isXmlWhitespace(source.charAt(offset))) {
+        while (offset < end && Fxml2ResourceSyntax.isXmlWhitespace(source.charAt(offset))) {
             ++offset;
         }
         return offset;
@@ -227,10 +370,17 @@ public final class Fxml2ResourceInstructionParser {
         problems.add(Fxml2ResourceProblem.of(kind, span, arguments));
     }
 
-    private @NotNull Fxml2ResourceParseResult failed(@NotNull Fxml2ResourceProblemKind kind,
-                                                     @NotNull Fxml2TextSpan span) {
-        report(kind, span);
-        return new Fxml2ResourceParseResult(null, problems);
+    private @NotNull Fxml2ResourceParseResult result(@NotNull Fxml2ResourceDeclaration declaration) {
+        return new Fxml2ResourceParseResult(instruction.instruction(), declaration, problems);
+    }
+
+    /**
+     * Returns the result of a declaration no name could be read from, which is an empty
+     * declaration positioned where the name would have been.
+     */
+    private @NotNull Fxml2ResourceParseResult nameless(int bodyEnd) {
+        Fxml2TextSpan span = emptySpanAt(bodyEnd);
+        return result(declaration(new Fxml2ResourceName(""), span, span, null, span, span, false));
     }
 
     /**
@@ -283,12 +433,13 @@ public final class Fxml2ResourceInstructionParser {
                 String value = parseParameterValue();
                 if (value == null) return reportInvalid();
 
-                Fxml2TextSpan parameterSpan = new Fxml2TextSpan(parameterStart, offset);
-                if (!parameterNames.add(name.toLowerCase(Locale.ROOT))) {
-                    report(Fxml2ResourceProblemKind.DUPLICATE_MEDIA_TYPE_PARAMETER,
-                            parameterSpan, name, resourceName);
+                Fxml2MediaTypeParameter parameter = new Fxml2MediaTypeParameter(
+                        name, value, new Fxml2TextSpan(parameterStart, offset));
+
+                if (parameterNames.add(name.toLowerCase(Locale.ROOT))) {
+                    parameters.add(parameter);
                 } else {
-                    parameters.add(new Fxml2MediaTypeParameter(name, value, parameterSpan));
+                    problems.add(Fxml2ResourceProblem.duplicateParameter(parameter, resourceName));
                 }
             }
 

@@ -6,7 +6,6 @@ package org.jfxcore.fxml.lang;
 import com.intellij.lang.java.JavaLanguage;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.JavaRecursiveElementWalkingVisitor;
 import com.intellij.psi.PsiAnnotation;
@@ -14,13 +13,11 @@ import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiJavaFile;
-import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.PsiLiteralExpression;
 import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
 import com.intellij.psi.impl.source.codeStyle.PostFormatProcessor;
 import com.intellij.psi.util.PsiTreeUtil;
-import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,6 +65,7 @@ import java.util.List;
  * </pre>
  * so the closing {@code """} lands on its own line at column {@code annotationColumn}.
  */
+@SuppressWarnings("DuplicatedCode")
 public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatProcessor {
 
     @Override
@@ -82,122 +80,24 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
             @NotNull TextRange rangeToReformat,
             @NotNull CodeStyleSettings settings) {
 
-        if (isApplicable(source)) {
-            Project project = source.getProject();
-            Document doc = PsiDocumentManager.getInstance(project).getDocument(source);
-            if (doc == null) return rangeToReformat;
+        if (!isApplicable(source)) return rangeToReformat;
 
-            // The Java formatter modifies the document without committing the PSI first.
-            // We use the (potentially stale) PSI only for elements whose start offsets are
-            // guaranteed to be unchanged (the @ComponentView annotation and the opening """
-            // of the text block, both precede the content that the Java formatter altered),
-            // and we scan the document text directly to locate the closing """ delimiter.
+        Project project = source.getProject();
+        Document doc = PsiDocumentManager.getInstance(project).getDocument(source);
+        if (doc == null) return rangeToReformat;
 
-            // Collect all (range, newContent) pairs, then apply in reverse order.
-            List<Pair<TextRange, String>> changes = new ArrayList<>();
-            collectJavaChanges(source, rangeToReformat, settings, doc, changes);
-            collectKotlinChanges(source, rangeToReformat, settings, doc, changes);
+        // The Java formatter modifies the document without committing the PSI first.
+        // We use the (potentially stale) PSI only for elements whose start offsets are
+        // guaranteed to be unchanged (the @ComponentView annotation and the opening """
+        // of the text block, both precede the content that the Java formatter altered),
+        // and we scan the document text directly to locate the closing """ delimiter.
 
-            // Sort by start offset descending so earlier offsets are not invalidated.
-            changes.sort((a, b) -> Integer.compare(
-                    b.first.getStartOffset(), a.first.getStartOffset()));
+        List<Fxml2DocumentEdit> changes = new ArrayList<>();
+        collectJavaChanges(source, rangeToReformat, settings, doc, changes);
+        collectKotlinChanges(source, rangeToReformat, settings, doc, changes);
+        int delta = Fxml2DocumentEdit.apply(doc, PsiDocumentManager.getInstance(project), changes);
 
-            int delta = 0;
-            for (Pair<TextRange, String> change : changes) {
-                TextRange range = change.first;
-                String newText = change.second;
-                doc.replaceString(range.getStartOffset(), range.getEndOffset(), newText);
-                delta += newText.length() - range.getLength();
-            }
-
-            // Commit the document so that PsiFile.getText() returns our correctly-formatted
-            // content rather than the stale "lastCommittedText" snapshot taken before the
-            // Java formatter ran.
-            if (!changes.isEmpty()) {
-                PsiDocumentManager.getInstance(project).commitDocument(doc);
-            }
-
-            return rangeToReformat.grown(delta);
-        }
-
-        // IntelliJ's core formatting service passes the *injected* PsiFile to
-        // PostFormatProcessor.processText even though the actual Java formatting
-        // was already delegated to the host file via
-        // Fxml2InjectedFormattingOptionsProvider.shouldDelegateToTopLevel.
-        // Detect this and apply our XML re-formatting to the host document directly.
-        return tryProcessInjected(source, rangeToReformat, settings);
-    }
-
-    // -----------------------------------------------------------------------
-    // Injected-fragment fallback
-    // -----------------------------------------------------------------------
-
-    /**
-     * Called when {@link #processText} receives an injected XML {@link PsiFile} instead
-     * of the Java/Kotlin host file.
-     *
-     * <p>IntelliJ's core formatting service passes the original (injected) file to the
-     * {@code PostFormatProcessor} even after the actual Java formatting has been delegated
-     * to the host file via {@link Fxml2InjectedFormattingOptionsProvider}.
-     * We detect this, find the injection host in the Java/Kotlin document, and apply the
-     * XML re-formatting there.
-     */
-    private static @NotNull TextRange tryProcessInjected(
-            @NotNull PsiFile source,
-            @NotNull TextRange rangeToReformat,
-            @NotNull CodeStyleSettings settings) {
-
-        if (!(source instanceof XmlFile xmlFile)) return rangeToReformat;
-        if (!Fxml2EmbeddedUtil.isEmbeddedFxml2(xmlFile)) return rangeToReformat;
-
-        PsiLanguageInjectionHost host = Fxml2EmbeddedUtil.getInjectionHost(xmlFile);
-        if (host == null) return rangeToReformat;
-
-        PsiFile hostFile = host.getContainingFile();
-        if (!isApplicable(hostFile)) return rangeToReformat; // safety: must be Java or Kotlin
-
-        Project project = hostFile.getProject();
-        Document hostDoc = PsiDocumentManager.getInstance(project).getDocument(hostFile);
-        if (hostDoc == null) return rangeToReformat;
-
-        List<Pair<TextRange, String>> changes = new ArrayList<>();
-
-        // Use the full host-document range so the entire FXML content is reformatted.
-        // The rangeToReformat here is in injected-file coordinates, not host coordinates,
-        // so it cannot be used directly for partial-line selection.
-        TextRange fullHostRange = TextRange.create(0, hostDoc.getTextLength());
-
-        if (host instanceof PsiLiteralExpression literal && isComponentViewLiteral(literal)) {
-            // Java host: process the @ComponentView text-block literal directly.
-            collectChange(literal, fullHostRange, settings, hostDoc, changes);
-        } else {
-            // Kotlin host: delegate to the Kotlin change collector.
-            tryCollectKotlinChangeForHost(host, fullHostRange, settings, hostDoc, changes);
-        }
-
-        // Apply changes in reverse order so earlier offsets are not invalidated.
-        changes.sort((a, b) -> Integer.compare(b.first.getStartOffset(), a.first.getStartOffset()));
-        for (Pair<TextRange, String> change : changes) {
-            hostDoc.replaceString(change.first.getStartOffset(), change.first.getEndOffset(),
-                    change.second);
-        }
-        if (!changes.isEmpty()) {
-            PsiDocumentManager.getInstance(project).commitDocument(hostDoc);
-        }
-
-        return rangeToReformat;
-    }
-
-    private static void tryCollectKotlinChangeForHost(
-            @NotNull PsiLanguageInjectionHost host,
-            @NotNull TextRange rangeToReformat,
-            @NotNull CodeStyleSettings settings,
-            @NotNull Document hostDoc,
-            @NotNull List<Pair<TextRange, String>> changes) {
-        try {
-            if (!(host instanceof org.jetbrains.kotlin.psi.KtStringTemplateExpression ktExpr)) return;
-            collectKotlinChange(ktExpr, rangeToReformat, settings, hostDoc, changes);
-        } catch (NoClassDefFoundError ignored) {}
+        return rangeToReformat.grown(delta);
     }
 
     // -----------------------------------------------------------------------
@@ -230,7 +130,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
             @NotNull TextRange rangeToReformat,
             @NotNull CodeStyleSettings settings,
             @NotNull Document doc,
-            @NotNull List<Pair<TextRange, String>> changes) {
+            @NotNull List<Fxml2DocumentEdit> changes) {
 
         if (!(source instanceof PsiJavaFile)) return;
 
@@ -256,7 +156,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
             @NotNull TextRange rangeToReformat,
             @NotNull CodeStyleSettings settings,
             @NotNull Document doc,
-            @NotNull List<Pair<TextRange, String>> changes) {
+            @NotNull List<Fxml2DocumentEdit> changes) {
 
         try {
             if (!(source instanceof org.jetbrains.kotlin.psi.KtFile)) return;
@@ -295,7 +195,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
             @NotNull TextRange rangeToReformat,
             @NotNull CodeStyleSettings settings,
             @NotNull Document doc,
-            @NotNull List<Pair<TextRange, String>> changes) {
+            @NotNull List<Fxml2DocumentEdit> changes) {
 
         TextRange contentRange = getTextBlockContentRangeFromDoc(literal, doc);
         if (contentRange == null) return;
@@ -340,7 +240,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
             @NotNull TextRange rangeToReformat,
             @NotNull CodeStyleSettings settings,
             @NotNull Document doc,
-            @NotNull List<Pair<TextRange, String>> changes) {
+            @NotNull List<Fxml2DocumentEdit> changes) {
 
         TextRange contentRange = getKotlinStringContentRange(expr);
         if (contentRange == null) return;
@@ -427,7 +327,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
             @Nullable String originalContent,
             @NotNull String newContent,
             @Nullable TextRange originalSelection,
-            @NotNull List<Pair<TextRange, String>> changes) {
+            @NotNull List<Fxml2DocumentEdit> changes) {
 
         String[] rawLines = rawContent.split("\n", -1);
         String[] newLines = newContent.split("\n", -1);
@@ -435,7 +335,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
         if (rawLines.length != newLines.length) {
             // Line count changed (e.g. attribute wrapping by the XML formatter).
             // Cannot do a diff; fall back to replacing the whole content block.
-            changes.add(Pair.create(contentRange, newContent));
+            changes.add(new Fxml2DocumentEdit(contentRange, newContent));
             return;
         }
 
@@ -447,7 +347,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
 
         // If the line counts don't match across all three arrays, fall back to whole-block.
         if (originalLines != null && originalLines.length != rawLines.length) {
-            changes.add(Pair.create(contentRange, newContent));
+            changes.add(new Fxml2DocumentEdit(contentRange, newContent));
             return;
         }
 
@@ -468,7 +368,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
                 // Line is within the user's original selection (or no filter) ->
                 // apply XML formatting.
                 if (!rawLines[i].equals(newLines[i])) {
-                    changes.add(Pair.create(TextRange.create(lineOffset, lineEnd), newLines[i]));
+                    changes.add(new Fxml2DocumentEdit(TextRange.create(lineOffset, lineEnd), newLines[i]));
                 }
             } else {
                 // Line is outside the user's selection -> undo any Java-formatter change
@@ -476,7 +376,7 @@ public final class Fxml2EmbeddedMarkupFormattingProcessor implements PostFormatP
                 // line is restored to exactly what it was before the formatter ran.
                 String original = originalLines[i];
                 if (!rawLines[i].equals(original)) {
-                    changes.add(Pair.create(TextRange.create(lineOffset, lineEnd), original));
+                    changes.add(new Fxml2DocumentEdit(TextRange.create(lineOffset, lineEnd), original));
                 }
             }
 

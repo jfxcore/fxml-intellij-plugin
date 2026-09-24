@@ -164,12 +164,14 @@ public final class Fxml2EmbeddedUtil {
         PsiAnnotation annotation = psiClass.getAnnotation(MARKUP_ANNOTATION_FQN);
         if (annotation == null) return null;
 
-        // Resolve the injection host from the annotation value.
         PsiLanguageInjectionHost host = resolveAnnotationValueHost(psiClass, annotation);
-        if (host == null) return null;
+        return host == null ? null : embeddedXmlFileOf(host);
+    }
 
+    /** Returns the embedded FXML/2 file injected into {@code host}, when present. */
+    public static @Nullable XmlFile embeddedXmlFileOf(@NotNull PsiLanguageInjectionHost host) {
         List<com.intellij.openapi.util.Pair<PsiElement, com.intellij.openapi.util.TextRange>> injected =
-                InjectedLanguageManager.getInstance(psiClass.getProject()).getInjectedPsiFiles(host);
+                InjectedLanguageManager.getInstance(host.getProject()).getInjectedPsiFiles(host);
         if (injected == null) return null;
         for (var pair : injected) {
             if (pair.first instanceof XmlFile xmlFile && isEmbeddedFxml2(xmlFile)) {

@@ -3,11 +3,14 @@ package org.jfxcore.fxml.lang;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiReference;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlAttributeValue;
-import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * The attribute value of an FXML/2 document that a caret offset points into, together with that
@@ -33,7 +36,7 @@ public record Fxml2AttributeValueAtOffset(@NotNull XmlAttributeValue attributeVa
         if (attributeValue == null) return null;
 
         PsiFile xmlFile = attributeValue.getContainingFile();
-        if (!(xmlFile instanceof XmlFile xml) || !Fxml2FileType.isFxml2(xml)) return null;
+        if (Fxml2FileType.asFxml2(xmlFile) == null) return null;
 
         int offsetInXmlFile;
         if (xmlFile == file) {
@@ -51,6 +54,19 @@ public record Fxml2AttributeValueAtOffset(@NotNull XmlAttributeValue attributeVa
     /** Returns the offset as a position within {@link #attributeValue}. */
     public int offsetInAttributeValue() {
         return offsetInXmlFile - attributeValue.getTextRange().getStartOffset();
+    }
+
+    /** Returns references of {@code type} whose range contains this position, end inclusive. */
+    public <R extends PsiReference> @NotNull List<R> referencesAt(@NotNull Class<R> type) {
+        int offset = offsetInAttributeValue();
+        return Arrays.stream(attributeValue.getReferences())
+                .filter(type::isInstance)
+                .map(type::cast)
+                .filter(reference -> {
+                    var range = reference.getRangeInElement();
+                    return offset >= range.getStartOffset() && offset <= range.getEndOffset();
+                })
+                .toList();
     }
 
     private static @Nullable XmlAttributeValue findAttributeValue(@NotNull PsiFile file, int offset) {

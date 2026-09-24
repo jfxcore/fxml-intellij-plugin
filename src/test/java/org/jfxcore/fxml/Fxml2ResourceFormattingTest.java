@@ -75,16 +75,8 @@ class Fxml2ResourceFormattingTest extends Fxml2TestBase {
     private static final int DIRECTORY_RULE_STEP = 2;
 
     @BeforeAll
-    void addMarkupAnnotation() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+    void addTestClasses() {
+        installComponentViewAnnotation();
     }
 
     /** Markup and JSON are both indented in steps of two, which the samples below are written in. */

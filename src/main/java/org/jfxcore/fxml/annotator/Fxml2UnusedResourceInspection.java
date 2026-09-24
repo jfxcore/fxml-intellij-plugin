@@ -6,7 +6,7 @@ import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.PsiElementVisitor;
 import org.jetbrains.annotations.NotNull;
-import org.jfxcore.fxml.codeinsight.Fxml2RemoveResourceDeclarationFix;
+import org.jfxcore.fxml.codeinsight.Fxml2ResourceDeclarationFix;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceUsageScanner;
 
@@ -35,7 +35,7 @@ public final class Fxml2UnusedResourceInspection extends LocalInspectionTool {
                     entry.declaration().nameSpan().toTextRange(),
                     "Embedded resource '" + entry.name().value() + "' is never used in this document",
                     ProblemHighlightType.LIKE_UNUSED_SYMBOL,
-                    new Fxml2RemoveResourceDeclarationFix(entry.name().value()));
+                    Fxml2ResourceDeclarationFix.remove(entry.name()));
         });
     }
 
@@ -52,7 +52,7 @@ public final class Fxml2UnusedResourceInspection extends LocalInspectionTool {
 
         return Fxml2ResourceUsageScanner.isUsed(
                 text,
-                entry.declaration().instruction().instruction().shifted(anchorStart),
+                entry.instructionSpan().shifted(anchorStart),
                 entry.name().value());
     }
 }

@@ -40,14 +40,15 @@ public record Fxml2ResourcePayloadLayout(@NotNull String separator,
     /** Returns the shape {@code rawPayload} is written in. */
     public static @NotNull Fxml2ResourcePayloadLayout of(@NotNull String rawPayload) {
         int separatorEnd = 0;
-        while (separatorEnd < rawPayload.length() && isHorizontalWhitespace(rawPayload.charAt(separatorEnd))) {
+        while (separatorEnd < rawPayload.length()
+                && Fxml2ResourceSyntax.isHorizontalWhitespace(rawPayload.charAt(separatorEnd))) {
             ++separatorEnd;
         }
 
         boolean startsOnOwnLine = separatorEnd < rawPayload.length() && rawPayload.charAt(separatorEnd) == '\n';
         int lastLineBreak = rawPayload.lastIndexOf('\n');
         boolean endsOnOwnLine = lastLineBreak >= 0
-                && isHorizontalWhitespace(rawPayload, lastLineBreak + 1, rawPayload.length());
+                && Fxml2ResourceSyntax.isHorizontalWhitespace(rawPayload, lastLineBreak + 1, rawPayload.length());
 
         return new Fxml2ResourcePayloadLayout(startsOnOwnLine ? "" : rawPayload.substring(0, separatorEnd),
                                               startsOnOwnLine,
@@ -61,6 +62,16 @@ public record Fxml2ResourcePayloadLayout(@NotNull String separator,
      */
     public @NotNull String withoutSeparator(@NotNull String content) {
         return content.startsWith(separator) ? content.substring(separator.length()) : content.stripLeading();
+    }
+
+    /** Returns the part of {@code rawPayload} presented as the injected resource document. */
+    public @NotNull org.jfxcore.fxml.resolve.Fxml2TextSpan injectionSpan(
+            @NotNull org.jfxcore.fxml.resolve.Fxml2TextSpan payloadSpan,
+            @NotNull String rawPayload) {
+        int start = startsOnOwnLine ? rawPayload.indexOf('\n') + 1 : separator.length();
+        int end = endsOnOwnLine ? rawPayload.lastIndexOf('\n') + 1 : rawPayload.length();
+        while (end > start && Fxml2ResourceSyntax.isHorizontalWhitespace(rawPayload.charAt(end - 1))) --end;
+        return new org.jfxcore.fxml.resolve.Fxml2TextSpan(payloadSpan.start() + start, payloadSpan.start() + end);
     }
 
     /**
@@ -85,7 +96,7 @@ public record Fxml2ResourcePayloadLayout(@NotNull String separator,
 
             if (line > 0) result.append('\n');
             // A blank line stays blank so that laying content out never writes trailing whitespace.
-            if (!isBlank(content, start, lineEnd)) {
+            if (!Fxml2ResourceSyntax.isWhitespace(content, start, lineEnd)) {
                 // The first line of a payload that continues the declaration line is already in
                 // place; every other line starts at the indentation the payload is written at.
                 if (line > 0 || startsOnOwnLine) result.append(bodyIndent);
@@ -100,21 +111,4 @@ public record Fxml2ResourcePayloadLayout(@NotNull String separator,
         return result.toString();
     }
 
-    private static boolean isBlank(@NotNull String text, int start, int end) {
-        for (int index = start; index < end; ++index) {
-            if (!Character.isWhitespace(text.charAt(index))) return false;
-        }
-        return true;
-    }
-
-    private static boolean isHorizontalWhitespace(@NotNull String text, int start, int end) {
-        for (int index = start; index < end; ++index) {
-            if (!isHorizontalWhitespace(text.charAt(index))) return false;
-        }
-        return true;
-    }
-
-    private static boolean isHorizontalWhitespace(char character) {
-        return character == ' ' || character == '\t';
-    }
 }

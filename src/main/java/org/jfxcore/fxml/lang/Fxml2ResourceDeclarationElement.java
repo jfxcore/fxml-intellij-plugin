@@ -13,7 +13,8 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.codeinsight.Fxml2ResourceDeclarationEditor;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceName;
-import org.jfxcore.fxml.resource.Fxml2ResourceQuoting;
+import org.jfxcore.fxml.resource.Fxml2ResourceModel;
+import com.intellij.psi.xml.XmlFile;
 
 /**
  * The declaration site of an embedded resource, as a navigable and renameable element.
@@ -30,18 +31,15 @@ import org.jfxcore.fxml.resource.Fxml2ResourceQuoting;
 public final class Fxml2ResourceDeclarationElement extends FakePsiElement implements PsiNamedElement {
 
     private final PsiFile file;
+    private final XmlFile document;
     private final TextRange nameRange;
     private final String name;
 
     public Fxml2ResourceDeclarationElement(@NotNull Fxml2ResourceEntry entry) {
         this.file = entry.declaringFile();
+        this.document = Fxml2ResourceDeclarations.markupFileOf(entry.anchor());
         this.nameRange = entry.nameRange();
         this.name = entry.name().value();
-    }
-
-    /** Returns {@code true} when this element is the declaration site of {@code entry}. */
-    public boolean declares(@NotNull Fxml2ResourceEntry entry) {
-        return name.equals(entry.name().value()) && file.equals(entry.declaringFile());
     }
 
     @Override
@@ -92,15 +90,13 @@ public final class Fxml2ResourceDeclarationElement extends FakePsiElement implem
             throw new IncorrectOperationException("'" + newName + "' is not a portable resource name");
         }
 
-        Fxml2ResourceEntry entry = Fxml2ResourceDeclarationEditor.findDeclaration(file, name);
+        Fxml2ResourceEntry entry = document == null ? null : Fxml2ResourceModel.of(document).resolve(name);
         if (entry == null) return this;
 
-        Fxml2ResourceDeclarationEditor.replace(
-                file.getProject(), entry,
-                entry.declaration().quotedNameSpan(),
-                Fxml2ResourceQuoting.required(newName).write(newName));
+        Fxml2ResourceDeclarationEditor.rename(
+                file.getProject(), entry, new Fxml2ResourceName(newName));
 
-        Fxml2ResourceEntry renamed = Fxml2ResourceDeclarationEditor.findDeclaration(file, newName);
+        Fxml2ResourceEntry renamed = Fxml2ResourceModel.of(document).resolve(newName);
         return renamed != null ? new Fxml2ResourceDeclarationElement(renamed) : this;
     }
 

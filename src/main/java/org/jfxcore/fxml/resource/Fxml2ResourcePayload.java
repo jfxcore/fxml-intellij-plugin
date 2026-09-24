@@ -11,27 +11,30 @@ import org.jfxcore.fxml.resolve.Fxml2TextSpan;
  * position that character occupies in the document, even though normalization has removed the
  * declaration's layout indentation in between.
  *
- * @param text          the normalized resource content
- * @param sourceOffsets for each content offset {@code i}, the offset of that character in the
- *                      source; the array has one extra entry mapping the end of the content
+ * <p>The source offset table has one entry for every content offset plus one for the end of the
+ * content. It remains private so callers use the range and offset mapping operations.
  */
-public record Fxml2ResourcePayload(@NotNull String text, int @NotNull [] sourceOffsets) {
+public final class Fxml2ResourcePayload {
 
-    public Fxml2ResourcePayload {
+    private final String text;
+    private final int[] sourceOffsets;
+
+    public Fxml2ResourcePayload(@NotNull String text, int @NotNull [] sourceOffsets) {
         if (sourceOffsets.length != text.length() + 1) {
             throw new IllegalArgumentException("sourceOffsets must have one entry per content offset plus one");
         }
-        sourceOffsets = sourceOffsets.clone();
+        this.text = text;
+        this.sourceOffsets = sourceOffsets.clone();
     }
 
-    @Override
-    public int @NotNull [] sourceOffsets() {
-        return sourceOffsets.clone();
+    /** Returns the normalized resource content. */
+    public @NotNull String text() {
+        return text;
     }
 
     /** Returns the source offset of the content character at {@code offset}. */
     public int sourceOffset(int offset) {
-        return sourceOffsets[Math.max(0, Math.min(offset, text.length()))];
+        return sourceOffsets[Math.clamp(offset, 0, text.length())];
     }
 
     /** Returns the span in the source that the content range {@code [start, end)} came from. */

@@ -9,10 +9,10 @@ import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceMediaType;
 import org.jfxcore.fxml.resource.Fxml2ResourceName;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
+import org.jfxcore.fxml.resource.Fxml2ResourcePayloadLayout;
 import org.jfxcore.fxml.resource.Fxml2ResourcePayloadNormalizer;
 import org.jfxcore.fxml.resource.Fxml2ResourceProblem;
 import org.jfxcore.fxml.resource.Fxml2ResourceProblemKind;
-import org.jfxcore.fxml.resource.Fxml2ResourceQuoting;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -54,7 +54,6 @@ class Fxml2ResourceInstructionParserTest {
         Fxml2ResourceDeclaration declaration = parseValid("<?resource styles.css:\n    greeting\n?>");
 
         assertEquals("styles.css", declaration.name().value());
-        assertEquals(Fxml2ResourceQuoting.UNQUOTED, declaration.name().quoting());
         assertFalse(declaration.hasExplicitMediaType());
         assertEquals(Fxml2ResourceMediaType.TEXT_PLAIN, declaration.effectiveMediaType());
         assertEquals(StandardCharsets.UTF_8, declaration.charset());
@@ -93,7 +92,7 @@ class Fxml2ResourceInstructionParserTest {
 
         Fxml2ResourceDeclaration spaced = parseValid("<?resource \"dark theme.css\":text?>");
         assertEquals("dark theme.css", spaced.name().value());
-        assertEquals(Fxml2ResourceQuoting.DOUBLE, spaced.name().quoting());
+        assertEquals("\"dark theme.css\"", spaced.quotedNameSpan().textOf("<?resource \"dark theme.css\":text?>"));
     }
 
     /** A name that is not a portable file name is reported, quoting notwithstanding. */
@@ -172,7 +171,7 @@ class Fxml2ResourceInstructionParserTest {
         Fxml2ResourceParseResult result = parse("<?resource \"unterminated:payload?>");
 
         assertProblem(result, Fxml2ResourceProblemKind.INVALID_DECLARATION);
-        assertNull(result.declaration());
+        assertFalse(result.declaration().hasName());
     }
 
     /** Parameter names are unique ignoring case. */
@@ -186,7 +185,10 @@ class Fxml2ResourceInstructionParserTest {
                 parse("<?resource file.txt " + mediaType + ":value?>"),
                 Fxml2ResourceProblemKind.DUPLICATE_MEDIA_TYPE_PARAMETER);
 
-        assertEquals(List.of(duplicateName, "file.txt"), problem.arguments());
+        assertNotNull(problem.duplicateParameter());
+        assertEquals(duplicateName, problem.duplicateParameter().name());
+        assertEquals("Duplicate media type parameter '" + duplicateName + "' for resource 'file.txt'",
+                     problem.message());
     }
 
     /** A charset that this JVM does not know, or that is not a legal charset name, is reported. */
@@ -197,7 +199,6 @@ class Fxml2ResourceInstructionParserTest {
                 parse("<?resource file.txt text/plain;charset=\"" + charsetName + "\":value?>");
 
         assertProblem(result, Fxml2ResourceProblemKind.UNSUPPORTED_CHARSET);
-        assertNotNull(result.declaration());
         assertNull(result.declaration().charset());
     }
 
@@ -212,7 +213,8 @@ class Fxml2ResourceInstructionParserTest {
 
         assertEquals(firstNonAscii, problem.span().start());
         assertEquals(firstNonAscii + 1, problem.span().end());
-        assertEquals(List.of("file.txt", "US-ASCII"), problem.arguments());
+        assertEquals("Resource 'file.txt' contains a character that cannot be encoded with charset 'US-ASCII'",
+                     problem.message());
     }
 
     /** The same payload is accepted when the declaration selects a charset that can encode it. */
@@ -264,7 +266,12 @@ class Fxml2ResourceInstructionParserTest {
     // Reindentation
     // -----------------------------------------------------------------------
 
-    /** Laying content out at an indentation and reading it back yields the same content. */
+    /**
+     * Laying content out at an indentation and reading it back yields the same content.
+     *
+     * <p>The layout writer is the production path that lays a payload out, so testing the inverse
+     * through it is what proves that what the editor writes is what the parser reads back.
+     */
     @ParameterizedTest
     @ValueSource(strings = {
             "value",
@@ -277,19 +284,14 @@ class Fxml2ResourceInstructionParserTest {
     })
     void reindentingIsTheInverseOfNormalizing(String content) {
         for (String indent : List.of("", "    ", "\t", "        ")) {
-            String declaration = "<?resource file.txt:"
-                    + Fxml2ResourcePayloadNormalizer.reindent(content, indent) + "?>";
+            String payload = content.indexOf('\n') < 0
+                    ? content
+                    : Fxml2ResourcePayloadLayout.ON_OWN_LINES.write(content, indent, indent);
+
+            String declaration = "<?resource file.txt:" + payload + "?>";
 
             assertEquals(content, parseValid(declaration).content(), "round trip at indent '" + indent + "'");
         }
-    }
-
-    /** The indentation a payload was laid out at is reported back for a payload that has one. */
-    @Test
-    void commonIndentIsReported() {
-        assertEquals("    ", Fxml2ResourcePayloadNormalizer.commonIndentOf("    a\n    b"));
-        assertEquals("", Fxml2ResourcePayloadNormalizer.commonIndentOf("a\n    b"));
-        assertEquals("", Fxml2ResourcePayloadNormalizer.commonIndentOf(""));
     }
 
     // -----------------------------------------------------------------------
@@ -309,7 +311,6 @@ class Fxml2ResourceInstructionParserTest {
 
         assertEquals(List.of(), result.problems().stream().map(Fxml2ResourceProblem::message).toList());
         assertTrue(result.isValid());
-        assertNotNull(result.declaration());
         return result.declaration();
     }
 

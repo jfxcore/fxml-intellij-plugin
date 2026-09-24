@@ -9,8 +9,6 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2TextSpan;
-import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
-import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
 import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
 
 import java.util.ArrayList;
@@ -40,8 +38,8 @@ public final class Fxml2ResourceFoldingBuilder extends FoldingBuilderEx {
                                                           boolean quick) {
         List<FoldingDescriptor> descriptors = new ArrayList<>();
 
-        for (Fxml2ResourceProcessingInstruction instruction :
-                PsiTreeUtil.findChildrenOfType(root, Fxml2ResourceProcessingInstruction.class)) {
+        for (Fxml2ProcessingInstruction instruction :
+                PsiTreeUtil.findChildrenOfType(root, Fxml2ProcessingInstruction.class)) {
             FoldingDescriptor descriptor = foldPayloadOf(instruction);
             if (descriptor != null) descriptors.add(descriptor);
         }
@@ -51,15 +49,12 @@ public final class Fxml2ResourceFoldingBuilder extends FoldingBuilderEx {
 
     /** Returns the fold region for {@code instruction}'s payload, or {@code null} when it has none to fold. */
     private static @Nullable FoldingDescriptor foldPayloadOf(
-            @NotNull Fxml2ResourceProcessingInstruction instruction) {
+            @NotNull Fxml2ProcessingInstruction instruction) {
+        Fxml2ResourceParseResult directive = instruction.resourceDirective();
+        if (directive == null) return null;
+
         String text = instruction.getText();
-        Fxml2ResourceParseResult result = Fxml2ResourceInstructionParser.parseAt(text, 0, text.length());
-        if (result == null) return null;
-
-        Fxml2ResourceDeclaration declaration = result.declaration();
-        if (declaration == null) return null;
-
-        Fxml2TextSpan payload = declaration.payloadSpan();
+        Fxml2TextSpan payload = directive.declaration().payloadSpan();
         if (payload.isEmpty() || payload.textOf(text).indexOf('\n') < 0) return null;
 
         int start = instruction.getTextRange().getStartOffset();

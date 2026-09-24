@@ -2,8 +2,6 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.lang.injection.MultiHostInjector;
 import com.intellij.lang.injection.MultiHostRegistrar;
-import com.intellij.openapi.util.TextRange;
-import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -36,6 +34,7 @@ import java.util.List;
  * <p>This class is registered only in {@code fxml2-with-kotlin.xml} so it is loaded only
  * when the Kotlin plugin ({@code org.jetbrains.kotlin}) is present.
  */
+@SuppressWarnings("DuplicatedCode")
 public final class Fxml2KotlinMarkupAnnotationInjector implements MultiHostInjector {
 
     @Override
@@ -67,20 +66,7 @@ public final class Fxml2KotlinMarkupAnnotationInjector implements MultiHostInjec
         // Resolve to a Java PsiClass to obtain the fully-qualified name
         var lightClass = LightClassUtilsKt.toLightClass(ktClass);
         if (lightClass == null) return;
-        String hostFqn = lightClass.getQualifiedName();
-        if (hostFqn == null) return;
-
-        // Build the injection prefix (XML declaration + wrapper root).
-        // Import PIs are omitted so the prefix remains stable; see Fxml2MarkupAnnotationInjector.
-        String prefix = buildPrefix(hostFqn);
-        String suffix = "\n</" + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_LOCAL + ">";
-
-        // ElementManipulators.getValueTextRange delegates to
-        // KtStringTemplateExpressionManipulator.getRangeInElement() -> getContentRange(),
-        // which correctly strips the opening/closing quote characters including any $$
-        // multi-dollar interpolation prefix.
-        TextRange valueRange = ElementManipulators.getValueTextRange(stringExpr);
-        Fxml2EmbeddedMarkupInjection.inject(registrar, stringExpr, valueRange, prefix, suffix);
+        Fxml2EmbeddedMarkupInjection.inject(registrar, stringExpr, lightClass);
     }
 
     @Override
@@ -109,28 +95,4 @@ public final class Fxml2KotlinMarkupAnnotationInjector implements MultiHostInjec
         return false;
     }
 
-    /**
-     * Builds the injection prefix: the XML declaration followed by the wrapper root
-     * opening tag with namespace declarations and {@code fx:subclass}.
-     *
-     * <p>Import PIs are intentionally omitted from the prefix so that the prefix text
-     * remains stable across edits to the host Kotlin file's import list.  A stable prefix
-     * prevents IntelliJ from recreating the injected PSI file when imports change, which
-     * would otherwise leave a stale {@code originalFile} pointer in the completion
-     * framework's cached PSI copy and trigger an assertion error in
-     * {@code CompletionInitializationUtil.setOriginalFile}.
-     *
-     * <p>Import resolution still works: {@link org.jfxcore.fxml.resolve.Fxml2ImportResolver}
-     * falls back to reading the host Kotlin file's import list directly when the injected
-     * XML prolog contains no {@code &lt;?import?&gt;} PIs.
-     */
-    private static @NotNull String buildPrefix(@NotNull String hostFqn) {
-
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-               '<' + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_LOCAL +
-               " xmlns=\"http://javafx.com/javafx\"" +
-               " xmlns:fx=\"http://jfxcore.org/fxml/2.0\"" +
-               " xmlns:fxml2=\"" + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_NS + '"' +
-               " fx:subclass=\"" + hostFqn + "\">\n";
-    }
 }

@@ -6,7 +6,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * The name of an embedded resource, together with the quoting style it is written in.
+ * The name of an embedded resource.
  *
  * <p>A resource name is a single portable file name.  The portability rules are the ones the
  * markup language applies: a name may not be empty, may not be {@code .} or {@code ..}, may not
@@ -19,10 +19,15 @@ import java.util.Set;
  * the runtime derives the resource file name from the logical name verbatim, so a name that
  * differs in case or in interior whitespace would not resolve at runtime either.
  *
- * @param value   the logical name, without any quotes
- * @param quoting how the name is written in the declaration
+ * <p>Quoting is a property of the declaration text only and never becomes part of the logical
+ * name.  A name has to be quoted when it contains a character the unquoted form cannot express,
+ * which is any XML whitespace character or the content separator.
+ *
+ * @param value the logical name, without any quotes
  */
-public record Fxml2ResourceName(@NotNull String value, @NotNull Fxml2ResourceQuoting quoting) {
+public record Fxml2ResourceName(@NotNull String value) {
+
+    private static final String FALLBACK_NAME = "resource";
 
     private static final Set<String> RESERVED_DEVICE_NAMES = Set.of(
             "CON", "PRN", "AUX", "NUL",
@@ -32,9 +37,41 @@ public record Fxml2ResourceName(@NotNull String value, @NotNull Fxml2ResourceQuo
     /** The characters that are not portable in a file name. */
     private static final String ILLEGAL_CHARACTERS = "/\\:*?\"<>|";
 
-    /** Returns the name {@code value} written in the least intrusive quoting style that fits it. */
-    public static @NotNull Fxml2ResourceName of(@NotNull String value) {
-        return new Fxml2ResourceName(value, Fxml2ResourceQuoting.required(value));
+    /** Returns {@code name} written in the least intrusive spelling a declaration accepts. */
+    public static @NotNull String write(@NotNull String name) {
+        if (!needsQuoting(name)) return name;
+        char quote = name.indexOf('"') < 0 ? '"' : '\'';
+        return quote + name + quote;
+    }
+
+    /** Returns this name written in the least intrusive declaration spelling. */
+    public @NotNull String write() {
+        return write(value);
+    }
+
+    /** Returns this name written after the {@code @} usage prefix. */
+    public @NotNull String writeUsage() {
+        return needsQuoting(value) ? "'" + value + "'" : value;
+    }
+
+    /** Removes the optional single quotes used around an {@code @} resource name. */
+    public static @NotNull Fxml2ResourceName fromUsage(@NotNull String text) {
+        return text.length() >= 2 && text.charAt(0) == '\'' && text.charAt(text.length() - 1) == '\''
+                ? new Fxml2ResourceName(text.substring(1, text.length() - 1))
+                : new Fxml2ResourceName(text);
+    }
+
+    /**
+     * Returns {@code true} when {@code name} cannot be written without quotes, which is the case
+     * for an empty name and for any name containing XML whitespace or the content separator.
+     */
+    public static boolean needsQuoting(@NotNull String name) {
+        if (name.isEmpty()) return true;
+        for (int i = 0; i < name.length(); ++i) {
+            char ch = name.charAt(i);
+            if (Fxml2ResourceSyntax.isXmlWhitespace(ch) || ch == ':') return true;
+        }
+        return false;
     }
 
     /** Returns {@code true} when {@code value} satisfies every portability rule for a resource name. */
@@ -62,6 +99,28 @@ public record Fxml2ResourceName(@NotNull String value, @NotNull Fxml2ResourceQuo
         return isPortable(value);
     }
 
+    /** Returns the nearest portable spelling of this name. */
+    public @NotNull Fxml2ResourceName toPortable() {
+        StringBuilder result = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); ++i) {
+            char character = value.charAt(i);
+            if (character > 0x1f && character != 0x7f && ILLEGAL_CHARACTERS.indexOf(character) < 0) {
+                result.append(character);
+            }
+        }
+
+        while (!result.isEmpty()) {
+            char last = result.charAt(result.length() - 1);
+            if (last != ' ' && last != '.') break;
+            result.setLength(result.length() - 1);
+        }
+
+        if (result.isEmpty()) return new Fxml2ResourceName(FALLBACK_NAME);
+
+        Fxml2ResourceName candidate = new Fxml2ResourceName(result.toString());
+        return candidate.isPortable() ? candidate : new Fxml2ResourceName("_" + candidate.value);
+    }
+
     /**
      * Returns the file name extension of this name in lower case and without its leading dot,
      * or an empty string when the name has no extension.
@@ -73,13 +132,4 @@ public record Fxml2ResourceName(@NotNull String value, @NotNull Fxml2ResourceQuo
                 : value.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
-    /** Returns {@code true} when this name resolves a reference written as {@code reference}. */
-    public boolean matches(@NotNull String reference) {
-        return value.equals(reference);
-    }
-
-    /** Returns the declaration text of this name, including quotes when its quoting style needs them. */
-    public @NotNull String text() {
-        return quoting.write(value);
-    }
 }

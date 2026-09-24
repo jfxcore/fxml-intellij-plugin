@@ -31,16 +31,8 @@ class Fxml2ResourceEnterHandlerTest extends Fxml2TestBase {
     private static final int JSON_INDENT_SIZE = 4;
 
     @BeforeAll
-    void addMarkupAnnotation() {
-        getFixture().addClass("""
-                package org.jfxcore.markup;
-                import java.lang.annotation.*;
-                @Target(ElementType.TYPE)
-                @Retention(RetentionPolicy.SOURCE)
-                public @interface ComponentView {
-                    String value();
-                }
-                """);
+    void addTestClasses() {
+        installComponentViewAnnotation();
     }
 
     /** The document is written with the two-space indentation FXML documents use by default. */

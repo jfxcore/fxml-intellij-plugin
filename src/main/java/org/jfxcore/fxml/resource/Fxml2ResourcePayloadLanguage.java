@@ -108,8 +108,11 @@ public enum Fxml2ResourcePayloadLanguage {
     }
 
     /** Returns the media type that most directly names this language. */
-    public @NotNull String canonicalMediaType() {
-        return mediaTypes.getFirst();
+    public @NotNull Fxml2ResourceMediaType canonicalMediaType() {
+        String essence = mediaTypes.getFirst();
+        int slash = essence.indexOf('/');
+        return new Fxml2ResourceMediaType(
+                essence.substring(0, slash), essence.substring(slash + 1), List.of());
     }
 
     /** Returns the file extension that most directly names this language. */
@@ -136,8 +139,4 @@ public enum Fxml2ResourcePayloadLanguage {
         return language != null ? language : PlainTextLanguage.INSTANCE;
     }
 
-    /** Returns {@code true} when this IDE can edit a payload in this language. */
-    public boolean isAvailable() {
-        return language() != null;
-    }
 }

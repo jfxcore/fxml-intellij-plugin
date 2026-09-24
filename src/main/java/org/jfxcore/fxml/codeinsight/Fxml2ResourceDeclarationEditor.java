@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2TextSpan;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
+import org.jfxcore.fxml.resource.Fxml2ResourceName;
 
 /**
  * Rewrites part of a {@code <?resource ?>} declaration in place.
@@ -34,14 +35,22 @@ public final class Fxml2ResourceDeclarationEditor {
      * Returns the declaration named {@code name} in the FXML/2 document {@code context} belongs
      * to, or {@code null} when the document no longer declares it.
      */
-    public static @Nullable Fxml2ResourceEntry findDeclaration(@NotNull PsiElement context, @NotNull String name) {
+    public static @Nullable Fxml2ResourceEntry findDeclaration(@NotNull PsiElement context,
+                                                               @NotNull Fxml2ResourceName name) {
         PsiFile file = context.getContainingFile();
         if (!(file instanceof XmlFile xmlFile)) return null;
 
         return Fxml2ResourceModel.of(xmlFile).entries().stream()
-                .filter(entry -> entry.name().value().equals(name))
+                .filter(entry -> entry.name().equals(name))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /** Renames {@code entry} with the declaration writer shared by refactoring and quick fixes. */
+    public static boolean rename(@NotNull Project project,
+                                 @NotNull Fxml2ResourceEntry entry,
+                                 @NotNull Fxml2ResourceName newName) {
+        return replace(project, entry, entry.declaration().quotedNameSpan(), newName.write());
     }
 
     /**
