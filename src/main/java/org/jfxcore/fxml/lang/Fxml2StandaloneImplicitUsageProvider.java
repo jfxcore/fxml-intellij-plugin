@@ -3,14 +3,9 @@ package org.jfxcore.fxml.lang;
 import com.intellij.codeInsight.daemon.ImplicitUsageProvider;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiInvalidElementAccessException;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiMethod;
-import com.intellij.psi.PsiReference;
-import com.intellij.psi.XmlRecursiveElementVisitor;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.PsiSearchHelper;
-import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -121,7 +116,7 @@ public final class Fxml2StandaloneImplicitUsageProvider implements ImplicitUsage
                     if (found[0]) return false;
                     if (!(file instanceof XmlFile xmlFile)) return true;
                     if (!Fxml2FileType.isFxml2(xmlFile)) return true;
-                    if (isReferencedInXmlFile(element, xmlFile)) {
+                    if (Fxml2ImplicitUsageReferences.isReferencedInXmlFile(element, xmlFile)) {
                         found[0] = true;
                         return false;
                     }
@@ -137,67 +132,6 @@ public final class Fxml2StandaloneImplicitUsageProvider implements ImplicitUsage
     // -----------------------------------------------------------------------
     // XML-file scan
     // -----------------------------------------------------------------------
-
-    /**
-     * Returns {@code true} if {@code xmlFile} contains at least one reference that
-     * resolves to {@code element}: either a {@link Fxml2BindingSegmentReference} (for
-     * binding-path segments such as {@code {fx:Observe vm.labelText}}) or an XML
-     * attribute whose {@link org.jfxcore.fxml.descriptors.Fxml2PropertyAttributeDescriptor}
-     * declaration matches {@code element} (for plain property attributes such as
-     * {@code formatter="$doubleFormatter"}).
-     *
-     * <p>For Kotlin elements the reference resolves to the {@code KtLightMethod} wrapper
-     * (a {@link com.intellij.psi.PsiMethod} whose navigation element is the Kotlin source
-     * declaration). Therefore, in addition to a direct {@link PsiManager#areElementsEquivalent}
-     * check, this method also compares via the resolved element's navigation element so that
-     * both {@code KtNamedFunction} and its corresponding {@code KtLightMethod} are matched
-     * correctly.
-     */
-    private static boolean isReferencedInXmlFile(
-            @NotNull PsiElement element, @NotNull XmlFile xmlFile) {
-        boolean[] found = {false};
-
-        // Check 1: property attribute names (e.g. formatter="$x" -> setFormatter).
-        Fxml2PropertyAttributeSearcher.collectMatchingAttributes(
-                xmlFile, element, ref -> { found[0] = true; return false; });
-        if (found[0]) return true;
-
-        // Check 2: binding-segment references in attribute values
-        // (e.g. {fx:Observe vm.labelText} -> labelTextProperty()).
-        // Check 3: event-handler method references (onAction="handleClick").
-        xmlFile.accept(new XmlRecursiveElementVisitor() {
-            @Override
-            public void visitXmlAttributeValue(@NotNull XmlAttributeValue attrValue) {
-                if (found[0]) return;
-                for (PsiReference ref : attrValue.getReferences()) {
-                    if (!(ref instanceof Fxml2BindingSegmentReference)
-                            && !(ref instanceof Fxml2AttributeValueReference)) continue;
-                    PsiElement resolved = ref.resolve();
-                    if (resolved == null) continue;
-                    PsiManager mgr = element.getManager();
-                    if (mgr.areElementsEquivalent(element, resolved)) {
-                        found[0] = true;
-                        return;
-                    }
-                    // Navigation-element fallback: for Kotlin, resolved is KtLightMethod
-                    // whose getNavigationElement() returns the KtNamedFunction source
-                    // declaration.
-                    try {
-                        PsiElement navEl = resolved.getNavigationElement();
-                        if (navEl != null && navEl != resolved
-                                && mgr.areElementsEquivalent(element, navEl)) {
-                            found[0] = true;
-                            return;
-                        }
-                    } catch (PsiInvalidElementAccessException ignored) {
-                        // The resolved element was invalidated between the resolve() call
-                        // and the getNavigationElement() call.  Skip it.
-                    }
-                }
-            }
-        });
-        return found[0];
-    }
 
     /**
      * Returns the function name when {@code element} is a Kotlin {@code KtNamedFunction}

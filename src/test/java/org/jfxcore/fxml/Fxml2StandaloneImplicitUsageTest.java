@@ -1048,6 +1048,53 @@ class Fxml2StandaloneImplicitUsageTest extends Fxml2TestBase {
         });
     }
 
+    @Test
+    void suppressorRecognizesConstructorPropertyReferencedInStandaloneFxml() {
+        PsiElement vmFile = getFixture().addFileToProject("test/ConstructorVm.kt", """
+                package test
+                class ConstructorVm(
+                    val selectionDisabled: Boolean = false,
+                    val unrelated: Boolean = false,
+                    ordinary: Boolean = false
+                )
+                """);
+        getFixture().addClass("""
+                package test;
+                import javafx.beans.property.ObjectProperty;
+                import javafx.beans.property.SimpleObjectProperty;
+                import javafx.scene.layout.BorderPane;
+                public class ConstructorView extends BorderPane {
+                    private final ObjectProperty<ConstructorVm> vm = new SimpleObjectProperty<>(this, "vm");
+                    public ObjectProperty<ConstructorVm> vmProperty() { return vm; }
+                    protected void initializeComponent() {}
+                }
+                """);
+        getFixture().configureByText("ConstructorView.fxml", fxml(
+                "javafx.scene.control.ComboBox",
+                """
+                  <ComboBox disable="${vm.selectionDisabled}"/>
+                """,
+                "test.ConstructorView"));
+        getFixture().doHighlighting();
+
+        ReadAction.run(() -> {
+            var parameters = com.intellij.psi.util.PsiTreeUtil.findChildrenOfType(
+                    vmFile, org.jetbrains.kotlin.psi.KtParameter.class);
+            var property = parameters.stream()
+                    .filter(parameter -> "selectionDisabled".equals(parameter.getName()))
+                    .findFirst().orElseThrow();
+            assertTrue(property.hasValOrVar());
+            var suppressor = new Fxml2KotlinUnusedSymbolSuppressor();
+            assertTrue(suppressor.isSuppressedFor(property, "unused"));
+            assertFalse(suppressor.isSuppressedFor(parameters.stream()
+                    .filter(parameter -> "unrelated".equals(parameter.getName()))
+                    .findFirst().orElseThrow(), "unused"));
+            assertFalse(suppressor.isSuppressedFor(parameters.stream()
+                    .filter(parameter -> "ordinary".equals(parameter.getName()))
+                    .findFirst().orElseThrow(), "unused"));
+        });
+    }
+
     /**
      * {@link Fxml2KotlinUnusedSymbolSuppressor} must return {@code false} for a
      * {@code KtProperty} that is NOT referenced in any standalone FXML file.
