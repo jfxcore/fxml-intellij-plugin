@@ -3,10 +3,14 @@
 
 package org.jfxcore.fxml;
 
+import com.intellij.application.options.CodeStyle;
 import com.intellij.codeInsight.intention.IntentionAction;
+import com.intellij.lang.Language;
+import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.codeStyle.CodeStyleSettings;
 import org.jfxcore.fxml.actions.EmbedMarkupInCodeBehindIntention;
 import org.jfxcore.fxml.annotator.Fxml2EmbedMarkupInspection;
 import org.junit.jupiter.api.AfterEach;
@@ -34,6 +38,12 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2EmbedMarkupIntentionTest extends Fxml2TestBase {
+
+    /** The step markup nests in while the payload steps below are asserted. */
+    private static final int MARKUP_INDENT_SIZE = 2;
+
+    /** The step the JSON payload below nests in, deliberately wider than the markup step. */
+    private static final int JSON_INDENT_SIZE = 4;
 
     /** A minimal standalone FXML file with a self-closing root element. */
     private static final String FXML_SELF_CLOSING =
@@ -268,6 +278,118 @@ class Fxml2EmbedMarkupIntentionTest extends Fxml2TestBase {
     }
 
     @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void embedsResourceDeclarationsFromEveryDocumentPosition() {
+        getFixture().configureByText("TestEmbed.fxml", """
+                <?import javafx.scene.layout.StackPane?>
+                <?resource before.txt:before?>
+                <StackPane xmlns="http://javafx.com/javafx"
+                           xmlns:fx="http://jfxcore.org/fxml/2.0"
+                           fx:<caret>subclass="test.TestEmbed">
+                    <?resource inside.txt:inside?>
+                </StackPane>
+                <?resource after.txt:after?>
+                """);
+        getFixture().addFileToProject("TestEmbed.java", """
+                package test;
+                public class TestEmbed extends TestEmbedBase {
+                    public TestEmbed() { initializeComponent(); }
+                }
+                """);
+
+        EmbedMarkupInCodeBehindIntention.skipConfirmationForTesting = true;
+        getFixture().launchAction(getFixture().findSingleIntention("Embed markup in code-behind file"));
+
+        VirtualFile javaFile = getFixture().findFileInTempDir("TestEmbed.java");
+        assertNotNull(javaFile);
+        String javaText = ReadAction.compute(() -> {
+            PsiFile psi = getFixture().getPsiManager().findFile(javaFile);
+            return psi == null ? "" : psi.getText();
+        });
+        assertTrue(javaText.contains("<?resource before.txt:before?>"));
+        assertTrue(javaText.contains("<?resource inside.txt:inside?>"));
+        assertTrue(javaText.contains("<?resource after.txt:after?>"));
+    }
+
+    @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void keepsBlankLinesBetweenResourceDeclarations() {
+        getFixture().configureByText("TestEmbed.fxml", """
+                <?import javafx.scene.layout.StackPane?>
+
+                <?resource first.txt:first?>
+
+                <?resource second.txt:second?>
+
+                <StackPane xmlns="http://javafx.com/javafx"
+                           xmlns:fx="http://jfxcore.org/fxml/2.0"
+                           fx:<caret>subclass="test.TestEmbed"/>
+                """);
+        getFixture().addFileToProject("TestEmbed.java", """
+                package test;
+                public class TestEmbed extends TestEmbedBase {
+                    public TestEmbed() { initializeComponent(); }
+                }
+                """);
+
+        EmbedMarkupInCodeBehindIntention.skipConfirmationForTesting = true;
+        getFixture().launchAction(getFixture().findSingleIntention("Embed markup in code-behind file"));
+
+        VirtualFile javaFile = getFixture().findFileInTempDir("TestEmbed.java");
+        assertNotNull(javaFile);
+        String javaText = ReadAction.compute(() -> {
+            PsiFile psi = getFixture().getPsiManager().findFile(javaFile);
+            return psi == null ? "" : psi.getText();
+        });
+        assertTrue(javaText.replace(" ", "").contains(
+                        "<?resourcefirst.txt:first?>\n\n<?resourcesecond.txt:second?>"),
+                "The blank line between the two resource declarations must be preserved; got:\n"
+                        + javaText);
+    }
+
+    /**
+     * Embedding places a resource payload one markup step in from its declaration and lets it
+     * nest from there in the steps of its own language, on top of the column the annotation value
+     * places its lines at.
+     */
+    @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void embedsResourcePayloadAtTheIndentationOfItsLanguage() {
+        useDistinctIndentSteps();
+        getFixture().configureByText("TestEmbed.fxml", """
+                <?import javafx.scene.layout.StackPane?>
+                <?resource data.json application/json:
+                  {
+                      "a": 1
+                  }
+                ?>
+                <StackPane xmlns="http://javafx.com/javafx"
+                           xmlns:fx="http://jfxcore.org/fxml/2.0"
+                           fx:<caret>subclass="test.TestEmbed"/>
+                """);
+        getFixture().addFileToProject("TestEmbed.java", """
+                package test;
+                public class TestEmbed extends TestEmbedBase {
+                    public TestEmbed() { initializeComponent(); }
+                }
+                """);
+
+        EmbedMarkupInCodeBehindIntention.skipConfirmationForTesting = true;
+        getFixture().launchAction(getFixture().findSingleIntention("Embed markup in code-behind file"));
+
+        VirtualFile javaFile = getFixture().findFileInTempDir("TestEmbed.java");
+        assertNotNull(javaFile);
+        String javaText = ReadAction.compute(() -> {
+            PsiFile psi = getFixture().getPsiManager().findFile(javaFile);
+            return psi == null ? "" : psi.getText();
+        });
+        assertTrue(javaText.contains("""
+                <?resource data.json application/json:
+                  {
+                      "a": 1
+                  }
+                ?>""".indent(4)),
+                "The payload must be placed one markup step in and nest in JSON steps; got:\n" + javaText);
+    }
+
+    @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void embedsMarkupWithLeadingXmlCommentInJavaCodeBehind() {
         // Arrange: FXML file with an XML comment before the root element.
         // The comment must be preserved in the embedded @ComponentView annotation value.
@@ -402,6 +524,23 @@ class Fxml2EmbedMarkupIntentionTest extends Fxml2TestBase {
     private boolean hasEmbedIntention() {
         return getFixture().getAvailableIntentions().stream()
                 .anyMatch(i -> "Embed markup in code-behind file".equals(i.getText()));
+    }
+
+    /**
+     * Gives markup and the JSON payload steps of different widths, so that the columns of an
+     * embedded payload say which step each of its lines was placed by.
+     */
+    private void useDistinctIndentSteps() {
+        Language json = Language.findLanguageByID("JSON");
+        assertNotNull(json, "JSON is bundled with every IDE the plugin runs in");
+
+        CodeStyleSettings settings = CodeStyle.getSettings(getFixture().getProject());
+        var markupOptions = settings.getCommonSettings(XMLLanguage.INSTANCE).getIndentOptions();
+        var jsonOptions = settings.getCommonSettings(json).getIndentOptions();
+        assertNotNull(markupOptions, "XML has indent options");
+        assertNotNull(jsonOptions, "JSON has indent options");
+        markupOptions.INDENT_SIZE = MARKUP_INDENT_SIZE;
+        jsonOptions.INDENT_SIZE = JSON_INDENT_SIZE;
     }
 
     /** Adds a Java code-behind file at the source root (same level as FXML files). */

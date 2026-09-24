@@ -80,7 +80,6 @@ public abstract class Fxml2TestBase {
      * {@code @TestInstance(PER_CLASS)} class, one instance is shared across all
      * tests in the class.
      */
-    @SuppressWarnings("JUnitMalformedDeclaration") // non-static field is fine with PER_CLASS
     @RegisterExtension
     final Fxml2PerClassExtension fixtureExtension =
             new Fxml2PerClassExtension(JAVAFX_DESCRIPTOR);
@@ -122,6 +121,42 @@ public abstract class Fxml2TestBase {
      */
     protected JavaCodeInsightTestFixture getFixture() {
         return fixtureExtension.getFixture();
+    }
+
+    /** Adds the annotation recognized as an embedded FXML/2 document host. */
+    protected final void installComponentViewAnnotation() {
+        getFixture().addClass("""
+                package org.jfxcore.markup;
+                import java.lang.annotation.*;
+                @Target(ElementType.TYPE)
+                @Retention(RetentionPolicy.SOURCE)
+                public @interface ComponentView {
+                    String value();
+                }
+                """);
+    }
+
+    /** Adds the resource markup extensions used by resource-reference tests. */
+    protected final void addResourceMarkupExtensions() {
+        getFixture().addClass("""
+                package org.jfxcore.markup.resource;
+                import javafx.beans.DefaultProperty;
+                import javafx.beans.NamedArg;
+                @DefaultProperty("value")
+                public final class ClassPathResource {
+                    public ClassPathResource(@NamedArg("value") String value) {}
+                }
+                """);
+        getFixture().addClass("""
+                package org.jfxcore.markup.resource;
+                import javafx.beans.DefaultProperty;
+                import javafx.beans.NamedArg;
+                @DefaultProperty("key")
+                public final class StaticResource {
+                    public StaticResource(@NamedArg("key") String key,
+                                          @NamedArg("formatArguments") Object... arguments) {}
+                }
+                """);
     }
 
     // -----------------------------------------------------------------------

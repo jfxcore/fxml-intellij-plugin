@@ -1,0 +1,14 @@
+<html lang="en">
+<body>
+Reports an <code>&lt;?import?&gt;</code> or <code>&lt;?prefix?&gt;</code> processing instruction
+written inside an element.
+<p>
+XML permits a processing instruction anywhere in element content, and FXML/2 makes use of that:
+a <code>&lt;?resource ?&gt;</code> declaration is scoped to the whole document and may appear
+before, inside, or after the root element.
+<p>
+Import and prefix declarations are not: they are read only from the document's direct children.
+An import written inside a tag therefore parses cleanly and is then silently ignored at compile
+time.
+</body>
+</html>

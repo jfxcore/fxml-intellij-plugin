@@ -2,6 +2,8 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.find.usages.api.SearchTarget;
 import com.intellij.find.usages.api.UsageHandler;
+import com.intellij.find.usages.api.PsiUsage;
+import com.intellij.find.usages.api.Usage;
 import com.intellij.model.Pointer;
 import com.intellij.navigation.NavigatableSymbol;
 import com.intellij.navigation.SymbolNavigationService;
@@ -17,6 +19,8 @@ import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
+import com.intellij.psi.search.SearchScope;
+import com.intellij.openapi.util.TextRange;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
@@ -24,6 +28,7 @@ import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Symbol for an {@code fx:id} declaration that fully participates in IntelliJ's
@@ -38,14 +43,14 @@ import java.util.Objects;
  *       quick-documentation ("Button myButton1") rather than generic XML attribute docs.</li>
  *   <li>{@link SearchTarget}: enables the "Show Usages" popup when Ctrl+clicking
  *       on an {@code fx:id} declaration, delegating usage collection to
- *       {@link Fxml2FxIdUsageSearcher}.</li>
+ *       {@link Fxml2UsageSearcher}.</li>
  * </ul>
  *
  * <p>Smart pointers are used for both the declaration and the field so that the
  * symbol remains valid across PSI reparses.
  */
 @SuppressWarnings("UnstableApiUsage")
-final class FxIdSymbol implements NavigatableSymbol, DocumentationSymbol, SearchTarget {
+final class FxIdSymbol implements NavigatableSymbol, DocumentationSymbol, Fxml2UsageSearchTarget {
 
     private final @NotNull SmartPsiElementPointer<XmlAttributeValue> declPtr;
     private final @Nullable SmartPsiElementPointer<PsiField> fieldPtr;
@@ -83,7 +88,7 @@ final class FxIdSymbol implements NavigatableSymbol, DocumentationSymbol, Search
     }
 
     // -----------------------------------------------------------------------
-    // Accessors (used by Fxml2FxIdUsageSearcher)
+    // Symbol state
     // -----------------------------------------------------------------------
 
     /** Returns the dereferenced {@link XmlAttributeValue}, or {@code null} if invalidated. */
@@ -150,6 +155,23 @@ final class FxIdSymbol implements NavigatableSymbol, DocumentationSymbol, Search
         XmlAttributeValue decl = getDeclaration();
         String idName = decl != null ? decl.getValue() : "";
         return UsageHandler.createEmptyUsageHandler(idName);
+    }
+
+    @Override
+    public void collectUsages(@NotNull SearchScope scope, @NotNull Consumer<? super Usage> consumer) {
+        XmlAttributeValue declaration = getDeclaration();
+        if (declaration == null) return;
+
+        Fxml2FxIdUsageCollector.collect(
+                declaration, scope,
+                reference -> {
+                    consumer.accept(PsiUsage.textUsage(reference.getElement(), reference.getRangeInElement()));
+                    return true;
+                },
+                element -> {
+                    consumer.accept(PsiUsage.textUsage(element, TextRange.from(0, element.getTextLength())));
+                    return true;
+                });
     }
 
     // -----------------------------------------------------------------------

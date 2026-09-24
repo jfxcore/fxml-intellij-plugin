@@ -42,7 +42,7 @@ public final class Fxml2NamespaceUrlReference extends PsiReferenceBase<XmlAttrib
         private final PsiElement myParent;
         private final String myUrl;
 
-        UrlNavigationTarget(@NotNull PsiElement parent, @NotNull String url) {
+        public UrlNavigationTarget(@NotNull PsiElement parent, @NotNull String url) {
             this.myParent = parent;
             this.myUrl = url;
         }

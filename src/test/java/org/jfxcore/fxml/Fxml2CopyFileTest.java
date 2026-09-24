@@ -1,8 +1,11 @@
 package org.jfxcore.fxml;
 
+import com.intellij.injected.editor.DocumentWindow;
+import com.intellij.injected.editor.VirtualFileWindow;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.openapi.vfs.newvfs.impl.FakeVirtualFile;
 import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiFile;
@@ -10,6 +13,7 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.refactoring.copy.CopyFilesOrDirectoriesHandler;
 import com.intellij.refactoring.copy.CopyHandler;
+import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.lang.Fxml2FileTypeOverrider;
 import org.junit.jupiter.api.Test;
@@ -65,6 +69,34 @@ class Fxml2CopyFileTest extends Fxml2TestBase {
                 },
                 "Fxml2FileTypeOverrider must not throw UnsupportedOperationException " +
                         "when called with a FakeVirtualFile");
+    }
+
+    @Test
+    void fileTypeOverrider_doesNotInspectInjectedVirtualFile() {
+        class InjectedFile extends LightVirtualFile implements VirtualFileWindow {
+            InjectedFile() {
+                super("Injected.fxml");
+            }
+
+            @NotNull
+            @Override
+            public VirtualFile getDelegate() {
+                return this;
+            }
+
+            @NotNull
+            @Override
+            public DocumentWindow getDocumentWindow() {
+                throw new AssertionError("injected document must not be inspected");
+            }
+
+            @Override
+            public boolean isValid() {
+                throw new AssertionError("injected file validity must not be inspected");
+            }
+        }
+
+        assertNull(new Fxml2FileTypeOverrider().getOverriddenFileType(new InjectedFile()));
     }
 
     // -----------------------------------------------------------------------

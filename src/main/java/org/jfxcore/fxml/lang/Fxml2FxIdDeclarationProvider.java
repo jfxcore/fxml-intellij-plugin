@@ -30,7 +30,7 @@ import java.util.List;
  * <p>The declared {@link Symbol} is an {@link FxIdSymbol} that navigates to the
  * code-behind field (for proper hover documentation), provides documentation from
  * the field quick-doc, and supports the symbol-based "Show Usages" path via
- * {@link Fxml2FxIdUsageSearcher}.
+ * {@link Fxml2UsageSearcher}.
  */
 @SuppressWarnings("UnstableApiUsage")
 public final class Fxml2FxIdDeclarationProvider implements PsiSymbolDeclarationProvider {
@@ -101,7 +101,7 @@ public final class Fxml2FxIdDeclarationProvider implements PsiSymbolDeclarationP
          * Returns an {@link FxIdSymbol} for this declaration.
          * The symbol navigates to the code-behind field (for proper hover documentation),
          * provides field quick-documentation, and participates in the symbol-based
-         * "Show Usages" path via {@link Fxml2FxIdUsageSearcher}.
+         * "Show Usages" path via {@link Fxml2UsageSearcher}.
          */
         @Override
         public @NotNull Symbol getSymbol() {

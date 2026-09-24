@@ -217,6 +217,39 @@ class Fxml2CreateFxmlFileIntentionTest extends Fxml2TestBase {
     }
 
     @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void keepsBlankLinesBetweenResourceDeclarations() {
+        getFixture().configureByText("TestView.java", """
+                package test;
+                import org.jfxcore.markup.ComponentView;
+                import javafx.scene.layout.BorderPane;
+                @Compon<caret>entView(""\"
+                    <?resource first.txt:first?>
+
+                    <?resource second.txt:second?>
+
+                    <BorderPane/>
+                    ""\")
+                public class TestView extends TestViewBase {
+                    public TestView() { initializeComponent(); }
+                }
+                """);
+
+        CreateFxmlFileIntention.skipConfirmationForTesting = true;
+        getFixture().launchAction(getFixture().findSingleIntention("Create FXML/2 file"));
+
+        VirtualFile fxmlVF = getFixture().findFileInTempDir("TestView.fxml");
+        assertNotNull(fxmlVF, "TestView.fxml must be created");
+        String fxmlText = ReadAction.compute(() -> {
+            PsiFile psi = getFixture().getPsiManager().findFile(fxmlVF);
+            return psi != null ? psi.getText() : "";
+        });
+        assertTrue(fxmlText.contains(
+                        "<?resource first.txt:first?>\n\n<?resource second.txt:second?>"),
+                "The blank line between the two resource declarations must be preserved; got:\n"
+                        + fxmlText);
+    }
+
+    @Test @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void createsFxmlFileFromJavaAnnotationWithChildren() {
         // Arrange: Java class with multi-element @ComponentView markup
         getFixture().configureByText("TestEmbed.java",

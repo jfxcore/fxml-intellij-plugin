@@ -1372,7 +1372,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             com.intellij.psi.PsiType allowedType =
                     com.intellij.psi.JavaPsiFacade.getElementFactory(project)
                             .createType(allowed);
-            return targetType.isAssignableFrom(allowedType);
+            return Fxml2AttributeValueResolver.acceptsSourceType(targetType, allowedType);
         });
 
         if (!applicable) {

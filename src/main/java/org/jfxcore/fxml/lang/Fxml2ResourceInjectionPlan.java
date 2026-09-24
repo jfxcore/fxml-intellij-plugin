@@ -1,0 +1,103 @@
+package org.jfxcore.fxml.lang;
+
+import com.intellij.openapi.util.TextRange;
+import org.jetbrains.annotations.NotNull;
+import org.jfxcore.fxml.resource.Fxml2ResourceDeclaration;
+import org.jfxcore.fxml.resource.Fxml2ResourceInstructionParser;
+import org.jfxcore.fxml.resource.Fxml2ResourceParseResult;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * How markup embedded in a {@code @ComponentView} annotation value is split into injected
+ * fragments.
+ *
+ * <p>Markup embedded in an annotation value is itself an injected fragment, and the platform does
+ * not run injectors inside an injected file, so a resource declaration in embedded markup can
+ * never host a nested injection the way it does in a standalone document.  Two injected fragments
+ * may also not overlap, and only the first injector registered for a host element is consulted at
+ * all.  The way through all three constraints is for the single injector that owns the host to
+ * produce both fragments itself, in one registration round:
+ *
+ * <ul>
+ *   <li>the markup fragment is injected in several places that skip the payloads, so the XML
+ *       parser sees {@code <?resource styles.css text/css:?>} with an empty payload;</li>
+ *   <li>each payload is injected separately, in its own language, over the hole left behind.</li>
+ * </ul>
+ *
+ * <p>Because the markup fragment and the payload fragments are planned together from the same
+ * scan of the host text, the XML view of a document and the payload injected into it cannot
+ * disagree about where the payload sits.
+ *
+ * <p>When a declaration cannot be read confidently, for instance while it is being typed, the plan
+ * degrades to a single markup fragment covering everything and no payload injection at all.  A
+ * malformed declaration must never break the XML view of the surrounding markup.
+ *
+ * @param markupRanges the ranges of the host that make up the markup fragment, in order
+ * @param payloads     the payload fragments to inject, in order
+ */
+public record Fxml2ResourceInjectionPlan(@NotNull List<TextRange> markupRanges,
+                                         @NotNull List<Fxml2ResourcePayloadInjection> payloads) {
+
+    public Fxml2ResourceInjectionPlan {
+        markupRanges = List.copyOf(markupRanges);
+        payloads = List.copyOf(payloads);
+    }
+
+    /**
+     * Plans how to inject the markup occupying {@code valueRange} of {@code hostText}.
+     *
+     * @param hostText   the raw text of the injection host
+     * @param valueRange the range of {@code hostText} that holds the markup
+     */
+    public static @NotNull Fxml2ResourceInjectionPlan of(@NotNull String hostText, @NotNull TextRange valueRange) {
+        List<Fxml2ResourcePayloadInjection> payloads = new ArrayList<>();
+
+        for (Fxml2ResourceParseResult directive : Fxml2ResourceInstructionParser.parseAll(hostText)) {
+            if (!valueRange.contains(directive.instructionSpan().toTextRange())) continue;
+
+            Fxml2ResourceDeclaration declaration = directive.declaration();
+            if (!declaration.hasName()) {
+                // A declaration that cannot be read cannot be split on; leave the document as one
+                // fragment rather than guessing where the payload would be.
+                return single(valueRange);
+            }
+            if (declaration.payload().isEmpty()) continue;
+
+            payloads.add(Fxml2ResourcePayloadInjection.of(hostText, declaration));
+        }
+
+        return payloads.isEmpty()
+                ? single(valueRange)
+                : new Fxml2ResourceInjectionPlan(markupRangesAround(valueRange, payloads), payloads);
+    }
+
+    private static @NotNull Fxml2ResourceInjectionPlan single(@NotNull TextRange valueRange) {
+        return new Fxml2ResourceInjectionPlan(List.of(valueRange), List.of());
+    }
+
+    /**
+     * Returns the parts of {@code valueRange} that are not covered by a payload, which is what is
+     * left for the markup fragment.
+     */
+    private static @NotNull List<TextRange> markupRangesAround(@NotNull TextRange valueRange,
+                                                               @NotNull List<Fxml2ResourcePayloadInjection> payloads) {
+        List<TextRange> ranges = new ArrayList<>();
+        int cursor = valueRange.getStartOffset();
+
+        for (Fxml2ResourcePayloadInjection payload : payloads) {
+            if (payload.range().getStartOffset() > cursor) {
+                ranges.add(TextRange.create(cursor, payload.range().getStartOffset()));
+            }
+            cursor = payload.range().getEndOffset();
+        }
+
+        if (cursor < valueRange.getEndOffset()) {
+            ranges.add(TextRange.create(cursor, valueRange.getEndOffset()));
+        }
+
+        return ranges.isEmpty() ? List.of(valueRange) : ranges;
+    }
+
+}

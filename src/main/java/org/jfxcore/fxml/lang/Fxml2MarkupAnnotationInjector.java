@@ -2,8 +2,6 @@ package org.jfxcore.fxml.lang;
 
 import com.intellij.lang.injection.MultiHostInjector;
 import com.intellij.lang.injection.MultiHostRegistrar;
-import com.intellij.openapi.util.TextRange;
-import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiAnnotation;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
@@ -65,18 +63,7 @@ public final class Fxml2MarkupAnnotationInjector implements MultiHostInjector {
         // The annotation must be on a type declaration (class, interface, enum)
         PsiClass hostClass = PsiTreeUtil.getParentOfType(annotation, PsiClass.class);
         if (hostClass == null) return;
-        String hostFqn = hostClass.getQualifiedName();
-        if (hostFqn == null) return;
-
-        // Build the injection prefix (XML declaration + wrapper root).
-        String prefix = buildPrefix(hostFqn);
-        String suffix = "\n</" + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_LOCAL + ">";
-
-        TextRange valueRange = ElementManipulators.getValueTextRange(literal);
-        registrar
-                .startInjecting(Fxml2EmbeddedXmlLanguage.INSTANCE)
-                .addPlace(prefix, suffix, (PsiLanguageInjectionHost) literal, valueRange)
-                .doneInjecting();
+        Fxml2EmbeddedMarkupInjection.inject(registrar, (PsiLanguageInjectionHost)literal, hostClass);
     }
 
     @Override
@@ -84,31 +71,4 @@ public final class Fxml2MarkupAnnotationInjector implements MultiHostInjector {
         return List.of(PsiLiteralExpression.class);
     }
 
-    /**
-     * Builds the injection prefix: the XML declaration followed by the wrapper root
-     * opening tag with namespace declarations and {@code fx:subclass}.
-     *
-     * <p>Import PIs are intentionally omitted from the prefix so that the prefix text
-     * remains stable across edits to the host Java file's import list.  A stable prefix
-     * prevents IntelliJ from recreating the injected PSI file when imports change, which
-     * would otherwise leave a stale {@code originalFile} pointer in the completion
-     * framework's cached PSI copy and trigger an assertion error in
-     * {@code CompletionInitializationUtil.setOriginalFile}.
-     *
-     * <p>Import resolution still works: {@link org.jfxcore.fxml.resolve.Fxml2ImportResolver}
-     * falls back to reading the host Java file's import list directly when the injected
-     * XML prolog contains no {@code &lt;?import?&gt;} PIs.
-     */
-    private static @NotNull String buildPrefix(@NotNull String hostFqn) {
-
-        // The XML declaration creates an XmlProlog node in the injected tree.
-        // Without it, XmlDocument.getProlog() returns null.
-        // Wrapper root with namespace declarations and fx:subclass.
-        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-               '<' + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_LOCAL +
-               " xmlns=\"http://javafx.com/javafx\"" +
-               " xmlns:fx=\"http://jfxcore.org/fxml/2.0\"" +
-               " xmlns:fxml2=\"" + Fxml2EmbeddedUtil.EMBEDDED_WRAPPER_NS + '"' +
-               " fx:subclass=\"" + hostFqn + "\">\n";
-    }
 }

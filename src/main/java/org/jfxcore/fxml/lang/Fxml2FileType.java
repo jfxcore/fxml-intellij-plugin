@@ -7,6 +7,8 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import com.intellij.psi.xml.XmlFile;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 
 import javax.swing.Icon;
@@ -17,7 +19,8 @@ import javax.swing.Icon;
  * {@code http://jfxcore.org/fxml/2.0} namespace (content-detected via
  * {@link Fxml2FileTypeOverrider} so any static {@code .fxml} XML mapping does not win).
  *
- * <p>By extending {@link XmlLikeFileType} and backing it with {@link XMLLanguage#INSTANCE} the IDE
+ * <p>By extending {@link XmlLikeFileType} and backing it with {@link Fxml2Language}, a dialect of
+ * {@link XMLLanguage}, the IDE
  * automatically provides all standard XML editor features (syntax highlighting, brace matching,
  * code folding, formatting, structure view, ...) without any additional code.
  */
@@ -27,7 +30,7 @@ public final class Fxml2FileType extends XmlLikeFileType {
     public static final Fxml2FileType INSTANCE = new Fxml2FileType();
 
     private Fxml2FileType() {
-        super(XMLLanguage.INSTANCE);
+        super(Fxml2Language.INSTANCE);
     }
 
     @Override
@@ -79,5 +82,10 @@ public final class Fxml2FileType extends XmlLikeFileType {
         String name = vf.getName();
         if (!name.endsWith(".fxml") && !name.endsWith(".fxmlx")) return false;
         return isFxml2(file.getViewProvider().getContents());
+    }
+
+    /** Returns {@code file} as an FXML/2 XML document, or {@code null} otherwise. */
+    public static @Nullable XmlFile asFxml2(@NotNull PsiFile file) {
+        return file instanceof XmlFile xmlFile && isFxml2(xmlFile) ? xmlFile : null;
     }
 }

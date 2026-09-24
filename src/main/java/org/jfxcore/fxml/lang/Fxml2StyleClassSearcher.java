@@ -5,7 +5,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.XmlRecursiveElementVisitor;
 import com.intellij.psi.search.FilenameIndex;
@@ -19,8 +18,6 @@ import com.intellij.util.Processor;
 import com.intellij.util.QueryExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.regex.Pattern;
 
 /**
  * {@link ReferencesSearch} extension that finds {@link Fxml2StyleClassReference}s in
@@ -40,17 +37,10 @@ import java.util.regex.Pattern;
  *       indexed in the word index at all.</li>
  * </ul>
  *
- * <p>This searcher handles two cases for the target element:
- * <ol>
- *   <li><b>{@link CssSelectorElement}</b>: our own fake element created by
- *       {@link Fxml2StyleClassReference#resolve()}.  The class name is obtained via
- *       {@link CssSelectorElement#getName()}.</li>
- *   <li><b>CSS plugin PSI element</b>: any element whose containing file has the
- *       {@code .css} extension.  The class name is extracted heuristically from
- *       {@link PsiNamedElement#getName()} or from the element's text (stripping the
- *       leading dot if present), without requiring a compile-time dependency on the
- *       CSS plugin's closed API.</li>
- * </ol>
+ * <p>The target element is turned into a class name by
+ * {@link Fxml2CssUtil#selectorClassNameOf(PsiElement)}, which accepts the plugin's own
+ * {@link CssSelectorElement}, an element of a stylesheet injected into a {@code <?resource ?>}
+ * declaration, and an element of a {@code .css} file.
  *
  * <p>For each candidate CSS class name, this searcher:
  * <ol>
@@ -64,9 +54,6 @@ import java.util.regex.Pattern;
  */
 public final class Fxml2StyleClassSearcher
         implements QueryExecutor<PsiReference, ReferencesSearch.SearchParameters> {
-
-    /** Pattern matching a valid CSS identifier (class name without leading dot). */
-    private static final Pattern CSS_IDENT = Pattern.compile("-?[_a-zA-Z][\\w-]*");
 
     @Override
     public boolean execute(
@@ -155,51 +142,9 @@ public final class Fxml2StyleClassSearcher
     /**
      * Extracts the CSS class name from the search target element.
      *
-     * <p>Handles:
-     * <ol>
-     *   <li>{@link CssSelectorElement}: returns {@link CssSelectorElement#getName()}.</li>
-     *   <li>CSS plugin PSI element (any element in a {@code .css} file): tries
-     *       {@link PsiNamedElement#getName()} first, then falls back to stripping the
-     *       leading dot from the element's text.</li>
-     * </ol>
-     *
      * @return the CSS class name (without leading dot), or {@code null} if not applicable
      */
     private static @Nullable String extractClassName(@NotNull PsiElement element) {
-        // Case 1: our own CssSelectorElement
-        if (element instanceof CssSelectorElement cse) {
-            return cse.getName();
-        }
-
-        // Case 2: CSS plugin's PSI element: identified by containing .css file
-        PsiFile file = element.getContainingFile();
-        if (file == null) return null;
-        VirtualFile vf = file.getVirtualFile();
-        if (vf == null || !"css".equalsIgnoreCase(vf.getExtension())) return null;
-
-        // Try PsiNamedElement.getName() first (works for CSS plugin class-selector PSI)
-        if (element instanceof PsiNamedElement named) {
-            String name = named.getName();
-            if (name != null && !name.isBlank() && CSS_IDENT.matcher(name).matches()) {
-                return name;
-            }
-        }
-
-        // Fallback: extract from element text (may include leading dot)
-        String text = element.getText().strip();
-        if (text.startsWith(".")) text = text.substring(1);
-        if (!text.isBlank() && CSS_IDENT.matcher(text).matches()) {
-            return text;
-        }
-
-        // Last resort: scan parent element text for a CSS class selector
-        PsiElement parent = element.getParent();
-        if (parent != null) {
-            java.util.regex.Matcher m =
-                    Fxml2CssUtil.CLASS_SELECTOR_PATTERN.matcher(parent.getText());
-            if (m.find()) return m.group(1);
-        }
-
-        return null;
+        return Fxml2CssUtil.selectorClassNameOf(element);
     }
 }
