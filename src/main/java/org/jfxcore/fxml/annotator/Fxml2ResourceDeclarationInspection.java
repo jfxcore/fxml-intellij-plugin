@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.codeinsight.Fxml2ResourceDeclarationFix;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceProblem;
+import org.jfxcore.fxml.resource.Fxml2ResourceProblemKind;
 
 /**
  * Validates {@code <?resource ?>} declarations against the markup language's grammar.
@@ -21,16 +22,14 @@ import org.jfxcore.fxml.resource.Fxml2ResourceProblem;
  *       grammar, including a missing content separator and an unterminated quote;</li>
  *   <li>a missing resource name;</li>
  *   <li>a name that is not a portable file name;</li>
- *   <li>two declarations in one document that declare the same resource;</li>
  *   <li>a media type that does not follow the {@code type/subtype} grammar;</li>
  *   <li>a media type that declares the same parameter twice;</li>
  *   <li>a {@code charset} parameter naming a charset that is unknown or illegal;</li>
  *   <li>a payload character the selected charset cannot encode.</li>
  * </ul>
  *
- * <p>All of these are error-level validation of one directive against one grammar, which is why
- * they are one inspection: the advisory diagnostics about a declaration, its media type and
- * whether it is used, are configured separately because they have different severities.
+ * <p>Name collisions are reported by {@link Fxml2DuplicateResourceInspection} so they can be
+ * configured independently from declaration grammar validation.
  */
 public final class Fxml2ResourceDeclarationInspection extends LocalInspectionTool {
 
@@ -40,7 +39,9 @@ public final class Fxml2ResourceDeclarationInspection extends LocalInspectionToo
                                                    @NotNull LocalInspectionToolSession session) {
         return Fxml2ResourceInspectionSupport.visitDeclarations(holder, entry -> {
             for (Fxml2ResourceProblem problem : entry.problems()) {
-                Fxml2ResourceInspectionSupport.report(holder, entry, problem, fixesFor(entry, problem));
+                if (problem.kind() != Fxml2ResourceProblemKind.DUPLICATE_DECLARATION) {
+                    Fxml2ResourceInspectionSupport.report(holder, entry, problem, fixesFor(entry, problem));
+                }
             }
         });
     }
@@ -50,7 +51,7 @@ public final class Fxml2ResourceDeclarationInspection extends LocalInspectionToo
      *
      * <p>A fix is offered only where the repair is mechanical.  An unportable name has one nearest
      * portable spelling, and a repeated media-type parameter has one occurrence that is redundant;
-     * a malformed grammar, a name collision, or an unsupported charset needs a decision the user
+     * a malformed grammar or an unsupported charset needs a decision the user
      * has to make, so those are reported without a fix.
      */
     private static @NotNull LocalQuickFix @NotNull [] fixesFor(@NotNull Fxml2ResourceEntry entry,

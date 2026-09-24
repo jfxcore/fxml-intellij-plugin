@@ -3,6 +3,7 @@
 
 package org.jfxcore.fxml;
 
+import org.jfxcore.fxml.annotator.Fxml2DuplicateResourceInspection;
 import org.jfxcore.fxml.annotator.Fxml2ProcessingInstructionPlacementInspection;
 import org.jfxcore.fxml.annotator.Fxml2ResourceDeclarationInspection;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,7 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
     void enableInspections() {
         getFixture().enableInspections(
                 new Fxml2ResourceDeclarationInspection(),
+                new Fxml2DuplicateResourceInspection(),
                 new Fxml2ProcessingInstructionPlacementInspection());
     }
 
@@ -91,6 +93,17 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
         configure("""
                 <?resource Foo.txt:first?>
                 <?resource <error descr="Duplicate resource declaration 'foo.txt'; a resource with this name is already declared at line 3, column 12">foo.txt</error>:second?>
+                """, "");
+        getFixture().checkHighlighting(false, false, true);
+    }
+
+    /** Declaration grammar validation can run without duplicate-name validation. */
+    @Test
+    void duplicateInspectionCanBeDisabledIndependently() {
+        getFixture().disableInspections(new Fxml2DuplicateResourceInspection());
+        configure("""
+                <?resource Foo.txt:first?>
+                <?resource foo.txt:second?>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
     }
