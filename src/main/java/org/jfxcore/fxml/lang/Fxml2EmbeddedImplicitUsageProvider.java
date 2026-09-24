@@ -5,8 +5,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
-import com.intellij.psi.PsiInvalidElementAccessException;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.XmlRecursiveElementVisitor;
@@ -16,6 +14,7 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.xml.XmlElementDescriptor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.descriptors.Fxml2ClassTagDescriptor;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 
@@ -149,7 +148,7 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
         // This covers the common case of a direct view class member.
         if (containingClass.getAnnotation(Fxml2EmbeddedUtil.MARKUP_ANNOTATION_FQN) != null) {
             XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(containingClass);
-            if (xmlFile != null && isReferencedInXmlFile(element, xmlFile)) {
+            if (xmlFile != null && Fxml2ImplicitUsageReferences.isReferencedInXmlFile(element, xmlFile)) {
                 return true;
             }
         }
@@ -159,83 +158,7 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
         // in some other class's embedded markup.  Use the word-index-filtered variant to
         // narrow the search to only @ComponentView classes whose embedded markup text
         // contains the property name, avoiding a full scan of all annotated classes.
-        String propertyWord = Fxml2PropertyNameUtil.propertyNameFromElement(element);
-        if (propertyWord == null) {
-            // Plain event-handler method: fall back to the method/function name.
-            propertyWord = Fxml2StandaloneImplicitUsageProvider.plainHandlerMethodName(element);
-            if (propertyWord == null) return false;
-        }
-        Project project = element.getProject();
-        GlobalSearchScope scope = GlobalSearchScope.projectScope(project);
-        boolean[] found = {false};
-        Fxml2EmbeddedUtil.processAnnotatedClassesContainingWord(propertyWord, project, scope, annotatedClass -> {
-            if (found[0]) return false;
-            // Skip the containing class: already checked in the fast path above.
-            if (element.getManager().areElementsEquivalent(containingClass, annotatedClass)) {
-                return true;
-            }
-            XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass);
-            if (xmlFile == null) return true;
-            if (isReferencedInXmlFile(element, xmlFile)) {
-                found[0] = true;
-                return false;
-            }
-            return true;
-        });
-        return found[0];
-    }
-
-    /**
-     * Returns {@code true} if {@code xmlFile} contains at least one reference that
-     * resolves to {@code element}: a {@link Fxml2BindingSegmentReference}, a
-     * {@link Fxml2AttributeValueReference} (for event-handler method references such as
-     * {@code onAction="handleClick"}), or an XML attribute whose
-     * {@link org.jfxcore.fxml.descriptors.Fxml2PropertyAttributeDescriptor} declaration
-     * matches {@code element} (e.g. {@code formatter="$doubleFormatter"}).
-     */
-    private static boolean isReferencedInXmlFile(
-            @NotNull PsiElement element, @NotNull XmlFile xmlFile) {
-        boolean[] found = {false};
-
-        // Check 1: property attribute names (e.g. formatter="$x" -> setFormatter).
-        Fxml2PropertyAttributeSearcher.collectMatchingAttributes(
-                xmlFile, element, ref -> { found[0] = true; return false; });
-        if (found[0]) return true;
-
-        // Check 2: binding-segment references in attribute values.
-        // Check 3: event-handler method references (onAction="handleClick").
-        xmlFile.accept(new XmlRecursiveElementVisitor() {
-            @Override
-            public void visitXmlAttributeValue(@NotNull XmlAttributeValue attrValue) {
-                if (found[0]) return;
-                for (PsiReference ref : attrValue.getReferences()) {
-                    if (!(ref instanceof Fxml2BindingSegmentReference)
-                            && !(ref instanceof Fxml2AttributeValueReference)) continue;
-                    PsiElement resolved = ref.resolve();
-                    if (resolved == null) continue;
-                    PsiManager mgr = element.getManager();
-                    if (mgr.areElementsEquivalent(element, resolved)) {
-                        found[0] = true;
-                        return;
-                    }
-                    // Navigation-element fallback: for Kotlin, the resolved element is a
-                    // KtLightMethod/KtLightField whose getNavigationElement() returns the
-                    // KtProperty or KtNamedFunction source declaration.
-                    try {
-                        PsiElement navEl = resolved.getNavigationElement();
-                        if (navEl != null && navEl != resolved
-                                && mgr.areElementsEquivalent(element, navEl)) {
-                            found[0] = true;
-                            return;
-                        }
-                    } catch (PsiInvalidElementAccessException ignored) {
-                        // Resolved element was invalidated between resolve() and
-                        // getNavigationElement(); treat as no match.
-                    }
-                }
-            }
-        });
-        return found[0];
+        return isReferencedInAnnotatedClassMarkup(element, containingClass);
     }
 
     /**
@@ -251,15 +174,19 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
      * {@code KtProperty} or {@code KtNamedFunction}.
      */
     private static boolean isKotlinElementReferencedInEmbeddedFxml(@NotNull PsiElement element) {
-        try {
-            if (!(element instanceof org.jetbrains.kotlin.psi.KtProperty)
-                    && !(element instanceof org.jetbrains.kotlin.psi.KtNamedFunction)) {
+        if (!Fxml2PropertyNameUtil.isKotlinPropertyDeclaration(element)) {
+            try {
+                if (!(element instanceof org.jetbrains.kotlin.psi.KtNamedFunction)) return false;
+            } catch (NoClassDefFoundError ignored) {
                 return false;
             }
-        } catch (NoClassDefFoundError ignored) {
-            return false;
         }
 
+        return isReferencedInAnnotatedClassMarkup(element, null);
+    }
+
+    private static boolean isReferencedInAnnotatedClassMarkup(
+            @NotNull PsiElement element, @Nullable PsiClass excludedClass) {
         String propertyWord = Fxml2PropertyNameUtil.propertyNameFromElement(element);
         if (propertyWord == null) {
             propertyWord = Fxml2StandaloneImplicitUsageProvider.plainHandlerMethodName(element);
@@ -270,9 +197,13 @@ public final class Fxml2EmbeddedImplicitUsageProvider implements ImplicitUsagePr
         boolean[] found = {false};
         Fxml2EmbeddedUtil.processAnnotatedClassesContainingWord(propertyWord, project, scope, annotatedClass -> {
             if (found[0]) return false;
+            if (excludedClass != null
+                    && element.getManager().areElementsEquivalent(excludedClass, annotatedClass)) {
+                return true;
+            }
             XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(annotatedClass);
             if (xmlFile == null) return true;
-            if (isReferencedInXmlFile(element, xmlFile)) {
+            if (Fxml2ImplicitUsageReferences.isReferencedInXmlFile(element, xmlFile)) {
                 found[0] = true;
                 return false;
             }

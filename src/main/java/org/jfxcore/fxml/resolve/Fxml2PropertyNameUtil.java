@@ -194,7 +194,8 @@ public final class Fxml2PropertyNameUtil {
      * <ul>
      *   <li>{@link PsiField}          -> field name</li>
      *   <li>{@link PsiMethod}         -> {@link #propertyNameFromMethod(PsiMethod)}</li>
-     *   <li>Kotlin {@code KtProperty} -> property name</li>
+     *   <li>Kotlin {@code KtProperty} or {@code val}/{@code var} constructor parameter
+     *       -> property name</li>
      *   <li>Kotlin {@code KtNamedFunction} -> function-name stripping (same patterns as
      *       {@link #propertyNameFromMethod} but using Kotlin value-parameters)</li>
      * </ul>
@@ -231,12 +232,24 @@ public final class Fxml2PropertyNameUtil {
                 }
                 return null;
             }
-            if (element instanceof org.jetbrains.kotlin.psi.KtProperty ktProp) {
-                return ktProp.getName();
+            if (isKotlinPropertyDeclaration(element)
+                    && element instanceof org.jetbrains.kotlin.psi.KtNamedDeclaration declaration) {
+                return declaration.getName();
             }
         } catch (NoClassDefFoundError ignored) {
             // Kotlin plugin absent at runtime: Kotlin elements won't reach here.
         }
         return null;
+    }
+
+    /** Returns whether the element declares a Kotlin property, including a constructor property. */
+    public static boolean isKotlinPropertyDeclaration(@NotNull PsiElement element) {
+        try {
+            return element instanceof org.jetbrains.kotlin.psi.KtProperty
+                    || element instanceof org.jetbrains.kotlin.psi.KtParameter parameter
+                    && parameter.hasValOrVar();
+        } catch (NoClassDefFoundError ignored) {
+            return false;
+        }
     }
 }

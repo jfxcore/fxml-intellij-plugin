@@ -5,11 +5,12 @@ import com.intellij.codeInspection.SuppressQuickFix;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 
 /**
  * Suppresses false-positive "Property 'X' is never used" warnings from Kotlin's K2
- * unused-symbol inspection ({@code UnusedSymbol}) for {@link org.jetbrains.kotlin.psi.KtProperty}
- * elements that are referenced in FXML markup, either standalone or embedded.
+ * unused-symbol inspection ({@code UnusedSymbol}) for Kotlin properties referenced in
+ * FXML markup, including properties declared in a primary constructor.
  *
  * <h3>Why is this needed?</h3>
  * <p>Kotlin's K2 unused-declaration analysis distinguishes between two element kinds:
@@ -76,15 +77,10 @@ public final class Fxml2KotlinUnusedSymbolSuppressor implements InspectionSuppre
     public boolean isSuppressedFor(@NotNull PsiElement element, @NotNull String toolId) {
         if (!UNUSED_SYMBOL_TOOL_ID.equals(toolId)) return false;
 
-        // Only suppress for KtProperty; KtNamedFunction is already handled via
+        // Only suppress for Kotlin properties; KtNamedFunction is already handled via
         // ImplicitUsageProvider (K2's isEntryPoint calls isJavaEntryPoint.isEntryPoint
         // for functions, which consults ImplicitUsageProvider).
-        try {
-            if (!(element instanceof org.jetbrains.kotlin.psi.KtProperty)) return false;
-        } catch (NoClassDefFoundError ignored) {
-            // Kotlin plugin absent; should not happen here since we're in fxml2-with-kotlin.xml
-            return false;
-        }
+        if (!Fxml2PropertyNameUtil.isKotlinPropertyDeclaration(element)) return false;
 
         return Fxml2StandaloneImplicitUsageProvider.isReferencedInStandaloneFxml(element)
                 || Fxml2EmbeddedImplicitUsageProvider.isReferencedInEmbeddedFxml(element);
