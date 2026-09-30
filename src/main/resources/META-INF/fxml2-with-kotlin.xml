@@ -7,6 +7,8 @@
 -->
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
+        <externalAnnotator language="kotlin"
+                           implementationClass="org.jfxcore.fxml.highlighting.Fxml2SemanticAnnotator"/>
         <!--
             MultiHostInjector: injects XMLLanguage into the value of a
             @org.jfxcore.markup.embed.Markup annotation on a Kotlin type declaration.

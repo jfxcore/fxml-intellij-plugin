@@ -11,6 +11,7 @@ A `.fxml` file is treated as FXML/2 when its root element carries both:
 #### Standalone FXML/2 files
 
 - Dedicated FXML/2 file type with XML syntax highlighting, folding, and formatting
+- Semantic colors for markup extensions, bindings, selectors, calls, constants, and typed values
 - Tag and attribute resolution, code completion, and navigation to JavaFX classes
 - Find usages, rename, and Go to Declaration for `fx:id` identifiers
 - Inspections for unknown tags, unresolved attributes, unused imports, and more

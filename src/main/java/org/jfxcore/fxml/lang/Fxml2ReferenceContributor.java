@@ -48,6 +48,7 @@ import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionContentParser;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
 import org.jfxcore.fxml.resolve.Fxml2TagResolver;
 import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
@@ -752,7 +753,7 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         for (var section : Fxml2MarkupExtensionContentParser.parse(content)) {
             switch (section) {
                 case Fxml2MarkupExtensionContentParser.NamedParameter param -> {
-                    PsiElement decl = resolveMarkupExtParam(param.name(), extClass);
+                    PsiElement decl = Fxml2MarkupExtensionResolver.resolveParameter(param.name(), extClass);
                     int nameStart = 1 + contentInRaw + param.offset();
                     refs.add(new Fxml2BindingSegmentReference(attrVal,
                             new TextRange(nameStart, nameStart + param.name().length()), decl));
@@ -870,41 +871,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         } else {
             emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
         }
-    }
-
-    /**
-     * Resolves a markup extension parameter name to the best matching PSI declaration:
-     * <ol>
-     *   <li>{@code @NamedArg("paramName")} constructor parameter on {@code extClass}.</li>
-     *   <li>JavaFX property method: {@code paramNameProperty()}.</li>
-     *   <li>Setter method: {@code setParamName(T)}.</li>
-     * </ol>
-     * This mirrors the priority order used by
-     * {@code Fxml2AttributeAnnotator.collectKnownExtensionParams}.
-     */
-    private static @Nullable PsiElement resolveMarkupExtParam(
-            @NotNull String paramName, @NotNull PsiClass extClass) {
-
-        // 1. @NamedArg constructor parameters
-        for (PsiMethod ctor : extClass.getConstructors()) {
-            for (PsiParameter p : ctor.getParameterList().getParameters()) {
-                if (paramName.equals(Fxml2NamedArgResolver.namedArgValue(p))) return p;
-            }
-        }
-        // 2. JavaFX property method: paramNameProperty()
-        String propertyMethodName = paramName + "Property";
-        for (PsiMethod m : extClass.findMethodsByName(propertyMethodName, true)) {
-            if (m.getParameterList().getParametersCount() == 0) return m;
-        }
-        // 3. Setter method: setParamName(T)
-        if (!paramName.isEmpty()) {
-            String setterName = "set" + Character.toUpperCase(paramName.charAt(0))
-                    + paramName.substring(1);
-            for (PsiMethod m : extClass.findMethodsByName(setterName, true)) {
-                if (m.getParameterList().getParametersCount() == 1) return m;
-            }
-        }
-        return null;
     }
 
     /**
