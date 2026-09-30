@@ -13,6 +13,7 @@ import java.awt.Font;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Fxml2ColorSettingsTest extends Fxml2TestBase {
@@ -53,6 +54,7 @@ class Fxml2ColorSettingsTest extends Fxml2TestBase {
     void settingsPreviewCoversEveryConfigurableRoleWithoutIndexes() {
         var page = new Fxml2ColorSettingsPage();
         var previewKeys = page.getAdditionalHighlightingTagToDescriptorMap();
+        assertFalse(page.getDemoText().contains("<!--"), "Preview roles belong in markup and expressions");
         assertEquals(Fxml2SemanticRole.values().length, page.getAttributeDescriptors().length);
         for (var role : Fxml2SemanticRole.values()) {
             assertEquals(role.key(), previewKeys.get(role.name()));

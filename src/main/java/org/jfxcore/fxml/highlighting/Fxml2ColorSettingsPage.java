@@ -30,23 +30,28 @@ public final class Fxml2ColorSettingsPage implements ColorSettingsPage {
     @Override
     public @NotNull String getDemoText() {
         return """
-                <?import sample.<TYPE>View</TYPE>?>
-                <<TYPE>View</TYPE> xmlns="http://javafx.com/javafx" xmlns:fx="http://jfxcore.org/fxml/2.0">
-                    <<TYPE>WidthBehavior</TYPE> <PROPERTY_ASSIGNMENT>columnWidth</PROPERTY_ASSIGNMENT>="<BRACES>{</BRACES><TYPE>PersistedWidth</TYPE> <STRING>view.columns.title</STRING><SEMICOLON>;</SEMICOLON> <PROPERTY_ASSIGNMENT>defaultValue</PROPERTY_ASSIGNMENT><OPERATOR>=</OPERATOR><NUMBER>200</NUMBER><BRACES>}</BRACES>"/>
-                    <<TYPE>Label</TYPE> <PROPERTY_ASSIGNMENT>text</PROPERTY_ASSIGNMENT>="<PREFIX>$</PREFIX><BRACES>{</BRACES><TYPE>String</TYPE><DOT>.</DOT><STATIC_METHOD_CALL>format</STATIC_METHOD_CALL><PARENTHESES>(</PARENTHESES><STRING>'Count: %d'</STRING><COMMA>,</COMMA> <INSTANCE_FIELD>model</INSTANCE_FIELD><DOT>.</DOT><PROPERTY_READ>count</PROPERTY_READ> <OPERATOR>+</OPERATOR> <NUMBER>1</NUMBER><PARENTHESES>)</PARENTHESES><BRACES>}</BRACES>"/>
+                <?import <IDENTIFIER>sample</IDENTIFIER>.<TYPE>View</TYPE>?>
+                <?import java.util.<INTERFACE>List</INTERFACE>?>
+                <?import javafx.geometry.<ENUM>Pos</ENUM>?>
+                <<TYPE>View</TYPE> xmlns="http://javafx.com/javafx" xmlns:fx="http://jfxcore.org/fxml/2.0"
+                      fx:<INTRINSIC_ATTRIBUTE>typeArguments</INTRINSIC_ATTRIBUTE>="<TYPE_PARAMETER>T</TYPE_PARAMETER>">
+                    <<TYPE>WidthBehavior</TYPE>
+                        <PROPERTY_ASSIGNMENT>columnWidth</PROPERTY_ASSIGNMENT>="<BRACES>{</BRACES><TYPE>PersistedWidth</TYPE> <STRING>view.columns.title</STRING><SEMICOLON>;</SEMICOLON> <PROPERTY_ASSIGNMENT>defaultValue</PROPERTY_ASSIGNMENT><OPERATOR>=</OPERATOR><NUMBER>200</NUMBER><BRACES>}</BRACES>"/>
+                    <<TYPE>Label</TYPE>
+                        <PROPERTY_ASSIGNMENT>text</PROPERTY_ASSIGNMENT>="<PREFIX>$</PREFIX><BRACES>{</BRACES><TYPE>String</TYPE><DOT>.</DOT><STATIC_METHOD_CALL>format</STATIC_METHOD_CALL><PARENTHESES>(</PARENTHESES><STRING>'Count: %d'</STRING><COMMA>,</COMMA> <INSTANCE_FIELD>model</INSTANCE_FIELD><DOT>.</DOT><PROPERTY_READ>count</PROPERTY_READ> <OPERATOR>+</OPERATOR> <NUMBER>1</NUMBER><PARENTHESES>)</PARENTHESES><BRACES>}</BRACES>"/>
+                    <<TYPE>Label</TYPE> <PROPERTY_ASSIGNMENT>text</PROPERTY_ASSIGNMENT>="<PREFIX>$</PREFIX><INSTANCE_FIELD>model</INSTANCE_FIELD>.<METHOD_CALL>formatTitle</METHOD_CALL><PARENTHESES>(</PARENTHESES><STRING>'Title<ESCAPE>\\n</ESCAPE>'</STRING><PARENTHESES>)</PARENTHESES>"/>
+                    <<TYPE>Label</TYPE> <PROPERTY_ASSIGNMENT>text</PROPERTY_ASSIGNMENT>="<PREFIX>$</PREFIX><INSTANCE_FINAL_FIELD>settings</INSTANCE_FINAL_FIELD>.<PROPERTY_READ>title</PROPERTY_READ>"/>
                     <<TYPE>Label</TYPE> <PROPERTY_ASSIGNMENT>text</PROPERTY_ASSIGNMENT>="<PREFIX>%</PREFIX><RESOURCE_KEY>message.title</RESOURCE_KEY>"/>
                     <<TYPE>ImageView</TYPE> <PROPERTY_ASSIGNMENT>image</PROPERTY_ASSIGNMENT>="<PREFIX>@</PREFIX><RESOURCE_PATH>icons/view.png</RESOURCE_PATH>"/>
-                    <<TYPE>Pane</TYPE> <PROPERTY_ASSIGNMENT>visible</PROPERTY_ASSIGNMENT>="<PREFIX>$</PREFIX><BRACES>{</BRACES><SELECTOR>:parent</SELECTOR><OPERATOR>&lt;</OPERATOR><TYPE>Pane</TYPE><OPERATOR>&gt;</OPERATOR><PARENTHESES>(</PARENTHESES><NUMBER>2</NUMBER><PARENTHESES>)</PARENTHESES><DOT>.</DOT><PROPERTY_READ>visible</PROPERTY_READ> <OPERATOR>&amp;&amp;</OPERATOR> <KEYWORD>true</KEYWORD><BRACES>}</BRACES>"/>
+                    <<TYPE>Pane</TYPE>
+                        <PROPERTY_ASSIGNMENT>visible</PROPERTY_ASSIGNMENT>="<PREFIX>$</PREFIX><BRACES>{</BRACES><SELECTOR>:parent</SELECTOR><OPERATOR>&lt;</OPERATOR><TYPE>Pane</TYPE><OPERATOR>&gt;</OPERATOR><PARENTHESES>(</PARENTHESES><NUMBER>2</NUMBER><PARENTHESES>)</PARENTHESES><DOT>.</DOT><PROPERTY_READ>visible</PROPERTY_READ> <OPERATOR>&amp;&amp;</OPERATOR> <KEYWORD>true</KEYWORD><BRACES>}</BRACES>"
+                        <PROPERTY_ASSIGNMENT>padding</PROPERTY_ASSIGNMENT>="<PREFIX>$</PREFIX><CONSTRUCTOR_CALL>Insets</CONSTRUCTOR_CALL><PARENTHESES>(</PARENTHESES><NUMBER>8</NUMBER><PARENTHESES>)</PARENTHESES>"
+                        <PROPERTY_ASSIGNMENT>userData</PROPERTY_ASSIGNMENT>="<PREFIX>$</PREFIX><TYPE>View</TYPE>.<STATIC_FIELD>activeTheme</STATIC_FIELD>"/>
                     <<TYPE>Label</TYPE> <PROPERTY_ASSIGNMENT>alignment</PROPERTY_ASSIGNMENT>="<CONSTANT>CENTER</CONSTANT>" <PROPERTY_ASSIGNMENT>styleClass</PROPERTY_ASSIGNMENT>="<CSS_CLASS>title</CSS_CLASS>"/>
-                    <<INTRINSIC>fx:Observe</INTRINSIC> <PROPERTY_ASSIGNMENT>source</PROPERTY_ASSIGNMENT>="<INSTANCE_FIELD>model</INSTANCE_FIELD><DOT>.</DOT><PROPERTY_READ>title</PROPERTY_READ>"/>
+                    <fx:<INTRINSIC>Observe</INTRINSIC> <PROPERTY_ASSIGNMENT>source</PROPERTY_ASSIGNMENT>="<INSTANCE_FIELD>model</INSTANCE_FIELD>.<PROPERTY_READ>title</PROPERTY_READ>"/>
+                    <fx:<INTRINSIC>Class</INTRINSIC> <PROPERTY_ASSIGNMENT>name</PROPERTY_ASSIGNMENT>="<TYPE>String</TYPE><BRACKETS>[]</BRACKETS>"/>
                 </<TYPE>View</TYPE>>
-                """ + additionalExamples();
-    }
-
-    private static String additionalExamples() {
-        return Arrays.stream(Fxml2SemanticRole.values())
-                .map(role -> "<!-- " + role.displayName() + ": <" + role.name() + ">sample</" + role.name() + "> -->\n")
-                .reduce("", String::concat);
+                """;
     }
 
     @Override
