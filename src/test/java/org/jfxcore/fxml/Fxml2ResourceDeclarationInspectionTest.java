@@ -3,15 +3,21 @@
 
 package org.jfxcore.fxml;
 
+import com.intellij.openapi.application.ReadAction;
 import org.jfxcore.fxml.annotator.Fxml2DuplicateResourceInspection;
 import org.jfxcore.fxml.annotator.Fxml2ProcessingInstructionPlacementInspection;
 import org.jfxcore.fxml.annotator.Fxml2ResourceDeclarationInspection;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Verifies that the diagnostics of a {@code <?resource ?>} declaration reach the editor.
@@ -23,6 +29,11 @@ import java.util.concurrent.TimeUnit;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Timeout(value = 60, unit = TimeUnit.SECONDS)
 class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
+
+    @BeforeAll
+    void addTestClasses() {
+        installComponentViewAnnotation();
+    }
 
     @BeforeEach
     void enableInspections() {
@@ -49,9 +60,10 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
     }
 
     /** A name that is not a portable file name is reported on the name itself. */
-    @Test
-    void unportableNameIsReported() {
-        configure("""
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void unportableNameIsReported(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
                 <?resource "<error descr="Invalid resource name 'sub/dir.css'">sub/dir.css</error>":body?>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
@@ -61,27 +73,30 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
      * A declaration that names no resource is reported on the whole instruction, because the span
      * the name would have occupied is empty and the platform cannot highlight nothing.
      */
-    @Test
-    void missingNameIsReported() {
-        configure("""
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void missingNameIsReported(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
                 <error descr="Missing resource name"><?resource ?></error>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
     }
 
     /** A malformed media type is reported. */
-    @Test
-    void malformedMediaTypeIsReported() {
-        configure("""
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void malformedMediaTypeIsReported(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
                 <?resource styles.css <error descr="Invalid media type for resource 'styles.css'">text/</error>:body?>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
     }
 
     /** A charset the JVM does not know is reported on the parameter that names it. */
-    @Test
-    void unsupportedCharsetIsReported() {
-        configure("""
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void unsupportedCharsetIsReported(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
                 <?resource m.txt text/plain;<error descr="Unsupported charset 'x-nope' for resource 'm.txt'">charset=x-nope</error>:body?>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
@@ -95,6 +110,26 @@ class Fxml2ResourceDeclarationInspectionTest extends Fxml2TestBase {
                 <?resource <error descr="Duplicate resource declaration 'foo.txt'; a resource with this name is already declared at line 3, column 12">foo.txt</error>:second?>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Fxml2DocumentForm.class, names = {"JAVA", "KOTLIN"})
+    void embeddedDuplicateAfterPayloadIsReported(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
+                <?resource Foo.txt:first
+                    multiline payload
+                ?>
+                <?resource foo.txt:second?>
+                """, "");
+
+        var errors = getFixture().doHighlighting().stream()
+                .filter(info -> info.getDescription() != null
+                        && info.getDescription().startsWith("Duplicate resource declaration"))
+                .toList();
+        assertEquals(1, errors.size());
+        String text = ReadAction.compute(() -> getFixture().getFile().getText());
+        assertEquals("foo.txt",
+                text.substring(errors.getFirst().getStartOffset(), errors.getFirst().getEndOffset()));
     }
 
     /** Declaration grammar validation can run without duplicate-name validation. */

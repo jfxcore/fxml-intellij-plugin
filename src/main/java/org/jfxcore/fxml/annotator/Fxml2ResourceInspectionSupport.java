@@ -13,6 +13,7 @@ import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
 import org.jfxcore.fxml.resource.Fxml2ResourceModel;
 import org.jfxcore.fxml.resource.Fxml2ResourceProblem;
+import org.jfxcore.fxml.resolve.Fxml2TextSpan;
 
 import java.util.function.Consumer;
 
@@ -66,10 +67,9 @@ final class Fxml2ResourceInspectionSupport {
     /**
      * Reports {@code message} on {@code range}, which is relative to {@code entry}'s anchor.
      *
-     * <p>Diagnostic spans are already relative to the anchor, and the platform wants a range
-     * relative to the element the problem is registered on, so the two agree and the span needs no
-     * translation.  An empty or out-of-bounds span is widened to the whole anchor, because the
-     * platform cannot highlight nothing.
+     * <p>Descriptors belong to the inspected file. Embedded declarations are mapped from their
+     * host literal into that file's coordinates. An empty or out-of-bounds span is widened to
+     * the whole declaration, because the platform cannot highlight nothing.
      */
     static void report(@NotNull ProblemsHolder holder,
                        @NotNull Fxml2ResourceEntry entry,
@@ -80,9 +80,19 @@ final class Fxml2ResourceInspectionSupport {
         PsiElement anchor = entry.anchor();
         TextRange anchorRange = TextRange.from(0, anchor.getTextLength());
         TextRange intersection = range.isEmpty() ? null : range.intersection(anchorRange);
+        TextRange reportRange = intersection == null || intersection.isEmpty()
+                ? entry.instructionSpan().toTextRange() : intersection;
 
-        holder.registerProblem(anchor, message, highlightType,
-                intersection == null || intersection.isEmpty() ? anchorRange : intersection,
-                fixes);
+        if (!anchor.getContainingFile().equals(holder.getFile())) {
+            reportRange = entry.rangeIn(holder.getFile(),
+                    new Fxml2TextSpan(reportRange.getStartOffset(), reportRange.getEndOffset()));
+            if (reportRange != null && reportRange.isEmpty()) {
+                reportRange = entry.rangeIn(holder.getFile(), entry.instructionSpan());
+            }
+            if (reportRange == null || reportRange.isEmpty()) return;
+            anchor = holder.getFile();
+        }
+
+        holder.registerProblem(anchor, message, highlightType, reportRange, fixes);
     }
 }
