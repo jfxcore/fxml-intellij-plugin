@@ -24,7 +24,8 @@ FXML/2 markup can be embedded directly in a Java or Kotlin class using the
 The plugin injects full FXML/2 IDE support into the annotation value:
 
 - Language injection: the embedded markup is treated as a live FXML/2 document with the
-  same completion, navigation, inspections, and find usages as standalone files
+  same syntax and semantic highlighting, completion, navigation, inspections, and
+  find usages as standalone files
 - Formatting: `Ctrl+Alt+L` reformats the embedded XML with the correct indentation,
   honoring EditorConfig `*.fxml` rules
 - Unused-import suppression: imports referenced only inside the embedded markup are not

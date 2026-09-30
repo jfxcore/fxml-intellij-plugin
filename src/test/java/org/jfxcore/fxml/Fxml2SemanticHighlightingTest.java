@@ -199,7 +199,7 @@ class Fxml2SemanticHighlightingTest extends Fxml2TestBase {
     }
 
     @Test
-    void kotlinInjectedMarkupUsesTheSameJavaBasedRoles() {
+    void kotlinInjectedMarkupUsesTheSameSemanticRoles() {
         installComponentViewAnnotation();
         getFixture().configureByText("EmbeddedView.kt", """
                 package test
@@ -210,6 +210,8 @@ class Fxml2SemanticHighlightingTest extends Fxml2TestBase {
                 """);
         assertColor("42", "FXML2_NUMBER");
         assertColor("CENTER", "FXML2_CONSTANT");
+        assertColor("prefWidth", "FXML2_PROPERTY_ASSIGNMENT");
+        assertColor("<Label", 1, 5, "FXML2_TYPE");
     }
 
     @Test
@@ -341,6 +343,7 @@ class Fxml2SemanticHighlightingTest extends Fxml2TestBase {
         assertColor("(VBox.margin)", 1, 4, "FXML2_TYPE");
         assertColor("(VBox.margin)", 6, 6, "FXML2_PROPERTY_READ");
         assertColor("fx:id=\"targetLabel", 7, 11, "FXML2_INSTANCE_FIELD");
+        assertColor("fx:id", 3, 2, "FXML2_INTRINSIC_ATTRIBUTE");
     }
 
     @Test

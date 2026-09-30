@@ -132,7 +132,7 @@ public final class Fxml2SemanticAnalyzer {
         PsiElement name = attribute.getNameElement();
         if (name != null) {
             Fxml2SourceText text = Fxml2SourceText.decode(name.getText(), name.getTextRange().getStartOffset());
-            name(text, intrinsic ? INTRINSIC : PROPERTY_ASSIGNMENT);
+            name(text, intrinsic ? INTRINSIC_ATTRIBUTE : PROPERTY_ASSIGNMENT);
             if (resolve) references(attribute, true);
         }
         XmlAttributeValue value = attribute.getValueElement();
@@ -527,7 +527,7 @@ public final class Fxml2SemanticAnalyzer {
             if (relative.isEmpty() || relative.getEndOffset() > element.getTextLength()) continue;
             TextRange range = relative.shiftRight(element.getTextRange().getStartOffset());
             Fxml2SemanticRole previous = spans.roleAt(range.getStartOffset());
-            if (previous == PREFIX || previous == SELECTOR || previous == INTRINSIC
+            if (previous == PREFIX || previous == SELECTOR || previous == INTRINSIC || previous == INTRINSIC_ATTRIBUTE
                     || previous == NUMBER || previous == KEYWORD
                     || previous == ESCAPE || previous == OPERATOR) continue;
             Fxml2SemanticRole role;
