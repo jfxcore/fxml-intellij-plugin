@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +36,7 @@ class Fxml2ResourceAdvisoryInspectionTest extends Fxml2TestBase {
     @BeforeAll
     void addTestClasses() {
         addResourceMarkupExtensions();
+        installComponentViewAnnotation();
     }
 
     @BeforeEach
@@ -44,9 +47,10 @@ class Fxml2ResourceAdvisoryInspectionTest extends Fxml2TestBase {
     }
 
     /** A declaration that nothing refers to is reported on its name. */
-    @Test
-    void unreferencedDeclarationIsReported() {
-        configure("""
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void unreferencedDeclarationIsReported(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
                 <?resource <weak_warning descr="Embedded resource 'notes.txt' is never used in this document">notes.txt</weak_warning>:body?>
                 """, "");
         getFixture().checkHighlighting(false, false, true);
@@ -122,9 +126,10 @@ class Fxml2ResourceAdvisoryInspectionTest extends Fxml2TestBase {
     }
 
     /** A declared media type that contradicts the extension is reported on the media type. */
-    @Test
-    void contradictingMediaTypeIsReported() {
-        configure("""
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void contradictingMediaTypeIsReported(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
                 <?resource styles.css <weak_warning descr="Media type of resource 'styles.css' does not match its file extension, which implies text/css">application/json</weak_warning>:.root {}?>
                 """, """
                   <BorderPane stylesheets="@styles.css"/>
@@ -149,9 +154,10 @@ class Fxml2ResourceAdvisoryInspectionTest extends Fxml2TestBase {
     }
 
     /** Removing an unused declaration takes the line it sits on with it. */
-    @Test
-    void removingAnUnusedDeclarationTakesItsLine() {
-        configure("""
+    @ParameterizedTest
+    @EnumSource(Fxml2DocumentForm.class)
+    void removingAnUnusedDeclarationTakesItsLine(Fxml2DocumentForm form) {
+        form.configure(getFixture(), """
                 <?resource not<caret>es.txt:body?>
                 """, "");
 
@@ -159,6 +165,7 @@ class Fxml2ResourceAdvisoryInspectionTest extends Fxml2TestBase {
 
         String text = ReadAction.compute(() -> getFixture().getFile().getText());
         assertFalse(text.contains("<?resource"), "the declaration is gone: " + text);
+        if (form != Fxml2DocumentForm.STANDALONE) return;
         assertEquals("""
                 <?xml version="1.0" encoding="UTF-8"?>
                 <?import javafx.scene.layout.BorderPane?>

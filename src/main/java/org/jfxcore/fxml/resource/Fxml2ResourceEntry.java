@@ -63,10 +63,15 @@ public record Fxml2ResourceEntry(@NotNull Fxml2ResourceParseResult result, @NotN
 
     /** Returns the name range in {@code file}'s coordinate space, when it contains this document. */
     public @Nullable TextRange nameRangeIn(@NotNull PsiFile file) {
-        if (file.equals(declaringFile())) return nameRange();
+        return rangeIn(file, declaration().nameSpan());
+    }
+
+    /** Returns an anchor-relative span in {@code file}'s coordinate space. */
+    public @Nullable TextRange rangeIn(@NotNull PsiFile file, @NotNull Fxml2TextSpan span) {
+        TextRange hostRange = fileRangeOf(span);
+        if (file.equals(declaringFile())) return hostRange;
         if (!(file.getViewProvider().getDocument() instanceof DocumentWindow window)) return null;
 
-        TextRange hostRange = nameRange();
         int start = window.hostToInjected(hostRange.getStartOffset());
         int end = window.hostToInjected(hostRange.getEndOffset());
         return start < 0 || end < start ? null : new TextRange(start, end);
