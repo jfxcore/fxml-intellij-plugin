@@ -44,6 +44,9 @@ import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionContentParser;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionParser;
+import org.jfxcore.fxml.resolve.Fxml2TextScanner;
+import org.jfxcore.fxml.resolve.Fxml2TextSpan;
 import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionResolver;
 import org.jfxcore.fxml.resolve.Fxml2ValueSequenceParser;
 import org.jfxcore.fxml.resolve.Fxml2ValueTargetResolver;
@@ -219,7 +222,8 @@ public final class Fxml2SemanticAnalyzer {
             return;
         }
         try {
-            List<Fxml2ValueSequenceParser.ValueItem> items = Fxml2ValueSequenceParser.split(source.text(), prefixes);
+            var sequence = Fxml2ValueSequenceParser.parseSequence(source.text(), prefixes);
+            var items = sequence.items();
             var target = resolve && type != null
                     ? Fxml2ValueTargetResolver.resolveTarget(type, items.size(), file.getResolveScope()) : null;
             if (target instanceof Fxml2ValueTargetResolver.Items
@@ -234,17 +238,12 @@ public final class Fxml2SemanticAnalyzer {
                     };
                     oneValue(source.slice(item.offset(), item.offset() + item.text().length()), itemType, owner, tag);
                 }
-                for (int i = 0; i < source.text().length(); i++) {
-                    if (source.text().charAt(i) == ',' && spans.roleAt(source.range(i, i + 1).getStartOffset()) == null) {
-                        spans.add(source.range(i, i + 1), COMMA);
-                    }
+                for (var separator : sequence.separators()) {
+                    spans.add(source.range(separator.start(), separator.end()), COMMA);
                 }
             } else {
-                int begin = 0;
-                int end = source.text().length();
-                while (begin < end && Character.isWhitespace(source.text().charAt(begin))) begin++;
-                while (end > begin && Character.isWhitespace(source.text().charAt(end - 1))) end--;
-                if (end > begin) oneValue(source.slice(begin, end), type, owner, tag);
+                var trimmed = Fxml2TextSpan.trimmed(source.text(), 0, source.text().length());
+                if (!trimmed.isEmpty()) oneValue(source.slice(trimmed.start(), trimmed.end()), type, owner, tag);
             }
         } finally {
             valueDepth--;
@@ -282,43 +281,28 @@ public final class Fxml2SemanticAnalyzer {
 
     private void binding(Fxml2SourceText source, Fxml2BindingExpressionParser.ParsedExpression binding, XmlTag tag) {
         String text = source.text();
-        boolean longForm = text.startsWith("{");
-        if (longForm) {
-            int end = 1;
-            while (end < text.length() && !Character.isWhitespace(text.charAt(end)) && text.charAt(end) != '}') end++;
+        var extension = Fxml2MarkupExtensionParser.parse(text);
+        int contentStart = binding.prefixLength();
+        if (extension != null) {
             spans.add(source.range(0, 1), BRACES);
-            spans.add(source.range(1, end), INTRINSIC);
-            int contentEnd = text.endsWith("}") ? text.length() - 1 : text.length();
-            for (var section : Fxml2MarkupExtensionContentParser.parse(text.substring(end, contentEnd))) {
-                if (section instanceof Fxml2MarkupExtensionContentParser.NamedParameter(
-                        String parameterName, int nameOffset, String ignoredValue, int ignoredOffset)) {
-                    int nameStart = end + nameOffset;
-                    int nameEnd = nameStart + parameterName.length();
-                    spans.add(source.range(nameStart, nameEnd), PROPERTY_ASSIGNMENT);
-                    int equal = text.indexOf('=', nameEnd);
-                    if (equal >= 0) spans.add(source.range(equal, equal + 1), OPERATOR);
-                }
-            }
+            name(source.slice(extension.name().start(), extension.name().end()), INTRINSIC);
+            contentStart = extension.content().start();
         } else {
             spans.add(source.range(0, 1), PREFIX);
             if (binding.prefixLength() > 1 && text.charAt(1) == '{') spans.add(source.range(1, 2), BRACES);
         }
-        if (text.endsWith("}")) spans.add(source.range(text.length() - 1, text.length()), BRACES);
+        int contentEnd = text.endsWith("}") ? text.length() - 1 : text.length();
+        if (contentEnd < text.length()) spans.add(source.range(contentEnd, text.length()), BRACES);
+        if (contentStart <= contentEnd) {
+            Fxml2SourceText content = source.slice(contentStart, contentEnd);
+            sectionSyntax(content, Fxml2MarkupExtensionContentParser.parseContent(content.text()));
+        }
         int end = Math.min(text.length(), binding.pathOffset() + binding.path().length());
         expression(source.slice(binding.pathOffset(), end), tag);
         for (var parameter : binding.params()) {
-            int nameEnd = parameter.nameOffset() + parameter.name().length();
-            spans.add(source.range(parameter.nameOffset(), nameEnd), PROPERTY_ASSIGNMENT);
-            int equal = text.indexOf('=', nameEnd);
-            if (equal >= 0) spans.add(source.range(equal, equal + 1), OPERATOR);
             if (parameter.pathOffset() >= 0) {
                 int finish = Math.min(text.length(), parameter.pathOffset() + parameter.path().length());
                 expression(source.slice(parameter.pathOffset(), finish), tag);
-            }
-        }
-        for (int i = 0; i < text.length(); i++) {
-            if (text.charAt(i) == ';' && spans.roleAt(source.range(i, i + 1).getStartOffset()) == null) {
-                spans.add(source.range(i, i + 1), SEMICOLON);
             }
         }
     }
@@ -329,50 +313,44 @@ public final class Fxml2SemanticAnalyzer {
             expression(source.slice(2, source.text().length()), tag);
             return;
         }
-        colors(tag).expression(source);
-        if (!resolve) return;
-        try {
-            var tree = Fxml2ExpressionParser.parse(source.text());
-            for (var operand : Fxml2ExpressionOperands.operands(tree, 0)) {
-                var selector = Fxml2BindingExpressionParser.parseContextSelector(operand.text());
-                String path = selector != null ? selector.remainingPath() : operand.text();
-                int base = operand.offset() + (selector != null ? selector.selectorLength() : 0);
-                PsiClass start = Fxml2BindingPathResolver.resolveStartClass(selector, tag, file);
-                if (start == null || path.isBlank()) continue;
-                boolean call = operand.kind() == Fxml2ExpressionOperands.OperandKind.FUNCTION_NAME;
-                var segments = call
-                        ? Fxml2BindingPathResolver.resolveFunctionName(path, start, file.getResolveScope(), null, file)
-                        : Fxml2BindingPathResolver.functionCallParenIndex(path) >= 0
-                            ? Fxml2BindingPathResolver.resolveFunctionCall(path, start, file.getResolveScope(), null, file, tag)
-                            : Fxml2BindingPathResolver.resolve(path, start, file.getResolveScope(), null, file);
-                for (int i = 0; i < segments.size(); i++) {
-                    var segment = segments.get(i);
-                    Fxml2SemanticRole role = symbolRole(segment.declaration(), call && i + 1 == segments.size());
-                    int begin = base + segment.pathOffset();
-                    int end = begin + segment.name().length();
-                    if (role != null && isIdentifier(segment.name())
-                            && begin >= 0 && end <= source.text().length()) {
-                        spans.add(source.range(begin, end), role);
-                    }
+        var tree = colors(tag).expression(source);
+        if (!resolve || tree == null) return;
+        for (var operand : Fxml2ExpressionOperands.operands(tree, 0)) {
+            var selector = Fxml2BindingExpressionParser.parseContextSelector(operand.text());
+            String path = selector != null ? selector.remainingPath() : operand.text();
+            int base = operand.offset() + (selector != null ? selector.selectorLength() : 0);
+            PsiClass start = Fxml2BindingPathResolver.resolveStartClass(selector, tag, file);
+            if (start == null || path.isBlank()) continue;
+            boolean call = operand.kind() == Fxml2ExpressionOperands.OperandKind.FUNCTION_NAME;
+            var segments = call
+                    ? Fxml2BindingPathResolver.resolveFunctionName(path, start, file.getResolveScope(), null, file)
+                    : Fxml2BindingPathResolver.functionCallParenIndex(path) >= 0
+                        ? Fxml2BindingPathResolver.resolveFunctionCall(path, start, file.getResolveScope(), null, file, tag)
+                        : Fxml2BindingPathResolver.resolve(path, start, file.getResolveScope(), null, file);
+            for (int i = 0; i < segments.size(); i++) {
+                var segment = segments.get(i);
+                Fxml2SemanticRole role = symbolRole(segment.declaration(), call && i + 1 == segments.size());
+                int begin = base + segment.pathOffset();
+                int end = begin + segment.name().length();
+                if (role != null && Fxml2TextScanner.isIdentifier(segment.name())
+                        && begin >= 0 && end <= source.text().length()) {
+                    spans.add(source.range(begin, end), role);
                 }
             }
-            for (var type : Fxml2ExpressionOperands.typeNames(tree, 0)) {
-                resolvedTypes(source.slice(type.offset(), type.offset() + type.text().length()));
-            }
-        } catch (Fxml2ExpressionParser.ParseException ignored) {
-            // Syntax coloring remains available while a path is incomplete.
+        }
+        for (var type : Fxml2ExpressionOperands.typeNames(tree, 0)) {
+            resolvedTypes(source.slice(type.offset(), type.offset() + type.text().length()));
         }
     }
 
     private void resolvedTypes(Fxml2SourceText source) {
         for (var type : Fxml2TypeArgumentParser.allTypeNames(source.text(), 0)) {
             PsiClass declaration = Fxml2ImportResolver.resolve(type.name(), file);
-            String[] parts = type.name().split("\\.");
-            int begin = type.offset();
-            for (int i = 0; i < parts.length; i++) {
-                Fxml2SemanticRole role = i + 1 == parts.length ? classRole(declaration) : IDENTIFIER;
-                spans.add(source.range(begin, begin + parts[i].length()), role);
-                begin += parts[i].length() + 1;
+            var parts = Fxml2TextScanner.nameParts(type.name());
+            for (int i = 0; i < parts.size(); i++) {
+                var part = parts.get(i);
+                Fxml2SemanticRole role = i + 1 == parts.size() ? classRole(declaration) : IDENTIFIER;
+                spans.add(source.range(type.offset() + part.start(), type.offset() + part.end()), role);
             }
         }
     }
@@ -380,13 +358,9 @@ public final class Fxml2SemanticAnalyzer {
     private void extension(Fxml2SourceText source, XmlTag tag) {
         String text = source.text();
         spans.add(source.range(0, 1), BRACES);
-        int begin = 1;
-        while (begin < text.length() && Character.isWhitespace(text.charAt(begin))) begin++;
-        int end = begin;
-        while (end < text.length() && (Character.isJavaIdentifierPart(text.charAt(end))
-                || text.charAt(end) == '.' || text.charAt(end) == ':')) end++;
-        if (end == begin) return;
-        String extensionName = text.substring(begin, end);
+        var extension = Fxml2MarkupExtensionParser.parse(text);
+        if (extension == null) return;
+        String extensionName = extension.name().textOf(text);
         String localName = extensionName.substring(extensionName.indexOf(':') + 1);
         boolean intrinsic = extensionName.contains(":") && INTRINSIC_NAMES.contains(localName);
         PsiClass extensionClass = resolve && !intrinsic ? Fxml2ImportResolver.resolve(extensionName, file) : null;
@@ -394,36 +368,27 @@ public final class Fxml2SemanticAnalyzer {
             extensionClass = JavaPsiFacade.getInstance(file.getProject()).findClass(
                     "org.jfxcore.markup.resource." + extensionName, file.getResolveScope());
         }
-        name(source.slice(begin, end), intrinsic ? INTRINSIC : classRole(extensionClass));
-        int content = end;
-        while (content < text.length() && Character.isWhitespace(text.charAt(content))) content++;
-        if (content < text.length() && text.charAt(content) == '<') {
-            int close = Fxml2TypeArgumentParser.findClosingBracket(text, content + 1);
-            if (close >= 0) {
-                colors(tag).types(source.slice(content, close + 1));
-                content = close + 1;
-            }
+        name(source.slice(extension.name().start(), extension.name().end()), intrinsic ? INTRINSIC : classRole(extensionClass));
+        if (extension.typeArguments() != null) {
+            var arguments = extension.typeArguments();
+            colors(tag).types(source.slice(arguments.start(), arguments.end()));
         }
-        int finish = text.endsWith("}") ? text.length() - 1 : text.length();
-        if (finish < text.length()) spans.add(source.range(finish, text.length()), BRACES);
-        if (content < finish) sections(source.slice(content, finish), extensionClass,
+        if (extension.closed()) spans.add(source.range(text.length() - 1, text.length()), BRACES);
+        if (!extension.content().isEmpty()) sections(source.slice(extension.content().start(), extension.content().end()), extensionClass,
                 intrinsic && EXPRESSION_INTRINSICS.contains(localName) ? ContentKind.EXPRESSION
                         : intrinsic && "Class".equals(localName) ? ContentKind.TYPE : ContentKind.VALUE, tag);
     }
 
     private void sections(Fxml2SourceText source, @Nullable PsiClass extensionClass,
                           ContentKind contentKind, XmlTag tag) {
-        for (var section : Fxml2MarkupExtensionContentParser.parse(source.text())) {
+        var content = Fxml2MarkupExtensionContentParser.parseContent(source.text());
+        sectionSyntax(source, content);
+        for (var section : content.sections()) {
             String propertyName;
             Fxml2SourceText value;
-            if (section instanceof Fxml2MarkupExtensionContentParser.NamedParameter(
-                    String parameterName, int nameOffset, String parameterValue, int valueOffset)) {
-                propertyName = parameterName;
-                int nameEnd = nameOffset + parameterName.length();
-                spans.add(source.range(nameOffset, nameEnd), PROPERTY_ASSIGNMENT);
-                int equal = source.text().indexOf('=', nameEnd);
-                if (equal >= 0) spans.add(source.range(equal, equal + 1), OPERATOR);
-                value = source.slice(valueOffset, valueOffset + parameterValue.length());
+            if (section instanceof Fxml2MarkupExtensionContentParser.NamedParameter parameter) {
+                propertyName = parameter.name();
+                value = source.slice(parameter.valueOffset(), parameter.valueOffset() + parameter.value().length());
             } else {
                 var positional = (Fxml2MarkupExtensionContentParser.PositionalValue)section;
                 var defaultProperty = extensionClass != null ? Fxml2DefaultProperty.resolve(extensionClass) : null;
@@ -450,9 +415,18 @@ public final class Fxml2SemanticAnalyzer {
                 }
             }
         }
-        for (int i = 0; i < source.text().length(); i++) {
-            if (source.text().charAt(i) == ';' && spans.roleAt(source.range(i, i + 1).getStartOffset()) == null) {
-                spans.add(source.range(i, i + 1), SEMICOLON);
+    }
+
+    private void sectionSyntax(Fxml2SourceText source, Fxml2MarkupExtensionContentParser.Content content) {
+        for (var section : content.sections()) {
+            if (section instanceof Fxml2MarkupExtensionContentParser.NamedParameter parameter) {
+                spans.add(source.range(parameter.offset(), parameter.offset() + parameter.name().length()), PROPERTY_ASSIGNMENT);
+                spans.add(source.range(parameter.assignmentOffset(), parameter.assignmentOffset() + 1), OPERATOR);
+            }
+        }
+        for (var separator : content.separators()) {
+            if (";".equals(separator.textOf(source.text()))) {
+                spans.add(source.range(separator.start(), separator.end()), SEMICOLON);
             }
         }
     }
@@ -508,15 +482,9 @@ public final class Fxml2SemanticAnalyzer {
     }
 
     private void name(Fxml2SourceText source, Fxml2SemanticRole role) {
-        String text = source.text();
-        int begin = text.indexOf(':') + 1;
-        int part = begin;
-        for (int i = begin; i <= text.length(); i++) {
-            if (i == text.length() || text.charAt(i) == '.') {
-                spans.add(source.range(part, i), role);
-                if (i < text.length()) spans.add(source.range(i, i + 1), DOT);
-                part = i + 1;
-            }
+        for (var part : Fxml2TextScanner.nameParts(source.text())) {
+            spans.add(source.range(part.start(), part.end()), role);
+            if (part.end() < source.text().length()) spans.add(source.range(part.end(), part.end() + 1), DOT);
         }
     }
 
@@ -541,12 +509,13 @@ public final class Fxml2SemanticAnalyzer {
                         spans.add(range, RESOURCE_PATH);
                         continue;
                     }
-                    if (!isIdentifier(relative.substring(element.getText()))) continue;
+                    if (!Fxml2TextScanner.isIdentifier(relative.substring(element.getText()))) continue;
                     if (previous == PROPERTY_ASSIGNMENT && !(target instanceof PsiClass || target instanceof PsiPackage)) continue;
                     boolean handler = element instanceof XmlAttributeValue value
                             && value.getParent() instanceof XmlAttribute attribute
                             && attribute.getLocalName().startsWith("on") && target instanceof PsiMethod;
-                    role = symbolRole(target, handler || isInvocation(element, relative));
+                    boolean invocation = previous == METHOD_CALL || previous == STATIC_METHOD_CALL || previous == CONSTRUCTOR_CALL;
+                    role = symbolRole(target, handler || invocation);
                     if (assignment && (target instanceof PsiMethod || target instanceof PsiField || target instanceof PsiParameter)) {
                         role = PROPERTY_ASSIGNMENT;
                     }
@@ -555,31 +524,6 @@ public final class Fxml2SemanticAnalyzer {
             }
             if (role != null) spans.add(range, role);
         }
-    }
-
-    private static boolean isIdentifier(String text) {
-        if (text.isEmpty() || !Character.isJavaIdentifierStart(text.charAt(0))) return false;
-        for (int i = 1; i < text.length(); i++) {
-            if (!Character.isJavaIdentifierPart(text.charAt(i))) return false;
-        }
-        return true;
-    }
-
-    private static boolean isInvocation(PsiElement element, TextRange range) {
-        String text = element.getText();
-        int next = range.getEndOffset();
-        while (next < text.length() && Character.isWhitespace(text.charAt(next))) next++;
-        if (next < text.length() && text.charAt(next) == '(') return true;
-        if (next < text.length() && (text.charAt(next) == '<' || text.startsWith("&lt;", next))) {
-            int opening = Fxml2TypeArgumentParser.openingBracketLength(text, next);
-            int closing = Fxml2TypeArgumentParser.findClosingBracket(text, next + opening);
-            if (closing >= 0) {
-                next = closing + (text.startsWith("&gt;", closing) ? 4 : 1);
-                while (next < text.length() && Character.isWhitespace(text.charAt(next))) next++;
-                return next < text.length() && text.charAt(next) == '(';
-            }
-        }
-        return false;
     }
 
     private static Fxml2SemanticRole classRole(@Nullable PsiClass type) {

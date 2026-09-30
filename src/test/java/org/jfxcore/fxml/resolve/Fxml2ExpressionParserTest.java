@@ -23,6 +23,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class Fxml2ExpressionParserTest {
 
     @Test
+    void selectorsAndAttachedPropertiesExposeTheirTokenRanges() {
+        var selector = assertInstanceOf(ContextSelectorExpression.class,
+                Fxml2ExpressionParser.parse(":parent &lt;Pane&gt; ( +2 )"));
+        assertEquals(new Fxml2ExpressionParser.Span(0, 7), selector.nameSpan());
+        assertEquals(new Fxml2ExpressionParser.Span(23, 25), selector.depthSpan());
+        var attached = assertInstanceOf(AttachedPropertyExpression.class,
+                Fxml2ExpressionParser.parse(":context.( GridPane.rowIndex )"));
+        assertEquals(new Fxml2ExpressionParser.Span(11, 19), attached.declaringTypeSpan());
+        assertEquals(new Fxml2ExpressionParser.Span(20, 28), attached.propertySpan());
+    }
+
+    @Test
     void operatorPrecedenceMatchesTheLanguage() {
         BinaryExpression logicalOr = binary("a + b * c < d == ready && valid || visible", BinaryOperator.OR);
         BinaryExpression logicalAnd = assertInstanceOf(BinaryExpression.class, logicalOr.left());

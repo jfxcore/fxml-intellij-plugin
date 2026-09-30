@@ -27,6 +27,21 @@ class Fxml2SemanticHighlightingTest extends Fxml2TestBase {
     private record Color(TextRange range, String key) {}
     private List<Color> colors;
 
+    @Test
+    void quotedExtensionDelimitersKeepTheirStringRanges() {
+        getFixture().addClass("""
+                package test;
+                import javafx.beans.NamedArg;
+                public class CaptionValue {
+                    public CaptionValue(@NamedArg("text") String text, @NamedArg("limit") double limit) {}
+                }
+                """);
+        configure("<Label text=\"{CaptionValue text=&quot;a;b&quot;; limit=2}\"/>");
+        assertColor("&quot;a;b&quot;", "FXML2_STRING");
+        assertColor("limit=", 0, 5, "FXML2_PROPERTY_ASSIGNMENT");
+        assertColor("2}", 0, 1, "FXML2_NUMBER");
+    }
+
     @BeforeEach
     void resetColors() {
         colors = null;

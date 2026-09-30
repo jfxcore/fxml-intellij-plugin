@@ -391,28 +391,14 @@ public final class Fxml2BindingExpressionParser {
             int ws = indexOfWhitespace(inner);
 
             if (!value.startsWith("{fx:")) {
-                // Custom markup extension invocation: {ClassName} or {ClassName param=value ...}
-                // Extract the class name (everything before the first whitespace, or the whole inner).
-                String name = ws > 0 ? inner.substring(0, ws) : inner;
-                int colonInName = name.indexOf(':');
-                if (colonInName > 0) {
-                    // Namespace-prefixed name: unknown namespace (compiler: UNKNOWN_NAMESPACE).
-                    String ns = name.substring(0, colonInName);
-                    return new ParseError("Unknown XML namespace: " + ns, 0, value.length());
+                var extension = Fxml2MarkupExtensionParser.parse(value);
+                if (extension == null) return new ParseError("Unexpected token", 0, value.length());
+                String name = extension.name().textOf(value);
+                int colon = name.indexOf(':');
+                if (colon > 0) {
+                    return new ParseError("Unknown XML namespace: " + name.substring(0, colon), 0, value.length());
                 }
-                // Strip generic type arguments: {MyMarkupExtension<String> ...} -> extensionName "MyMarkupExtension".
-                // The FXML/2 compiler accepts both the literal '<' and the XML-escaped '&lt;' forms.
-                // XmlAttributeValue.getValue() may return either form depending on the XML parser,
-                // so check for both.
-                int angleIdx = Fxml2TypeArgumentParser.indexOfOpeningBracket(name, 0);
-                boolean hasTypeArg = angleIdx > 0;
-                if (hasTypeArg) {
-                    name = name.substring(0, angleIdx);
-                }
-                // No colon: treat as a custom markup extension class name.
-                // The annotator will validate that the class exists and implements MarkupExtension.
-                int nameOffset = value.indexOf(name); // 1 (past '{')
-                return new MarkupExtensionExpression(name, nameOffset, hasTypeArg);
+                return new MarkupExtensionExpression(name, extension.name().start(), extension.typeArguments() != null);
             }
 
                 if (ws < 0) {

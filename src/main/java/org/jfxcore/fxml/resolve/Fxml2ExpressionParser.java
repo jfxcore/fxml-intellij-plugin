@@ -167,6 +167,8 @@ public final class Fxml2ExpressionParser {
                                              @NotNull String declaringType,
                                              @NotNull String property,
                                              @NotNull SelectionOperator operator,
+                                             @NotNull Span declaringTypeSpan,
+                                             @NotNull Span propertySpan,
                                              @NotNull Span span,
                                              @NotNull String source) implements Expression {
     }
@@ -186,6 +188,8 @@ public final class Fxml2ExpressionParser {
                                             @Nullable String typeName,
                                             @Nullable Integer depth,
                                             @Nullable Span typeSpan,
+                                            @NotNull Span nameSpan,
+                                            @Nullable Span depthSpan,
                                             @NotNull Span span,
                                             @NotNull String source) implements Expression {
     }
@@ -417,6 +421,8 @@ public final class Fxml2ExpressionParser {
                 case "parent" -> ContextSelectorKind.PARENT;
                 default -> throw error("Unknown context selector", nameStart, position);
             };
+            Span nameSpan = new Span(start, position);
+            Span depthSpan = null;
             String typeName = null;
             Span typeSpan = null;
             Integer depth = null;
@@ -447,10 +453,11 @@ public final class Fxml2ExpressionParser {
                 } catch (NumberFormatException ex) {
                     throw error("Parent depth is too large", numberStart, position);
                 }
+                depthSpan = new Span(numberStart, position);
                 skipWhitespace();
                 require(")", "')' expected");
             }
-            return new ContextSelectorExpression(kind, typeName, depth, typeSpan,
+            return new ContextSelectorExpression(kind, typeName, depth, typeSpan, nameSpan, depthSpan,
                     new Span(start, position), source);
         }
 
@@ -474,7 +481,9 @@ public final class Fxml2ExpressionParser {
             require(")", "')' expected");
             return new AttachedPropertyExpression(receiver,
                     qualified.substring(0, separator), qualified.substring(separator + 1),
-                    operator, new Span(start, position), source);
+                    operator, new Span(typeStart, typeStart + separator),
+                    new Span(typeStart + separator + 1, typeStart + qualified.length()),
+                    new Span(start, position), source);
         }
 
         private PathExpression parseNamedPath() {
@@ -606,46 +615,27 @@ public final class Fxml2ExpressionParser {
         private LiteralExpression parseMarkupExtension() {
             int start = position;
             int depth = 0;
-            char quote = 0;
-            boolean escaped = false;
             while (!atEnd()) {
-                char ch = source.charAt(position++);
-                if (quote != 0) {
-                    if (escaped) {
-                        escaped = false;
-                    } else if (ch == '\\') {
-                        escaped = true;
-                    } else if (ch == quote) {
-                        quote = 0;
-                    }
-                } else if (ch == '\'' || ch == '"') {
-                    quote = ch;
-                } else if (ch == '{') {
-                    depth++;
-                } else if (ch == '}' && --depth == 0) {
-                    return new LiteralExpression(
-                            LiteralKind.MARKUP_EXTENSION, new Span(start, position), source);
+                char character = source.charAt(position);
+                if (Fxml2TextScanner.isQuote(character)) {
+                    position = Fxml2TextScanner.quoted(source, position).span().end();
+                    continue;
+                }
+                position++;
+                if (character == '{') depth++;
+                else if (character == '}' && --depth == 0) {
+                    return new LiteralExpression(LiteralKind.MARKUP_EXTENSION, new Span(start, position), source);
                 }
             }
             throw error("Markup extension is not closed", start, position);
         }
 
         private LiteralExpression parseStringLiteral() {
+            var quoted = Fxml2TextScanner.quoted(source, position);
             int start = position;
-            char quote = source.charAt(position++);
-            boolean escaped = false;
-            while (!atEnd()) {
-                char ch = source.charAt(position++);
-                if (escaped) {
-                    escaped = false;
-                } else if (ch == '\\') {
-                    escaped = true;
-                } else if (ch == quote) {
-                    return new LiteralExpression(
-                            LiteralKind.STRING, new Span(start, position), source);
-                }
-            }
-            throw error("String literal is not closed", start, position);
+            position = quoted.span().end();
+            if (!quoted.closed()) throw error("String literal is not closed", start, position);
+            return new LiteralExpression(LiteralKind.STRING, new Span(start, position), source);
         }
 
         private LiteralExpression parseNumberLiteral() {
@@ -693,10 +683,8 @@ public final class Fxml2ExpressionParser {
             if (!isIdentifierStart()) {
                 throw error("Identifier expected", position, position);
             }
-            int start = position++;
-            while (!atEnd() && Character.isJavaIdentifierPart(source.charAt(position))) {
-                position++;
-            }
+            int start = position;
+            position = Fxml2TextScanner.identifierEnd(source, start, source.length());
             return source.substring(start, position);
         }
 

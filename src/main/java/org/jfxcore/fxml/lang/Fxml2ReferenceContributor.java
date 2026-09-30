@@ -47,6 +47,7 @@ import org.jfxcore.fxml.resolve.Fxml2ExpressionOperands;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionContentParser;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionParser;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
@@ -384,42 +385,26 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
             int afterName = nameOffset + extensionName.length();
             collectMarkupExtTypeArgRefs(refs, attrVal, rawValue, afterName, itemOffset, xmlFile);
 
-            // Params section: everything after the class name and optional type args.
-            // Uses the same whitespace-finding logic as annotateMarkupExtension in
-            // Fxml2AttributeAnnotator so the two code paths stay in sync.
-            if (rawValue.length() > 2 && extClass != null) {
-                String inner = rawValue.substring(1, rawValue.length() - 1).trim();
-                int firstSpace = indexOfWhitespaceMEInner(inner);
-                if (firstSpace >= 0) {
-                    String paramsPart = inner.substring(firstSpace).trim();
-                    int paramsPartInRaw = rawValue.indexOf(paramsPart, 1 + firstSpace);
-                    if (paramsPartInRaw >= 0) {
-                        XmlTag contextTag = getContextTag(attrVal);
-                        collectMarkupExtParamRefs(refs, attrVal, paramsPart,
-                                itemOffset + paramsPartInRaw, extClass, contextTag, xmlFile);
-
-                        // For resource key extensions (DynamicResource, StaticResource long form),
-                        // add a PropertyReference for the positional default argument (the resource key).
-                        // This enables Ctrl+click navigation to the resource bundle entry and prevents
-                        // the key from being flagged as unused in .properties files.
-                        if (isResourceKeyExtension(extClass)) {
-                            String resourceKey = extractPositionalDefaultArg(paramsPart);
-                            if (resourceKey != null) {
-                                // paramsPart is trimmed, so the key starts at offset 0 within it.
-                                int keyStart = base + paramsPartInRaw;
-                                refs.add(new PropertyReference(
-                                        resourceKey, attrVal, null, /* soft= */ false,
-                                        new TextRange(keyStart, keyStart + resourceKey.length())));
-                            }
-                        }
-
-                        if (CLASSPATH_RESOURCE_FQN.equals(extClass.getQualifiedName())) {
-                            var invocation = Fxml2ResourceInvocation.parse(paramsPart);
-                            if (invocation != null) {
-                                Fxml2ResourceReferenceSupport.contribute(refs, attrVal, invocation,
-                                        base + paramsPartInRaw, xmlFile);
-                            }
-                        }
+            var extension = Fxml2MarkupExtensionParser.parse(rawValue);
+            if (extension != null && !extension.content().isEmpty() && extClass != null) {
+                String content = extension.content().textOf(rawValue);
+                int contentOffset = extension.content().start();
+                XmlTag contextTag = getContextTag(attrVal);
+                collectMarkupExtParamRefs(refs, attrVal, content,
+                        itemOffset + contentOffset, extClass, contextTag, xmlFile);
+                if (isResourceKeyExtension(extClass)) {
+                    String resourceKey = extractPositionalDefaultArg(content);
+                    if (resourceKey != null) {
+                        int keyStart = base + contentOffset;
+                        refs.add(new PropertyReference(resourceKey, attrVal, null, false,
+                                new TextRange(keyStart, keyStart + resourceKey.length())));
+                    }
+                }
+                if (CLASSPATH_RESOURCE_FQN.equals(extClass.getQualifiedName())) {
+                    var invocation = Fxml2ResourceInvocation.parse(content);
+                    if (invocation != null) {
+                        Fxml2ResourceReferenceSupport.contribute(refs, attrVal, invocation,
+                                base + contentOffset, xmlFile);
                     }
                 }
             }
@@ -871,33 +856,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
         } else {
             emitPathSegmentRefs(refs, attrVal, segments, pathBase, pathForResolution);
         }
-    }
-
-    /**
-     * Returns the index of the first whitespace character in {@code s} that is not inside
-     * a literal {@code <...>} generic type-argument block, or {@code -1} if none.
-     *
-     * <p>Mirrors {@code Fxml2AttributeAnnotator.indexOfWhitespaceME} so both the annotator
-     * and the reference provider use the same splitting logic.
-     *
-     * <p>Two angle-bracket forms are handled:
-     * <ul>
-     *   <li><b>Literal</b>: {@code MyMarkupExtension<String> ...}: depth tracking prevents
-     *       splitting inside the {@code <...>} block.</li>
-     *   <li><b>XML-entity</b>: {@code MyMarkupExtension&lt;String&gt; ...}: no literal
-     *       {@code <}/{@code >} characters, so depth stays 0 and the first whitespace
-     *       found is correctly after the closing {@code &gt;}.</li>
-     * </ul>
-     */
-    private static int indexOfWhitespaceMEInner(@NotNull String s) {
-        int depth = 0;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '<') depth++;
-            else if (c == '>') { if (depth > 0) depth--; }
-            else if (depth == 0 && Character.isWhitespace(c)) return i;
-        }
-        return -1;
     }
 
     // -----------------------------------------------------------------------

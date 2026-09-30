@@ -12,6 +12,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Fxml2ValueSequenceParserTest {
 
+    @Test
+    void doubleQuotedCommasRemainInsideTheirItem() {
+        assertEquals(List.of("\"a,b\\\",c\"", "2"), texts("\"a,b\\\",c\", 2"));
+    }
+
+    @Test
+    void onlyOuterCommasReceiveSeparatorRanges() {
+        String source = "'a,b', {Nested items=1, 2}, 3";
+        var sequence = Fxml2ValueSequenceParser.parseSequence(source, PREFIXES);
+        assertEquals(List.of(new Fxml2TextSpan(5, 6), new Fxml2TextSpan(26, 27)), sequence.separators());
+    }
+
     private static final Map<Character, String> PREFIXES = Map.of(
             '%', "org.jfxcore.markup.StaticResource",
             '@', "org.jfxcore.markup.ClassPathResource");

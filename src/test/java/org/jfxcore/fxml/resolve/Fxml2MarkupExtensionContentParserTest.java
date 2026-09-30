@@ -18,6 +18,29 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Fxml2MarkupExtensionContentParserTest {
 
     @Test
+    void doubleQuotedDelimitersRemainInsideTheirValue() {
+        var sections = Fxml2MarkupExtensionContentParser.parse("text=\"a;b\\\";c\"; count=2");
+        assertEquals(2, sections.size());
+        assertEquals("\"a;b\\\";c\"", assertInstanceOf(NamedParameter.class, sections.getFirst()).value());
+    }
+
+    @Test
+    void equalityOperatorsDoNotAssignConfigurationParameters() {
+        for (String expression : List.of("count == 2", "count === 2")) {
+            var section = Fxml2MarkupExtensionContentParser.parse(expression).getFirst();
+            assertEquals(expression, assertInstanceOf(PositionalValue.class, section).text());
+        }
+    }
+
+    @Test
+    void syntaxRangesExcludeQuotedAndNestedSeparators() {
+        String source = "text = 'a;b'; value={Nested amount=2; flag=true}\nlimit = 3";
+        var content = Fxml2MarkupExtensionContentParser.parseContent(source);
+        assertEquals(List.of(new Fxml2TextSpan(12, 13), new Fxml2TextSpan(48, 49)), content.separators());
+        assertEquals(5, assertInstanceOf(NamedParameter.class, content.sections().getFirst()).assignmentOffset());
+    }
+
+    @Test
     void blankContentHasNoSections() {
         assertTrue(Fxml2MarkupExtensionContentParser.parse("   ").isEmpty());
     }
