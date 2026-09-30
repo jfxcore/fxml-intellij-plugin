@@ -89,6 +89,8 @@ intellijPlatform {
             <ul>
                 <li>Arithmetic, comparison, and logical expressions
                 <li>Comma-separated list expressions
+                <li>Embedded resource editing and navigation
+                <li>Resource lookup in the document's module and support for custom class loaders
             </ul>
         """.trimIndent()
 

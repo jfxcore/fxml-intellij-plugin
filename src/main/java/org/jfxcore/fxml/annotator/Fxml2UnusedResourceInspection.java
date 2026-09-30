@@ -7,8 +7,8 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.psi.PsiElementVisitor;
 import org.jetbrains.annotations.NotNull;
 import org.jfxcore.fxml.codeinsight.Fxml2ResourceDeclarationFix;
-import org.jfxcore.fxml.resource.Fxml2ResourceEntry;
-import org.jfxcore.fxml.resource.Fxml2ResourceUsageScanner;
+import org.jfxcore.fxml.resource.Fxml2ResourceUsages;
+import org.jfxcore.fxml.lang.Fxml2FileType;
 
 /**
  * Reports a {@code <?resource ?>} declaration that nothing in its document refers to.
@@ -27,8 +27,10 @@ public final class Fxml2UnusedResourceInspection extends LocalInspectionTool {
     public @NotNull PsiElementVisitor buildVisitor(@NotNull ProblemsHolder holder,
                                                    boolean isOnTheFly,
                                                    @NotNull LocalInspectionToolSession session) {
+        var file = Fxml2FileType.asFxml2(holder.getFile());
+        if (file == null) return PsiElementVisitor.EMPTY_VISITOR;
         return Fxml2ResourceInspectionSupport.visitDeclarations(holder, entry -> {
-            if (!entry.isValid() || isUsed(entry)) return;
+            if (!entry.isValid() || Fxml2ResourceUsages.isUsed(entry, file)) return;
 
             Fxml2ResourceInspectionSupport.report(
                     holder, entry,
@@ -37,22 +39,5 @@ public final class Fxml2UnusedResourceInspection extends LocalInspectionTool {
                     ProblemHighlightType.LIKE_UNUSED_SYMBOL,
                     Fxml2ResourceDeclarationFix.remove(entry.name()));
         });
-    }
-
-    /**
-     * Returns {@code true} when anything in the declaring file refers to {@code entry}'s resource.
-     *
-     * <p>The whole file is scanned rather than just the markup, so that a usage in a sibling
-     * resource payload counts, and so that both document forms are covered by the same scan: in
-     * embedded markup the declaration and its usages live in the same Java or Kotlin literal.
-     */
-    private static boolean isUsed(@NotNull Fxml2ResourceEntry entry) {
-        String text = entry.declaringFile().getText();
-        int anchorStart = entry.anchor().getTextRange().getStartOffset();
-
-        return Fxml2ResourceUsageScanner.isUsed(
-                text,
-                entry.instructionSpan().shifted(anchorStart),
-                entry.name().value());
     }
 }
