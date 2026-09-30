@@ -23,7 +23,6 @@ import com.intellij.psi.PsiReferenceContributor;
 import com.intellij.psi.PsiReferenceProvider;
 import com.intellij.psi.PsiReferenceRegistrar;
 import com.intellij.psi.PsiType;
-import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReferenceSet;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.util.PsiUtil;
@@ -54,7 +53,7 @@ import org.jfxcore.fxml.resolve.Fxml2TagResolver;
 import org.jfxcore.fxml.resolve.Fxml2TypeArgumentParser;
 import org.jfxcore.fxml.resolve.Fxml2ValueSequenceParser;
 import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
-import org.jfxcore.fxml.resource.Fxml2ResourceName;
+import org.jfxcore.fxml.resource.Fxml2ResourceInvocation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -413,13 +412,10 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                             }
                         }
 
-                        // For ClassPathResource in its long form, resolve the positional default
-                        // argument against the document's embedded resources, exactly as the
-                        // equivalent @name prefix notation does.
                         if (CLASSPATH_RESOURCE_FQN.equals(extClass.getQualifiedName())) {
-                            String resourceName = extractPositionalDefaultArg(paramsPart);
-                            if (resourceName != null) {
-                                addEmbeddedResourceRef(refs, attrVal, resourceName,
+                            var invocation = Fxml2ResourceInvocation.parse(paramsPart);
+                            if (invocation != null) {
+                                Fxml2ResourceReferenceSupport.contribute(refs, attrVal, invocation,
                                         base + paramsPartInRaw, xmlFile);
                             }
                         }
@@ -572,26 +568,10 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
                         new TextRange(keyStart, keyStart + pse.defaultArg().length())));
             }
 
-            // For ClassPathResource (@path notation), add FileReference instances so that
-            // Ctrl+click navigates to the referenced classpath resource file.
-            if (CLASSPATH_RESOURCE_FQN.equals(pse.mappedClass())
-                    && !pse.defaultArg().isEmpty()) {
-                String path = pse.defaultArg();
-                int pathStart = base + pse.defaultArgOffset();
-                Fxml2ResourceName usageName = Fxml2ResourceName.fromUsage(path);
-                if (usageName.value().length() != path.length()) pathStart++;
-                path = usageName.value();
-                // Embedded resources come first, mirroring the runtime lookup order: a simple
-                // relative name names an embedded resource when the document declares one, and
-                // an external file otherwise.  A name that is absolute or contains a path
-                // separator can only be external, and the resource model rejects it.
-                if (!addEmbeddedResourceRef(refs, attrVal, path, pathStart, xmlFile)) {
-                    FileReferenceSet refSet = new FileReferenceSet(path, attrVal, pathStart, null, true);
-                    if (path.startsWith("/")) {
-                        refSet.addCustomization(FileReferenceSet.DEFAULT_PATH_EVALUATOR_OPTION,
-                                FileReferenceSet.ABSOLUTE_TOP_LEVEL);
-                    }
-                    java.util.Collections.addAll(refs, refSet.getAllReferences());
+            if (CLASSPATH_RESOURCE_FQN.equals(pse.mappedClass())) {
+                var invocation = Fxml2ResourceInvocation.parse(rawValue.substring(1));
+                if (invocation != null) {
+                    Fxml2ResourceReferenceSupport.contribute(refs, attrVal, invocation, base + 1, xmlFile);
                 }
             }
         }
@@ -600,33 +580,6 @@ public final class Fxml2ReferenceContributor extends PsiReferenceContributor {
     // -----------------------------------------------------------------------
     // Markup extension reference helpers
     // -----------------------------------------------------------------------
-
-    /**
-     * Adds an embedded resource reference for {@code name} when the document declares a resource
-     * with that name, mirroring the runtime lookup order: an embedded resource first, an external
-     * file second.
-     *
-     * <p>{@code name} may be written in single quotes, which is how a name containing spaces is
-     * spelled in a usage; the quotes are part of the usage text, not of the name.
-     *
-     * @param nameStart offset of {@code name} within the attribute value text
-     * @return {@code true} when a reference was added, meaning the name is declared in this document
-     */
-    private static boolean addEmbeddedResourceRef(@NotNull List<PsiReference> refs,
-                                                  @NotNull XmlAttributeValue attrVal,
-                                                  @NotNull String name,
-                                                  int nameStart,
-                                                  @NotNull XmlFile xmlFile) {
-        if (name.isEmpty()) return false;
-
-        TextRange range = new TextRange(nameStart, nameStart + name.length());
-        Fxml2ResourceNameReference reference =
-                new Fxml2ResourceNameReference(attrVal, range, name, xmlFile);
-        if (!reference.isDeclared()) return false;
-
-        refs.add(reference);
-        return true;
-    }
 
     /**
      * Resolves a known built-in resource extension class ({@code DynamicResource},
