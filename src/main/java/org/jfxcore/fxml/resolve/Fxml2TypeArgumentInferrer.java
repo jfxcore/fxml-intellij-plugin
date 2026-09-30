@@ -70,7 +70,6 @@ public final class Fxml2TypeArgumentInferrer {
 
     private static final String OBSERVABLE_VALUE_FQN = "javafx.beans.value.ObservableValue";
     private static final String COLLECTION_FQN = "java.util.Collection";
-    private static final String DEFAULT_PROPERTY_FQN = "javafx.beans.DefaultProperty";
 
     private Fxml2TypeArgumentInferrer() {}
 
@@ -137,8 +136,9 @@ public final class Fxml2TypeArgumentInferrer {
             // Class-tag parent: tag is treated as the value of the default property.
             ownerClass = parentTagClass;
             ownerTag = parentTag;
-            propName = readDefaultPropertyName(parentTagClass);
-            if (propName == null) return null;
+            var defaultProperty = Fxml2DefaultProperty.resolve(parentTagClass);
+            if (defaultProperty == null) return null;
+            propName = defaultProperty.name();
         }
         if (ownerClass == null || propName.isBlank()) return null;
 
@@ -695,28 +695,6 @@ public final class Fxml2TypeArgumentInferrer {
             }
         }
         return false;
-    }
-
-    // -----------------------------------------------------------------------
-    // Default-property lookup
-    // -----------------------------------------------------------------------
-
-    private static @Nullable String readDefaultPropertyName(@NotNull PsiClass cls) {
-        var ann = cls.getAnnotation(DEFAULT_PROPERTY_FQN);
-        if (ann == null) {
-            // Walk supertypes; @DefaultProperty is inherited in JavaFX usage even when not
-            // technically @Inherited, so search the supertype chain.
-            for (PsiClass sup : cls.getSupers()) {
-                String name = readDefaultPropertyName(sup);
-                if (name != null) return name;
-            }
-            return null;
-        }
-        var value = ann.findAttributeValue("value");
-        if (value instanceof com.intellij.psi.PsiLiteralExpression lit && lit.getValue() instanceof String s) {
-            return s;
-        }
-        return null;
     }
 
     // -----------------------------------------------------------------------

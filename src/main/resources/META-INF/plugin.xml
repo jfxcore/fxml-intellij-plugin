@@ -608,6 +608,14 @@
 
         <localInspection language="XML"
                          bundle="messages.Fxml2Bundle"
+                         key="inspection.cyclic.property.assignment.display.name"
+                         groupKey="inspection.group.name"
+                         enabledByDefault="true"
+                         level="ERROR"
+                         implementationClass="org.jfxcore.fxml.annotator.Fxml2CyclicPropertyAssignmentInspection"/>
+
+        <localInspection language="XML"
+                         bundle="messages.Fxml2Bundle"
                          key="inspection.unused.import.display.name"
                          groupKey="inspection.group.name"
                          enabledByDefault="true"
