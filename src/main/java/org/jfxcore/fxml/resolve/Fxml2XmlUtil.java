@@ -4,6 +4,8 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.util.PsiUtil;
 import com.intellij.psi.xml.XmlFile;
+import com.intellij.psi.xml.XmlAttribute;
+import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,6 +22,12 @@ import java.util.List;
 public final class Fxml2XmlUtil {
 
     private Fxml2XmlUtil() {}
+
+    /** Returns the tag whose attribute contains the supplied value. */
+    public static @Nullable XmlTag contextTag(@NotNull XmlAttributeValue value) {
+        return value.getParent() instanceof XmlAttribute attribute && attribute.getParent() instanceof XmlTag tag
+                ? tag : null;
+    }
 
     /**
      * Returns {@code true} when {@code attrName} is a namespace declaration ({@code xmlns},

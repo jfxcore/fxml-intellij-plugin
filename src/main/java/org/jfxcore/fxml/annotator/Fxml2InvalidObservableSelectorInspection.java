@@ -14,8 +14,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiInvalidElementAccessException;
-import com.intellij.psi.PsiMethod;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlAttribute;
@@ -27,14 +25,16 @@ import org.jetbrains.annotations.Nullable;
 import org.jfxcore.fxml.lang.Fxml2BindingNotationReference.Kind;
 import org.jfxcore.fxml.lang.Fxml2FileType;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionBindings;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionParser;
+import org.jfxcore.fxml.resolve.Fxml2ObservableValueResolver;
+import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser.ContextSelector;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser.MarkupExtensionExpression;
 import org.jfxcore.fxml.resolve.Fxml2BindingExpressionParser.ParsedExpression;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver;
 import org.jfxcore.fxml.resolve.Fxml2BindingPathResolver.Segment;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
-import org.jfxcore.fxml.resolve.Fxml2WellKnownClasses;
-import org.jfxcore.fxml.resolve.Fxml2XmlUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -154,7 +154,7 @@ public final class Fxml2InvalidObservableSelectorInspection extends XmlSuppressa
         PsiClass prevType = startClass;
         for (Segment seg : segments) {
             if (seg.isResolved() && seg.observableSelector() && !seg.classQualifier()
-                    && isNotObservableDeclaration(seg.declaration(), xmlFile)) {
+                    && Fxml2ObservableValueResolver.isNotObservableDeclaration(seg.declaration(), xmlFile)) {
                 // selectorOffset + dotDotOffset + seg.pathOffset() = position of segment start
                 // in the decoded value string; '::' immediately precedes it.
                 int valueOffset = selectorOffset + dotDotOffset + seg.pathOffset() - 2;
@@ -201,7 +201,7 @@ public final class Fxml2InvalidObservableSelectorInspection extends XmlSuppressa
         PsiClass prevType = startClass;
         for (Segment seg : segments) {
             if (seg.isResolved() && seg.observableSelector() && !seg.classQualifier()
-                    && isNotObservableDeclaration(seg.declaration(), xmlFile)) {
+                    && Fxml2ObservableValueResolver.isNotObservableDeclaration(seg.declaration(), xmlFile)) {
                 // valueOffset = position of '::' in attrVal.getValue()
                 // = expr.strippedPathOffset() + selectorLength + seg.pathOffset() - 2
                 // Derivation: docStart = attrDocBase + (1 + expr.strippedPathOffset() + selectorLength) + seg.pathOffset()
@@ -224,79 +224,23 @@ public final class Fxml2InvalidObservableSelectorInspection extends XmlSuppressa
             boolean isOnTheFly,
             @NotNull List<ProblemDescriptor> problems) {
 
-        if (rawValue.length() <= 2) return;
-        String inner = rawValue.substring(1, rawValue.length() - 1).trim();
-        int firstSpace = indexOfWhitespaceME(inner);
-        if (firstSpace < 0) return;
-        String paramsPart = inner.substring(firstSpace).trim();
-        int paramsPartInRaw = rawValue.indexOf(paramsPart, 1 + firstSpace);
-        if (paramsPartInRaw < 0) return;
-
-        XmlTag contextTag = null;
-        if (attrVal.getParent() instanceof XmlAttribute attr
-                && attr.getParent() instanceof XmlTag t) {
-            contextTag = t;
-        }
-        PsiClass startClass = contextTag != null
-                ? Fxml2BindingPathResolver.resolveStartClass(null, contextTag, xmlFile)
-                : Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
-        if (startClass == null) return;
-
-        GlobalSearchScope scope = xmlFile.getResolveScope();
-        int pos = 0;
-        while (pos < paramsPart.length()) {
-            char ch = paramsPart.charAt(pos);
-            if (Character.isWhitespace(ch) || ch == ',' || ch == ';') { pos++; continue; }
-            if ((ch == '$' || ch == '#') && pos + 1 < paramsPart.length()) {
-                int sigEnd = pos + 1;
-                boolean hasBrace = paramsPart.charAt(sigEnd) == '{';
-                int pathStart;
-                int pathEnd;
-                if (hasBrace) {
-                    pathStart = sigEnd + 1;
-                    int depth = 1;
-                    int scan = pathStart;
-                    while (scan < paramsPart.length() && depth > 0) {
-                        char c = paramsPart.charAt(scan++);
-                        if (c == '{') depth++;
-                        else if (c == '}') depth--;
-                    }
-                    pathEnd = scan - 1;
-                } else {
-                    pathStart = sigEnd;
-                    int scan = pathStart;
-                    while (scan < paramsPart.length()) {
-                        char c = paramsPart.charAt(scan);
-                        if (Character.isWhitespace(c) || c == ',' || c == ';') break;
-                        scan++;
-                    }
-                    pathEnd = scan;
+        var extension = Fxml2MarkupExtensionParser.parse(rawValue);
+        if (extension == null) return;
+        var content = extension.content();
+        var contextTag = Fxml2XmlUtil.contextTag(attrVal);
+        for (var binding : Fxml2MarkupExtensionBindings.parse(content.textOf(rawValue), Fxml2ImportResolver.parsePrefixMappings(xmlFile))) {
+            var resolved = Fxml2MarkupExtensionBindings.resolve(binding, contextTag, xmlFile);
+            if (resolved == null) continue;
+            int pathOffset = content.start() + resolved.pathOffset();
+            PsiClass previous = resolved.startClass();
+            for (var segment : resolved.segments()) {
+                if (segment.isResolved() && segment.observableSelector() && !segment.classQualifier()
+                        && Fxml2ObservableValueResolver.isNotObservableDeclaration(segment.declaration(), xmlFile)) {
+                    addProblem(attrVal, pathOffset + segment.pathOffset() - 2, segment.name(), previous,
+                            manager, isOnTheFly, problems);
                 }
-                String path = paramsPart.substring(pathStart, pathEnd);
-                if (!path.isBlank()) {
-                    List<Segment> segments = Fxml2BindingPathResolver.resolve(
-                            path, startClass, scope, Kind.EVALUATE, xmlFile);
-                    PsiClass prevType = startClass;
-                    for (Segment seg : segments) {
-                        if (seg.isResolved() && seg.observableSelector() && !seg.classQualifier()
-                                && isNotObservableDeclaration(seg.declaration(), xmlFile)) {
-                            // valueOffset = paramsPartInRaw + pathStart + seg.pathOffset() - 2
-                            // Derivation: docParamsBase = attrStart + 1 + paramsPartInRaw
-                            //             docPathBase = docParamsBase + pathStart
-                            //             segDocStart = docPathBase + seg.pathOffset()
-                            //             selectorDocOffset = segDocStart - 2
-                            //             valueOffset = selectorDocOffset - attrStart - 1
-                            //                         = paramsPartInRaw + pathStart + seg.pathOffset() - 2
-                            int valueOffset = paramsPartInRaw + pathStart + seg.pathOffset() - 2;
-                            addProblem(attrVal, valueOffset, seg.name(), prevType, manager, isOnTheFly, problems);
-                        }
-                        prevType = seg.isResolved() ? seg.resultType() : null;
-                    }
-                }
-                pos = hasBrace ? pathEnd + 1 : pathEnd;
-                continue;
+                previous = segment.isResolved() ? segment.resultType() : null;
             }
-            pos++;
         }
     }
 
@@ -329,37 +273,6 @@ public final class Fxml2InvalidObservableSelectorInspection extends XmlSuppressa
     }
 
     /** Finds the index of the first whitespace character outside {@code <...>} angle brackets. */
-    private static int indexOfWhitespaceME(@NotNull String s) {
-        int depth = 0;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '<') depth++;
-            else if (c == '>') { if (depth > 0) depth--; }
-            else if (depth == 0 && Character.isWhitespace(c)) return i;
-        }
-        return -1;
-    }
-
-    private static boolean isNotObservableDeclaration(@Nullable PsiElement decl, @NotNull XmlFile xmlFile) {
-        if (decl == null || !decl.isValid()) return true;
-        PsiClass observableClass = Fxml2WellKnownClasses.observableValue(xmlFile.getProject());
-        if (observableClass == null) return true;
-        com.intellij.psi.PsiType type = switch (decl) {
-            case com.intellij.psi.PsiField f -> f.getType();
-            case PsiMethod m -> m.getReturnType();
-            default -> null;
-        };
-        if (!(type instanceof com.intellij.psi.PsiClassType ct)) return true;
-        PsiClass resolved;
-        try {
-            resolved = ct.resolve();
-        } catch (PsiInvalidElementAccessException ignored) {
-            return true;
-        }
-        return resolved == null
-                || (!resolved.equals(observableClass) && !resolved.isInheritor(observableClass, true));
-    }
-
     // For injected FXML: redirect the preview-copy to the host Java file so that
     // QuickFixWrapper routes to our generatePreview override instead of crashing in
     // ProblemDescriptor.getDescriptorForPreview when it can't find the injected XmlAttributeValue
@@ -417,14 +330,7 @@ public final class Fxml2InvalidObservableSelectorInspection extends XmlSuppressa
                 CommonProblemDescriptor @NotNull [] descriptors,
                 @NotNull List<PsiElement> psiElementsToIgnore,
                 @Nullable Runnable refreshViews) {
-            for (CommonProblemDescriptor descriptor : descriptors) {
-                if (descriptor instanceof ProblemDescriptor pd) {
-                    applyFix(project, pd);
-                    PsiElement elem = pd.getPsiElement();
-                    if (elem != null) psiElementsToIgnore.add(elem);
-                }
-            }
-            if (refreshViews != null) refreshViews.run();
+            Fxml2BatchQuickFixSupport.apply(this, project, descriptors, psiElementsToIgnore, refreshViews);
         }
     }
 }

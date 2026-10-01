@@ -4,6 +4,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Splits the content of a markup extension into the sections it assigns.
@@ -42,9 +44,10 @@ public final class Fxml2MarkupExtensionContentParser {
      * @param offset      offset of {@code name} within the parsed content
      * @param value       the value, which may be a comma-separated value list
      * @param valueOffset offset of {@code value} within the parsed content
+     * @param assignmentOffset offset of the assignment operator within the parsed content
      */
     public record NamedParameter(@NotNull String name, int offset,
-                                 @NotNull String value, int valueOffset) implements Section {}
+                                 @NotNull String value, int valueOffset, int assignmentOffset) implements Section {}
 
     /**
      * A value that is not assigned to a named parameter, which supplies the default property of
@@ -62,73 +65,67 @@ public final class Fxml2MarkupExtensionContentParser {
      * @return the sections in source order; empty when {@code content} is blank
      */
     public static @NotNull List<Section> parse(@NotNull String content) {
+        return parseContent(content).sections();
+    }
+
+    public record Content(@NotNull List<Section> sections, @NotNull List<Fxml2TextSpan> separators) {
+        public Content {
+            sections = List.copyOf(sections);
+            separators = List.copyOf(separators);
+        }
+    }
+
+    /** Returns sections and their top-level semicolon or line-break separators. */
+    public static @NotNull Content parseContent(@NotNull String content) {
         List<Section> sections = new ArrayList<>();
+        List<Fxml2TextSpan> separators = new ArrayList<>();
         int depth = 0;
         int start = 0;
-        boolean inStringLiteral = false;
-
-        for (int i = 0; i < content.length(); i++) {
-            char c = content.charAt(i);
-
-            if (inStringLiteral) {
-                if (c == '\\') {
-                    i++;
-                } else if (c == '\'') {
-                    inStringLiteral = false;
-                }
-                continue;
-            }
-
-            switch (c) {
-                case '\'' -> inStringLiteral = true;
-                case '{', '(', '[' -> depth++;
-                case '}', ')', ']' -> { if (depth > 0) depth--; }
-                case ';', '\n', '\r' -> {
+        var tokens = Fxml2TextScanner.scan(content);
+        Set<Integer> assignments = tokens.stream()
+                .filter(token -> token.kind() == Fxml2TextScanner.Kind.ASSIGNMENT)
+                .map(token -> token.span().start()).collect(Collectors.toSet());
+        for (var token : tokens) {
+            switch (token.kind()) {
+                case OPEN_BRACE, OPEN_PARENTHESIS, OPEN_BRACKET -> depth++;
+                case CLOSE_BRACE, CLOSE_PARENTHESIS, CLOSE_BRACKET -> { if (depth > 0) depth--; }
+                case SEMICOLON, LINE_BREAK -> {
                     if (depth == 0) {
-                        addSection(sections, content, start, i);
-                        start = i + 1;
+                        addSection(sections, content, start, token.span().start(), assignments);
+                        separators.add(token.span());
+                        start = token.span().end();
                     }
                 }
                 default -> { }
             }
         }
-
-        addSection(sections, content, start, content.length());
-        return sections;
+        addSection(sections, content, start, content.length(), assignments);
+        return new Content(sections, separators);
     }
 
     private static void addSection(
-            @NotNull List<Section> sections, @NotNull String content, int start, int end) {
+            @NotNull List<Section> sections, @NotNull String content, int start, int end,
+            @NotNull Set<Integer> assignments) {
 
         Fxml2TextSpan span = Fxml2TextSpan.trimmed(content, start, end);
         if (span.isEmpty()) return;
 
         int begin = span.start();
         int finish = span.end();
-        int nameEnd = identifierEnd(content, begin, finish);
+        int nameEnd = Fxml2TextScanner.identifierEnd(content, begin, finish);
         int afterName = nameEnd;
         while (afterName < finish && Character.isWhitespace(content.charAt(afterName))) afterName++;
 
-        if (nameEnd > begin && afterName < finish && content.charAt(afterName) == '=') {
+        if (nameEnd > begin && assignments.contains(afterName)) {
             int valueStart = afterName + 1;
             while (valueStart < finish && Character.isWhitespace(content.charAt(valueStart))) valueStart++;
             sections.add(new NamedParameter(
                     content.substring(begin, nameEnd), begin,
-                    content.substring(valueStart, finish), valueStart));
+                    content.substring(valueStart, finish), valueStart, afterName));
             return;
         }
 
         sections.add(new PositionalValue(content.substring(begin, finish), begin));
     }
 
-    /**
-     * Returns the end of the identifier starting at {@code begin}, or {@code begin} when the text
-     * does not start with one.
-     */
-    private static int identifierEnd(@NotNull String content, int begin, int limit) {
-        if (!Character.isJavaIdentifierStart(content.charAt(begin))) return begin;
-        int end = begin + 1;
-        while (end < limit && Character.isJavaIdentifierPart(content.charAt(end))) end++;
-        return end;
-    }
 }

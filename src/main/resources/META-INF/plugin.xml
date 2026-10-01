@@ -566,6 +566,12 @@
               * 'propName' in ClassName cannot be resolved (static property not found)
               * 'propName' in ClassName cannot be resolved (instance property not found)
         -->
+        <externalAnnotator language="XML"
+                           implementationClass="org.jfxcore.fxml.highlighting.Fxml2SemanticAnnotator"/>
+        <externalAnnotator language="JAVA"
+                           implementationClass="org.jfxcore.fxml.highlighting.Fxml2SemanticAnnotator"/>
+        <colorSettingsPage implementation="org.jfxcore.fxml.highlighting.Fxml2ColorSettingsPage"/>
+
         <annotator language="XML"
                    implementationClass="org.jfxcore.fxml.annotator.Fxml2AttributeAnnotator"/>
 

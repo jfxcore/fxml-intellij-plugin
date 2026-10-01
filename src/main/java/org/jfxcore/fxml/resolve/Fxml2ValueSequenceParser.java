@@ -75,65 +75,52 @@ public final class Fxml2ValueSequenceParser {
             @Nullable String value,
             @NotNull Map<Character, String> prefixMappings) {
 
-        List<ValueItem> items = new ArrayList<>();
-        if (value == null || value.isBlank()) return items;
+        return parseSequence(value, prefixMappings).items();
+    }
 
+    public record Sequence(@NotNull List<ValueItem> items, @NotNull List<Fxml2TextSpan> separators) {
+        public Sequence {
+            items = List.copyOf(items);
+            separators = List.copyOf(separators);
+        }
+    }
+
+    /** Returns the items and only the commas that separate outer items. */
+    public static @NotNull Sequence parseSequence(
+            @Nullable String value, @NotNull Map<Character, String> prefixMappings) {
+        List<ValueItem> items = new ArrayList<>();
+        List<Fxml2TextSpan> separators = new ArrayList<>();
+        if (value == null || value.isBlank()) return new Sequence(items, separators);
         int depth = 0;
         int typeArgumentDepth = 0;
         int start = 0;
-        int i = 0;
-        boolean inStringLiteral = false;
-        // Set once the current item opens a parameter section, which consumes the remaining text.
         boolean greedyItem = false;
-
-        while (i < value.length()) {
-            char c = value.charAt(i);
-
-            if (inStringLiteral) {
-                if (c == '\\') {
-                    i += 2;
-                    continue;
-                }
-                if (c == '\'') inStringLiteral = false;
-                i++;
-                continue;
-            }
-
-            switch (c) {
-                case '\'' -> inStringLiteral = true;
-                case '{', '(', '[' -> depth++;
-                case '}', ')', ']' -> { if (depth > 0) depth--; }
-                case '<' -> {
+        for (var token : Fxml2TextScanner.scan(value)) {
+            switch (token.kind()) {
+                case OPEN_BRACE, OPEN_PARENTHESIS, OPEN_BRACKET -> depth++;
+                case CLOSE_BRACE, CLOSE_PARENTHESIS, CLOSE_BRACKET -> { if (depth > 0) depth--; }
+                case OPEN_ANGLE -> {
                     if (typeArgumentDepth > 0
                             || depth == 0 && isPrefixNotation(value, start, prefixMappings)
-                            && hasTypeArgumentClose(value, i)) {
-                        typeArgumentDepth++;
-                    }
+                            && hasTypeArgumentClose(value, token.span().start())) typeArgumentDepth++;
                 }
-                case '>' -> {
-                    if (typeArgumentDepth > 0) typeArgumentDepth--;
-                }
-                case ';' -> {
-                    // A parameter section of a prefix-notation markup extension is greedy: it has
-                    // no closing delimiter, so every following comma belongs to the extension.
+                case CLOSE_ANGLE -> { if (typeArgumentDepth > 0) typeArgumentDepth--; }
+                case SEMICOLON -> {
                     if (depth == 0 && typeArgumentDepth == 0
-                            && isPrefixNotation(value, start, prefixMappings)) {
-                        greedyItem = true;
-                    }
+                            && isPrefixNotation(value, start, prefixMappings)) greedyItem = true;
                 }
-                case ',' -> {
+                case COMMA -> {
                     if (depth == 0 && typeArgumentDepth == 0 && !greedyItem) {
-                        addItem(items, value, start, i, prefixMappings);
-                        start = i + 1;
+                        addItem(items, value, start, token.span().start(), prefixMappings);
+                        separators.add(token.span());
+                        start = token.span().end();
                     }
                 }
                 default -> { }
             }
-            i++;
         }
-
         addItem(items, value, start, value.length(), prefixMappings);
-        return items;
+        return new Sequence(items, separators);
     }
 
     /**

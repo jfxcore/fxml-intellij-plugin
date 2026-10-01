@@ -569,7 +569,7 @@ public final class Fxml2AttributeValueResolver {
      * @param contextClass the class the value is assigned on, used as the resolution context
      * @return a valid result, with the declaration the item navigates to when there is one
      */
-    private static @NotNull Result convertLiteralItem(
+    public static @NotNull Result convertLiteralItem(
             @NotNull PsiType targetType,
             @NotNull String literal,
             @NotNull PsiClass contextClass,

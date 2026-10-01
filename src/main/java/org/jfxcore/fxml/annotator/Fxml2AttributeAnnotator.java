@@ -38,6 +38,9 @@ import org.jfxcore.fxml.resolve.Fxml2ExpressionOperands;
 import org.jfxcore.fxml.resolve.Fxml2ExpressionParser;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionContentParser;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionParser;
+import org.jfxcore.fxml.resolve.Fxml2MarkupExtensionBindings;
+import org.jfxcore.fxml.resolve.Fxml2ObservableValueResolver;
 import org.jfxcore.fxml.resolve.Fxml2NamedArgResolver;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 import org.jfxcore.fxml.resolve.Fxml2PropertyResolver;
@@ -253,22 +256,11 @@ public final class Fxml2AttributeAnnotator implements Annotator {
             @NotNull XmlFile xmlFile,
             @NotNull AnnotationHolder holder) {
 
-        // Resolve the context tag: the fx:* element is inside a property element, which is
-        // inside a class tag. The class tag provides the "self" context for parent/self selectors,
-        // but for default context we use the code-behind class (same as attribute notation).
-        PsiClass startClass = Fxml2BindingPathResolver.resolveStartClass(null, fxTag, xmlFile);
-        if (startClass == null) return;
-
-        // Parse a context selector if present.
-        Fxml2BindingExpressionParser.ContextSelector selector =
-                Fxml2BindingExpressionParser.parseContextSelector(path);
+        var selector = Fxml2BindingExpressionParser.parseContextSelector(path);
         String remainingPath = selector != null ? selector.remainingPath() : path;
         if (remainingPath.isBlank()) return;
-
-        if (selector != null) {
-            startClass = Fxml2BindingPathResolver.resolveStartClass(selector, fxTag, xmlFile);
-            if (startClass == null) return;
-        }
+        PsiClass startClass = Fxml2BindingPathResolver.resolveStartClass(selector, fxTag, xmlFile);
+        if (startClass == null) return;
 
         GlobalSearchScope scope = xmlFile.getResolveScope();
         Kind kind = FX_ELEMENT_KINDS.getOrDefault(fxTag.getLocalName(), Kind.EVALUATE);
@@ -372,35 +364,6 @@ public final class Fxml2AttributeAnnotator implements Annotator {
     }
 
     /**
-     * Returns {@code true} when the type of the given PSI element (field or method return type)
-     * is a subtype of {@code javafx.beans.value.ObservableValue}.
-     *
-     * <p>Used to validate that members accessed via the {@code ::} (observable-selection)
-     * operator in a binding path are actually observable, mirroring the FXML compiler's
-     * {@code INVALID_INVARIANT_REFERENCE} check.
-     */
-    private static boolean isNotObservableDeclaration(@Nullable PsiElement decl, @NotNull XmlFile xmlFile) {
-        if (decl == null || !decl.isValid()) return true;
-        PsiClass observableClass = Fxml2WellKnownClasses.observableValue(xmlFile.getProject());
-        if (observableClass == null) return true;
-
-        PsiType type = switch (decl) {
-            case com.intellij.psi.PsiField  f -> f.getType();
-            case PsiMethod m -> m.getReturnType();
-            default -> null;
-        };
-        if (!(type instanceof com.intellij.psi.PsiClassType ct)) return true;
-        PsiClass resolved;
-        try {
-            resolved = ct.resolve();
-        } catch (PsiInvalidElementAccessException ignored) {
-            return true;
-        }
-        return resolved == null
-                || (!resolved.equals(observableClass) && !resolved.isInheritor(observableClass, true));
-    }
-
-    /**
      * Returns {@code true} when {@code type} is {@code javafx.event.EventHandler} or a
      * parameterized form of it (e.g. {@code EventHandler<ActionEvent>}).
      *
@@ -466,7 +429,7 @@ public final class Fxml2AttributeAnnotator implements Annotator {
                 // compiler requires the member to be an ObservableValue subtype. If it is not,
                 // the compiler rejects the reference with INVALID_INVARIANT_REFERENCE.
                 if (seg.observableSelector() && !seg.classQualifier()
-                        && isNotObservableDeclaration(seg.declaration(), xmlFile)) {
+                        && Fxml2ObservableValueResolver.isNotObservableDeclaration(seg.declaration(), xmlFile)) {
                     String segName = seg.name();
                     String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
                     int selectorDocOffset = ReplaceObservableSelectorFix.selectorOffsetBefore(docStart);
@@ -909,21 +872,12 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         }
         // If markupExtClass is null (library not on classpath), accept silently.
 
-        // 3. (5.4) Validate parameter names in the extension expression.
-        // rawValue is one item of the attribute value, e.g. "{MyExtension param1=value1}".
-        if (rawValue.length() > 2) {
-            String inner = rawValue.substring(1, rawValue.length() - 1).trim();
-            int firstSpace = indexOfWhitespaceME(inner);
-            if (firstSpace >= 0) {
-                String paramsPart = inner.substring(firstSpace).trim();
-                int paramsPartInRaw = rawValue.indexOf(paramsPart, 1 + firstSpace);
-                if (paramsPartInRaw >= 0) {
-                    annotateMarkupExtensionParams(
-                            attrVal, paramsPart, itemOffset + paramsPartInRaw, extClass, holder);
-                    annotateMarkupExtensionBindingArgs(
-                            attrVal, paramsPart, itemOffset + paramsPartInRaw, xmlFile, holder);
-                }
-            }
+        var extension = Fxml2MarkupExtensionParser.parse(rawValue);
+        if (extension != null && !extension.content().isEmpty()) {
+            String content = extension.content().textOf(rawValue);
+            int contentOffset = itemOffset + extension.content().start();
+            annotateMarkupExtensionParams(attrVal, content, contentOffset, extClass, holder);
+            annotateMarkupExtensionBindingArgs(attrVal, content, contentOffset, xmlFile, holder);
         }
 
         // 4. (5.6) Validate @ReturnType applicability when used on a property.
@@ -1099,125 +1053,46 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         return afterName < text.length() && text.charAt(afterName) == '=' ? end : 0;
     }
 
-    /**
-     * Scans the parameter part of a markup extension expression for positional binding
-     * sub-expressions (e.g. {@code $DataClass::field}) and annotates any invalid
-     * observable-selection operator usages within them.
-     *
-     * <p>Binding sub-expressions are identified by a leading {@code $} or {@code #} sigil
-     * that is not followed immediately by an {@code =} sign (which would make it a named
-     * parameter value). For each such sub-expression, the binding path is resolved using
-     * the code-behind class as the start class and each segment is checked: when the
-     * observable-selection operator {@code ::} was used to access a member that is not an
-     * {@code ObservableValue} subtype, an error is reported.
-     *
-     * @param attrVal         the attribute value node that contains the markup extension text
-     * @param paramsPart      the parameter portion of the markup extension, after the class name
-     * @param paramsPartInRaw the offset of {@code paramsPart} within {@code attrVal.getValue()}
-     * @param xmlFile         the containing FXML file
-     * @param holder          the annotation holder for reporting errors
-     */
+    /** Validates binding values within extension configuration at their parsed source ranges. */
     private static void annotateMarkupExtensionBindingArgs(
-            @NotNull XmlAttributeValue attrVal,
-            @NotNull String paramsPart,
-            int paramsPartInRaw,
-            @NotNull XmlFile xmlFile,
-            @NotNull AnnotationHolder holder) {
-
-        // Resolve the start class (code-behind or context).
-        XmlTag contextTag = null;
-        if (attrVal.getParent() instanceof XmlAttribute attr
-                && attr.getParent() instanceof XmlTag t) {
-            contextTag = t;
-        }
-        PsiClass startClass = contextTag != null
-                ? Fxml2BindingPathResolver.resolveStartClass(null, contextTag, xmlFile)
-                : Fxml2BindingPathResolver.resolveCodeBehindClass(xmlFile);
-        if (startClass == null) return;
-
-        GlobalSearchScope scope = xmlFile.getResolveScope();
-        // Base document offset for the start of paramsPart (skipping opening quote of attrVal).
-        int docParamsBase = attrVal.getTextRange().getStartOffset() + 1 + paramsPartInRaw;
-
-        int pos = 0;
-        while (pos < paramsPart.length()) {
-            char ch = paramsPart.charAt(pos);
-            // Skip separators and whitespace.
-            if (Character.isWhitespace(ch) || ch == ',' || ch == ';') {
-                pos++;
-                continue;
-            }
-            // Detect a binding sigil: $ or # that is not part of a named-arg value (key=...).
-            if ((ch == '$' || ch == '#') && pos + 1 < paramsPart.length()) {
-                int sigEnd = pos + 1;
-                // Skip the optional { ... } wrapper (e.g. ${path} or #{path}).
-                boolean hasBrace = paramsPart.charAt(sigEnd) == '{';
-                int pathStart;
-                int pathEnd;
-                if (hasBrace) {
-                    pathStart = sigEnd + 1;
-                    int depth = 1;
-                    int scan = pathStart;
-                    while (scan < paramsPart.length() && depth > 0) {
-                        char c = paramsPart.charAt(scan++);
-                        if (c == '{') depth++;
-                        else if (c == '}') depth--;
+            @NotNull XmlAttributeValue attrVal, @NotNull String paramsPart, int paramsPartInRaw,
+            @NotNull XmlFile xmlFile, @NotNull AnnotationHolder holder) {
+        var contextTag = Fxml2XmlUtil.contextTag(attrVal);
+        int documentBase = attrVal.getTextRange().getStartOffset() + 1 + paramsPartInRaw;
+        for (var binding : Fxml2MarkupExtensionBindings.parse(paramsPart, Fxml2ImportResolver.parsePrefixMappings(xmlFile))) {
+            var resolved = Fxml2MarkupExtensionBindings.resolve(binding, contextTag, xmlFile);
+            if (resolved == null) continue;
+            int docPathBase = documentBase + resolved.pathOffset();
+            PsiClass prevType = resolved.startClass();
+            boolean prevResolved = true;
+            for (Fxml2BindingPathResolver.Segment seg : resolved.segments()) {
+                int segDocStart = docPathBase + seg.pathOffset();
+                int segDocEnd = segDocStart + seg.name().length();
+                if (!seg.isResolved()) {
+                    if (prevResolved) {
+                        String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
+                        holder.newAnnotation(HighlightSeverity.ERROR,
+                                "'" + seg.name() + "' in " + ownerName + " cannot be resolved")
+                                .range(new TextRange(segDocStart, segDocEnd))
+                                .create();
                     }
-                    pathEnd = scan - 1; // points to the closing '}'
+                    prevResolved = false;
+                    prevType = null;
                 } else {
-                    pathStart = sigEnd;
-                    // Token ends at whitespace, comma, semicolon, or end of params.
-                    int scan = pathStart;
-                    while (scan < paramsPart.length()) {
-                        char c = paramsPart.charAt(scan);
-                        if (Character.isWhitespace(c) || c == ',' || c == ';') break;
-                        scan++;
+                    if (seg.observableSelector() && !seg.classQualifier()
+                            && Fxml2ObservableValueResolver.isNotObservableDeclaration(seg.declaration(), xmlFile)) {
+                        String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
+                        holder.newAnnotation(HighlightSeverity.ERROR,
+                                "'" + seg.name() + "' in " + ownerName
+                                + " cannot be referenced"
+                                + " (note: '.' can be used instead of '::' within a path expression)")
+                                .range(new TextRange(segDocStart, segDocEnd))
+                                .create();
                     }
-                    pathEnd = scan;
+                    prevResolved = true;
+                    prevType = seg.resultType();
                 }
-                String path = paramsPart.substring(pathStart, pathEnd);
-                if (!path.isBlank()) {
-                    // Resolve and validate the path segments.
-                    java.util.List<Fxml2BindingPathResolver.Segment> segments =
-                            Fxml2BindingPathResolver.resolve(path, startClass, scope,
-                                    Kind.EVALUATE, xmlFile);
-                    // Doc offset of path[0] within the document.
-                    int docPathBase = docParamsBase + pathStart;
-                    PsiClass prevType = startClass;
-                    boolean prevResolved = true;
-                    for (Fxml2BindingPathResolver.Segment seg : segments) {
-                        int segDocStart = docPathBase + seg.pathOffset();
-                        int segDocEnd = segDocStart + seg.name().length();
-                        if (!seg.isResolved()) {
-                            if (prevResolved) {
-                                String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
-                                holder.newAnnotation(HighlightSeverity.ERROR,
-                                        "'" + seg.name() + "' in " + ownerName + " cannot be resolved")
-                                        .range(new TextRange(segDocStart, segDocEnd))
-                                        .create();
-                            }
-                            prevResolved = false;
-                            prevType = null;
-                        } else {
-                            if (seg.observableSelector() && !seg.classQualifier()
-                                    && isNotObservableDeclaration(seg.declaration(), xmlFile)) {
-                                String ownerName = prevType != null ? prevType.getQualifiedName() : "?";
-                                holder.newAnnotation(HighlightSeverity.ERROR,
-                                        "'" + seg.name() + "' in " + ownerName
-                                        + " cannot be referenced"
-                                        + " (note: '.' can be used instead of '::' within a path expression)")
-                                        .range(new TextRange(segDocStart, segDocEnd))
-                                        .create();
-                            }
-                            prevResolved = true;
-                            prevType = seg.resultType();
-                        }
-                    }
-                }
-                pos = hasBrace ? pathEnd + 1 : pathEnd;
-                continue;
             }
-            pos++;
         }
     }
 
@@ -1247,34 +1122,10 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         return params;
     }
 
-    /**
-     * Returns the index of the first whitespace character in {@code s} that is not inside
-     * a generic type-argument block, or {@code -1} if none.
-     *
-     * <p>This is used to split the inner markup-extension text into the class-name token
-     * (which may include generic type arguments) and the trailing parameter list.
-     *
-     * <p>Two forms of type arguments are handled:
-     * <ul>
-     *   <li><b>Literal</b>: {@code MyMarkupExtension<String> key=val}, with balanced {@code <}/{@code >}
-     *       depth tracking prevents splitting inside the angle-bracket block.
-     *   <li><b>XML-entity</b>: {@code MyMarkupExtension&lt;String&gt; key=val}, where the {@code &lt;}
-     *       and {@code &gt;} sequences contain no literal {@code <}/{@code >} characters, so the
-     *       depth tracker stays at 0 and the first whitespace found is always after the closing
-     *       {@code &gt;}, which is correct.
-     * </ul>
-     * Nested generics like {@code Map<String, Integer>} are also handled correctly by the
-     * depth counter.
-     */
-    private static int indexOfWhitespaceME(@NotNull String s) {
-        int depth = 0;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c == '<') depth++;
-            else if (c == '>') { if (depth > 0) depth--; }
-            else if (depth == 0 && Character.isWhitespace(c)) return i;
-        }
-        return -1;
+    private static @Nullable PsiClass classLiteral(com.intellij.psi.PsiAnnotationMemberValue value) {
+        if (value instanceof com.intellij.psi.PsiClassObjectAccessExpression literal
+                && literal.getOperand().getType() instanceof com.intellij.psi.PsiClassType type) return type.resolve();
+        return null;
     }
 
     /**
@@ -1329,22 +1180,14 @@ public final class Fxml2AttributeAnnotator implements Annotator {
         if (valueAttr == null) return;
 
         java.util.List<PsiClass> allowedTypes = new java.util.ArrayList<>();
-        if (valueAttr instanceof com.intellij.psi.PsiArrayInitializerMemberValue arr) {
-            for (com.intellij.psi.PsiAnnotationMemberValue v : arr.getInitializers()) {
-                if (v instanceof com.intellij.psi.PsiClassObjectAccessExpression coe) {
-                    com.intellij.psi.PsiType t = coe.getOperand().getType();
-                    if (t instanceof com.intellij.psi.PsiClassType pct2) {
-                        PsiClass cls = pct2.resolve();
-                        if (cls != null) allowedTypes.add(cls);
-                    }
-                }
+        if (valueAttr instanceof com.intellij.psi.PsiArrayInitializerMemberValue array) {
+            for (var value : array.getInitializers()) {
+                PsiClass allowed = classLiteral(value);
+                if (allowed != null) allowedTypes.add(allowed);
             }
-        } else if (valueAttr instanceof com.intellij.psi.PsiClassObjectAccessExpression coe) {
-            com.intellij.psi.PsiType t = coe.getOperand().getType();
-            if (t instanceof com.intellij.psi.PsiClassType pct2) {
-                PsiClass cls = pct2.resolve();
-                if (cls != null) allowedTypes.add(cls);
-            }
+        } else {
+            PsiClass allowed = classLiteral(valueAttr);
+            if (allowed != null) allowedTypes.add(allowed);
         }
         if (allowedTypes.isEmpty()) return;
 

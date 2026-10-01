@@ -51,6 +51,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class Fxml2MarkupExtensionTest extends Fxml2TestBase {
 
+    @Test
+    void quotedBindingPrefixesRemainLiteralExtensionArguments() {
+        getFixture().configureByText("TestView.fxml", fxml(
+                "javafx.scene.control.Label\ntest.ResourceExtension",
+                "<Label text=\"{ResourceExtension value='$missing'}\"/>"));
+        getFixture().checkHighlighting(false, false, false);
+    }
+
     @BeforeEach
     void enableInspections() {
         getFixture().enableInspections(new Fxml2AttributeValueInspection());
