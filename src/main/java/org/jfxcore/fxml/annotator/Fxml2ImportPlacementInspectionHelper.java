@@ -28,10 +28,10 @@ import com.intellij.psi.xml.XmlProcessingInstruction;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jfxcore.fxml.lang.Fxml2EmbedMarkupUtil;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
 import org.jfxcore.fxml.lang.Fxml2ImportUtil;
+import org.jfxcore.fxml.lang.Fxml2KotlinPsiClassUtil;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 
 import java.util.ArrayList;
@@ -229,7 +229,7 @@ public final class Fxml2ImportPlacementInspectionHelper {
             if (!hasAnnotation) continue;
 
             // Precise check using injected file when available.
-            var lightClass = LightClassUtilsKt.toLightClass(ktClass);
+            var lightClass = Fxml2KotlinPsiClassUtil.toPsiClass(ktClass);
             if (lightClass != null) {
                 XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(lightClass);
                 if (xmlFile != null) {
@@ -626,7 +626,7 @@ public final class Fxml2ImportPlacementInspectionHelper {
                     return sn != null && "ComponentView".equals(sn.getIdentifier());
                 });
                 if (!hasAnnotation) continue;
-                var lightClass = LightClassUtilsKt.toLightClass(ktClass);
+                var lightClass = Fxml2KotlinPsiClassUtil.toPsiClass(ktClass);
                 if (lightClass != null) result.add(lightClass);
             }
             return result;

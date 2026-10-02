@@ -29,7 +29,6 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jetbrains.kotlin.psi.KtBlockExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtClass;
@@ -42,6 +41,7 @@ import org.jetbrains.kotlin.psi.KtSuperTypeCallEntry;
 import org.jetbrains.kotlin.psi.KtTreeVisitorVoid;
 import org.jetbrains.kotlin.psi.KtVisitorVoid;
 import org.jfxcore.fxml.lang.Fxml2FileType;
+import org.jfxcore.fxml.lang.Fxml2KotlinPsiClassUtil;
 
 import java.util.HashSet;
 import java.util.List;
@@ -263,7 +263,7 @@ public final class Fxml2InitializeComponentInspection extends LocalInspectionToo
     private static void checkKotlinClass(@NotNull KtClass ktClass, @NotNull ProblemsHolder holder) {
         if (ktClass.isInterface() || ktClass.isAnnotation()) return;
 
-        var lightClass = LightClassUtilsKt.toLightClass(ktClass);
+        var lightClass = Fxml2KotlinPsiClassUtil.toPsiClass(ktClass);
         if (lightClass == null) return;
         if (!isCodeBehindClass(lightClass, ktClass.getProject())) return;
 
