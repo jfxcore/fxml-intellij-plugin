@@ -27,9 +27,9 @@ import com.intellij.psi.xml.XmlProcessingInstruction;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jfxcore.fxml.lang.Fxml2EmbedMarkupUtil;
 import org.jfxcore.fxml.lang.Fxml2EmbeddedUtil;
+import org.jfxcore.fxml.lang.Fxml2KotlinPsiClassUtil;
 import org.jfxcore.fxml.resolve.Fxml2ImportResolver;
 
 import java.util.List;
@@ -164,7 +164,7 @@ public final class Fxml2PreferCodeImportInspection extends LocalInspectionTool {
                 });
                 if (!hasAnnotation) return;
 
-                var lightClass = LightClassUtilsKt.toLightClass(ktClass);
+                var lightClass = Fxml2KotlinPsiClassUtil.toPsiClass(ktClass);
                 if (lightClass == null) return;
 
                 XmlFile xmlFile = Fxml2EmbeddedUtil.getInjectedXmlFile(lightClass);

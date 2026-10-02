@@ -22,7 +22,6 @@ import com.intellij.util.Processor;
 import com.intellij.util.QueryExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jfxcore.fxml.resolve.Fxml2PropertyNameUtil;
 
 /**
@@ -293,7 +292,7 @@ public final class Fxml2BindingSegmentSearcher
             var ktClass = PsiTreeUtil.getParentOfType(
                     navEl, org.jetbrains.kotlin.psi.KtClassOrObject.class, false);
             if (ktClass != null) {
-                var lc = LightClassUtilsKt.toLightClass(ktClass);
+                var lc = Fxml2KotlinPsiClassUtil.toPsiClass(ktClass);
                 if (lc != null) {
                     XmlFile xml = Fxml2EmbeddedUtil.getInjectedXmlFile(lc);
                     if (xml != null) return xml;

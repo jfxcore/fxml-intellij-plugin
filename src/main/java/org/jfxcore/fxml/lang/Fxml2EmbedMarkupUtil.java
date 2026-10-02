@@ -8,7 +8,6 @@ import com.intellij.lang.ImportOptimizer;
 import com.intellij.lang.LanguageImportStatements;
 import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.openapi.editor.Document;
-import org.jetbrains.kotlin.asJava.LightClassUtilsKt;
 import org.jfxcore.fxml.codeinsight.Fxml2ImportOptimizer;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
@@ -947,7 +946,7 @@ public final class Fxml2EmbedMarkupUtil {
 
             KtClassOrObject ktClass = PsiTreeUtil.getParentOfType(annotEntry, KtClassOrObject.class);
             if (ktClass == null) return;
-            var lightClass = LightClassUtilsKt.toLightClass(ktClass);
+            var lightClass = Fxml2KotlinPsiClassUtil.toPsiClass(ktClass);
             if (lightClass == null) return;
             String fqn = lightClass.getQualifiedName();
             if (fqn == null) return;
